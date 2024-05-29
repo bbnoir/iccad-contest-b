@@ -2,14 +2,18 @@
 
 Cell::Cell()
 {
-    x = 0;
-    y = 0;
+    _x = 0;
+    _y = 0;
+    _site = nullptr;
+    _area = 0;
 }
 
 Cell::Cell(int x, int y)
 {
-    this->x = x;
-    this->y = y;
+    this->_x = x;
+    this->_y = y;
+    this->_site = nullptr;
+    this->_area = 0;
 }
 
 Cell::~Cell()
@@ -18,20 +22,30 @@ Cell::~Cell()
 
 int Cell::getX()
 {
-    return x;
+    return _x;
 }
 
 int Cell::getY()
 {
-    return y;
+    return _y;
+}
+
+int Cell::getArea()
+{
+    return _area;
 }
 
 void Cell::setX(int x)
 {
-    this->x = x;
+    this->_x = x;
 }
 
 void Cell::setY(int y)
 {
-    this->y = y;
+    this->_y = y;
+}
+
+void Cell::setSite(Site* site)
+{
+    this->_site = site;
 }

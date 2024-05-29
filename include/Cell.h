@@ -1,4 +1,5 @@
 #pragma once
+#include "Site.h"
 
 class Cell
 {
@@ -9,11 +10,17 @@ public:
 
     int getX();
     int getY();
+    int getArea();
 
     void setX(int x);
     void setY(int y);
 
-private:
-    int x;
-    int y;
+    void setSite(Site* site);
+
+protected:
+    int _x;
+    int _y;
+    int _area;
+    // Site where the cell is placed
+    Site* _site;
 };
