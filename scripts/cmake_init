@@ -1,1 +1,6 @@
-cmake -S . -B build
+if [ ! -d "build" ]; then
+    mkdir build
+fi
+cd build
+cmake ..
+cd ..

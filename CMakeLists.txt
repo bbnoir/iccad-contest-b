@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 2.18)
+cmake_minimum_required(VERSION 2.8.12)
 
 project(ContestB)
 
@@ -6,8 +6,9 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${ContestB_SOURCE_DIR}/bin)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${ContestB_SOURCE_DIR}/lib)
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${ContestB_SOURCE_DIR}/lib)
 
-add_library(compiler_flags INTERFACE)
-target_compile_features(compiler_flags INTERFACE cxx_std_17)
-target_compile_options(compiler_flags INTERFACE "-O3" "-Wall" "-Wextra" "-Wpedantic" "-Werror")
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -Wall -Wextra -Werror -pedantic")
 
 add_subdirectory(src)
