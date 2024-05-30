@@ -3,6 +3,9 @@
 #include "Cell.h"
 #include "Bin.h"
 
+class Cell;
+class Bin;
+
 class Site
 {
     public:

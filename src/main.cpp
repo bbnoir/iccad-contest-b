@@ -15,7 +15,7 @@ int main(int argc, char* argv[])
     Solver solver;
 
     solver.parse_input(input_file);
-    
+    solver.display();
 
     return 0;
 }

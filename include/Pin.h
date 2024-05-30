@@ -3,6 +3,9 @@
 #include "Cell.h"
 #include "Net.h"
 
+class Net;
+class Cell;
+
 // Pin type
 enum class PinType
 {
@@ -17,11 +20,15 @@ class Pin
         Pin(PinType type, int x, int y, std::string name, Cell* cell);
         ~Pin();
         
+        std::string getName();
+        int getX();
+        int getY();
+
         void connect(Net* net);
 
     private:
-        // Pin coordinates(relative to the cell)
         PinType _type;
+        // Pin coordinates(relative to the cell)
         int _x;
         int _y;
         std::string _name;

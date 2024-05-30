@@ -9,8 +9,6 @@ class Comb : public Cell
         using Cell::Cell;
         ~Comb();
         
-        void addPin(Pin* pin);
-
     private:
-        std::vector<Pin*> pins;
+
 };

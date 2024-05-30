@@ -2,6 +2,8 @@
 #include <vector>
 #include "Cell.h"
 
+class Cell;
+
 class Bin
 {
     public:
@@ -11,5 +13,5 @@ class Bin
     private:
         int _x;
         int _y;
-        // std::vector<Cell*> _cells;
+        std::vector<Cell*> _cells;
 };

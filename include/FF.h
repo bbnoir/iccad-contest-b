@@ -9,10 +9,16 @@ class FF : public Cell
         using Cell::Cell;
         ~FF();
 
-        void addPin(Pin* pin);
-        
+        int getBit();
+        double getQDelay();
+        double getPower();
+
+        void setBit(int bit);
+        void setQDelay(double qDelay);
+        void setPower(double power);
+
     private:
-        std::vector<Pin*> pins;
+        
         int _bit;
         double _qDelay;
         double _power;
