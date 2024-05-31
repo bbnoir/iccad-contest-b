@@ -1,13 +1,21 @@
 #include <iostream>
-#include "Cell.h"
+#include <string>
+#include "Solver.h"
 
-int main()
+int main(int argc, char* argv[])
 {
-    Cell cell1;
-    Cell cell2(1, 2);
+    // format ./$binary_name <input.txt> <output.txt>
+    if (argc != 3)
+    {
+        std::cerr << "Usage: " << argv[0] << " <input.txt> <output.txt>" << std::endl;
+        return 1;
+    }
+    std::string input_file = argv[1];
+    std::string output_file = argv[2];
+    Solver solver;
 
-    std::cout << "Cell 1: (" << cell1.getX() << ", " << cell1.getY() << ")" << std::endl;
-    std::cout << "Cell 2: (" << cell2.getX() << ", " << cell2.getY() << ")" << std::endl;
+    solver.parse_input(input_file);
+    solver.display();
 
     return 0;
 }
