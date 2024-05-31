@@ -6,6 +6,7 @@ Cell::Cell()
     _y = 0;
     _site = nullptr;
     _area = 0;
+    _power = 0;
     _type = CellType::INST;
 }
 
@@ -19,6 +20,7 @@ Cell::Cell(int width, int height, std::string cell_name)
     _site = nullptr;
     _area = width * height;
     _type = CellType::LIB;
+    _power = 0;
 }
 
 Cell::Cell(int x, int y, int width, int height, std::string inst_name, std::string cell_name)
@@ -32,6 +34,7 @@ Cell::Cell(int x, int y, int width, int height, std::string inst_name, std::stri
     _site = nullptr;
     _area = width * height;
     _type = CellType::INST;
+    _power = 0;
 }
 
 Cell::~Cell()
@@ -51,6 +54,11 @@ int Cell::getY()
 int Cell::getArea()
 {
     return _area;
+}
+
+double Cell::getPower()
+{
+    return _power;
 }
 
 std::string Cell::getInstName()
@@ -98,6 +106,11 @@ void Cell::setX(int x)
 void Cell::setY(int y)
 {
     this->_y = y;
+}
+
+void Cell::setPower(double power)
+{
+    this->_power = power;
 }
 
 void Cell::setCellName(std::string cell_name)

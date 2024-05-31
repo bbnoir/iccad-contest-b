@@ -28,6 +28,7 @@ public:
     int getWidth();
     int getHeight();
     int getArea();
+    double getPower();
     std::string getInstName();
     std::string getCellName();
     std::vector<Pin*> getPins();
@@ -35,6 +36,7 @@ public:
 
     void setX(int x);
     void setY(int y);
+    void setPower(double power);
     void setCellName(std::string cell_name);
     void setInstName(std::string inst_name);
     void setSite(Site* site);
@@ -48,6 +50,7 @@ protected:
     int _width;
     int _height;
     int _area;
+    double _power;
     std::string _inst_name;
     std::string _cell_name;
     std::vector<Pin*> pins;

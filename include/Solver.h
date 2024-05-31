@@ -37,20 +37,20 @@ class Solver
         // lib
         std::vector<Comb*> _combsLibList;
         std::vector<FF*> _ffsLibList;
-        std::unordered_map<std::string, Comb*> _combsLibMap;
-        std::unordered_map<std::string, FF*> _ffsLibMap;
+        std::unordered_map<std::string, Comb*, CIHash, CIEqual> _combsLibMap;
+        std::unordered_map<std::string, FF*, CIHash, CIEqual> _ffsLibMap;
         // I/O
         std::vector<Pin*> _inputPins;
         std::vector<Pin*> _outputPins;
-        std::unordered_map<std::string, Pin*> _inputPinsMap;
-        std::unordered_map<std::string, Pin*> _outputPinsMap;
+        std::unordered_map<std::string, Pin*, CIHash, CIEqual> _inputPinsMap;
+        std::unordered_map<std::string, Pin*, CIHash, CIEqual> _outputPinsMap;
         // instance
         std::vector<Comb*> _combs;
         std::vector<FF*> _ffs;
         std::vector<Net*> _nets;
-        std::unordered_map<std::string, Net*> _netsMap;
-        std::unordered_map<std::string, Comb*> _combsMap;
-        std::unordered_map<std::string, FF*> _ffsMap;
+        std::unordered_map<std::string, Net*, CIHash, CIEqual> _netsMap;
+        std::unordered_map<std::string, Comb*, CIHash, CIEqual> _combsMap;
+        std::unordered_map<std::string, FF*, CIHash, CIEqual> _ffsMap;
         // placement
         std::vector<PlacementRows> _placementRows;
         std::vector<Site*> _sites;

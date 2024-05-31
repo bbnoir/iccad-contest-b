@@ -23,6 +23,10 @@ class Pin
         std::string getName();
         int getX();
         int getY();
+        bool isDpin();
+        double getSlack();
+
+        void setSlack(double slack);
 
         void connect(Net* net);
 
@@ -32,6 +36,11 @@ class Pin
         int _x;
         int _y;
         std::string _name;
+        // which cell this pin belongs to
         Cell* _cell;
+        double _slack;
+        bool _isDpin;
+        // which net this pin is connected to
         Net* _net;
+
 };

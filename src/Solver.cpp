@@ -63,12 +63,6 @@ void Solver::parse_input(std::string filename)
         _outputPinsMap[name] = _outputPins.back();
     }
     // Read cell library
-    /*
-    FlipFlop <bits> <flipFlopName> <flipFlopWidth> <flipFlopHeight> <pinCount>
-    Pin <pinName> <pinLocationX> <pinLocationY>
-    Gate <gateName> <gateWidth> <gateHeight> <pinCount>
-    Pin <pinName> <pinLocationX> <pinLocationY>
-    */
     while(!in.eof())
     {
         in >> token;
@@ -183,15 +177,6 @@ void Solver::parse_input(std::string filename)
         _placementRows.push_back({startX, startY, siteWidth, siteHeight, numSites});
     }
     // Read timing info
-    /*
-    DisplacementDelay 0.01
-    QpinDelay SVT_FF_1 0.02
-    QpinDelay SVT_FF_2 0.06
-    TimingSlack reg1 D -0.183134
-    TimingSlack reg2 D 0.149378
-    TimingSlack reg3 D -0.152106
-    TimingSlack reg4 D 0.150923
-    */ 
     in >> DISP_DELAY;
     for(long unsigned int i = 0; i < _ffsLibList.size(); i++)
     {
@@ -205,9 +190,38 @@ void Solver::parse_input(std::string filename)
     {
         _ffs[i]->setQDelay(_ffsLibMap[_ffs[i]->getCellName()]->getQDelay());
     }
-    // slack ???
-
+    // slack
+    for(long unsigned int i = 0; i < _ffs.size(); i++)
+    {
+        string instName;
+        string port;
+        double slack;
+        in >> token >> instName >> port >> slack;
+        _ffsMap[instName]->getPin(port)->setSlack(slack);
+    }
     // Read power info
+    while(!in.eof())
+    {
+        string cellName;
+        double power;
+        in >> token >> cellName >> power;
+        if(_ffsLibMap.find(cellName) != _ffsLibMap.end())
+        {
+            _ffsLibMap[cellName]->setPower(power);
+        }else if(_combsLibMap.find(cellName) != _combsLibMap.end())
+        {
+            _combsLibMap[cellName]->setPower(power);
+        }
+    }
+    // set power to instances
+    for(long unsigned int i = 0; i < _ffs.size(); i++)
+    {
+        _ffs[i]->setPower(_ffsLibMap[_ffs[i]->getCellName()]->getPower());
+    }
+    for(long unsigned int i = 0; i < _combs.size(); i++)
+    {
+        _combs[i]->setPower(_combsLibMap[_combs[i]->getCellName()]->getPower());
+    }
 
     cout << "File parsed successfully" << endl;
     in.close();
@@ -251,6 +265,8 @@ void Solver::display()
     for(auto ff : _ffsLibList)
     {
         cout << "Name: " << ff->getCellName() << ", Width: " << ff->getWidth() << ", Height: " << ff->getHeight() << ", Bits: " << ff->getBit() << endl;
+        cout << "Qpin delay: " << ff->getQDelay() << endl;
+        cout << "Power: " << ff->getPower() << endl;
         for(auto pin : ff->getPins())
         {
             cout << "Pin Name: " << pin->getName() << ", X: " << pin->getX() << ", Y: " << pin->getY() << endl;
@@ -260,6 +276,7 @@ void Solver::display()
     for(auto comb : _combsLibList)
     {
         cout << "Name: " << comb->getCellName() << ", Width: " << comb->getWidth() << ", Height: " << comb->getHeight() << endl;
+        cout << "Power: " << comb->getPower() << endl;
         for(auto pin : comb->getPins())
         {
             cout << "Pin Name: " << pin->getName() << ", X: " << pin->getX() << ", Y: " << pin->getY() << endl;
@@ -272,15 +289,21 @@ void Solver::display()
     for(auto ff : _ffs)
     {
         cout << "Name: " << ff->getInstName() << ", Lib: " << ff->getCellName() << ", X: " << ff->getX() << ", Y: " << ff->getY() << ", Width: " << ff->getWidth() << ", Height: " << ff->getHeight() << ", Bits: " << ff->getBit() << endl;
+        cout << "Qpin delay: " << ff->getQDelay() << endl;
+        cout << "Power: " << ff->getPower() << endl;
         for(auto pin : ff->getPins())
         {
-            cout << "Pin Name: " << pin->getName() << ", X: " << pin->getX() << ", Y: " << pin->getY() << endl;
+            cout << "Pin Name: " << pin->getName() << ", X: " << pin->getX() << ", Y: " << pin->getY();
+            if(pin->isDpin())
+                cout << ", Slack: " << pin->getSlack();
+            cout << endl;
         }
     }
     cout << "Gates:" << endl;
     for(auto comb : _combs)
     {
         cout << "Name: " << comb->getInstName() << ", Lib: " << comb->getCellName() << ", X: " << comb->getX() << ", Y: " << comb->getY() << ", Width: " << comb->getWidth() << ", Height: " << comb->getHeight() << endl;
+        cout << "Power: " << comb->getPower() << endl;
         for(auto pin : comb->getPins())
         {
             cout << "Pin Name: " << pin->getName() << ", X: " << pin->getX() << ", Y: " << pin->getY() << endl;
