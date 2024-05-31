@@ -70,14 +70,13 @@ void Solver::parse_input(std::string filename)
             int bits, width, height, pinCount;
             string name;
             in >> bits >> name >> width >> height >> pinCount;
-            FF* ff = new FF(width, height, name);
-            ff->setBit(bits);
+            LibCell* ff = new LibCell(CellType::FF, width, height, 0.0, 0.0, bits, name);
             for(int i = 0; i < pinCount; i++)
             {
                 string pinName;
                 int x, y;
                 in >> token >> pinName >> x >> y;
-                ff->addPin(new Pin(PinType::CELL, x, y, pinName, ff));
+                ff->pins.push_back(Pin(PinType::CELL, x, y, pinName, nullptr));
             }
             _ffsLibList.push_back(ff);
             _ffsLibMap[name] = ff;
@@ -85,13 +84,13 @@ void Solver::parse_input(std::string filename)
             int width, height, pinCount;
             string name;
             in >> name >> width >> height >> pinCount;
-            Comb* comb = new Comb(width, height, name);
+            LibCell* comb = new LibCell(CellType::COMB, width, height, 0.0, 0.0, 0, name);
             for(int i = 0; i < pinCount; i++)
             {
                 string pinName;
                 int x, y;
                 in >> token >> pinName >> x >> y;
-                comb->addPin(new Pin(PinType::CELL, x, y, pinName, comb));
+                comb->pins.push_back(Pin(PinType::CELL, x, y, pinName, nullptr));
             }
             _combsLibList.push_back(comb);
             _combsLibMap[name] = comb;
@@ -110,22 +109,12 @@ void Solver::parse_input(std::string filename)
         in >> token >> instName >> libCellName >> x >> y;
         if(_ffsLibMap.find(libCellName) != _ffsLibMap.end())
         {
-            FF* ff = new FF(x, y, _ffsLibMap[libCellName]->getWidth(), _ffsLibMap[libCellName]->getHeight(), instName, libCellName);
-            ff->setBit(_ffsLibMap[libCellName]->getBit());
-            
-            for(auto pin : _ffsLibMap[libCellName]->getPins())
-            {
-                ff->addPin(new Pin(PinType::CELL, pin->getX(), pin->getY(), pin->getName(), ff));
-            }
+            FF* ff = new FF(x, y,instName, _ffsLibMap[libCellName]);
             _ffs.push_back(ff);
             _ffsMap[instName] = ff;
         }else if(_combsLibMap.find(libCellName) != _combsLibMap.end())
         {
-            Comb* comb = new Comb(x, y, _combsLibMap[libCellName]->getWidth(), _combsLibMap[libCellName]->getHeight(), instName, libCellName);
-            for(auto pin : _combsLibMap[libCellName]->getPins())
-            {
-                comb->addPin(new Pin(PinType::CELL, pin->getX(), pin->getY(), pin->getName(), comb));
-            }
+            Comb* comb = new Comb(x, y, instName, _combsLibMap[libCellName]);
             _combs.push_back(comb);
             _combsMap[instName] = comb;
         }
@@ -183,12 +172,7 @@ void Solver::parse_input(std::string filename)
         string cellName;
         double delay;
         in >> token >> cellName >> delay;
-        _ffsLibMap[cellName]->setQDelay(delay);
-    }
-    // set Qpin delay to instances
-    for(long unsigned int i = 0; i < _ffs.size(); i++)
-    {
-        _ffs[i]->setQDelay(_ffsLibMap[_ffs[i]->getCellName()]->getQDelay());
+        _ffsLibMap[cellName]->qDelay = delay;
     }
     // slack
     for(long unsigned int i = 0; i < _ffs.size(); i++)
@@ -207,21 +191,13 @@ void Solver::parse_input(std::string filename)
         in >> token >> cellName >> power;
         if(_ffsLibMap.find(cellName) != _ffsLibMap.end())
         {
-            _ffsLibMap[cellName]->setPower(power);
+            _ffsLibMap[cellName]->power = power;
         }else if(_combsLibMap.find(cellName) != _combsLibMap.end())
         {
-            _combsLibMap[cellName]->setPower(power);
+            _combsLibMap[cellName]->power = power;
         }
     }
     // set power to instances
-    for(long unsigned int i = 0; i < _ffs.size(); i++)
-    {
-        _ffs[i]->setPower(_ffsLibMap[_ffs[i]->getCellName()]->getPower());
-    }
-    for(long unsigned int i = 0; i < _combs.size(); i++)
-    {
-        _combs[i]->setPower(_combsLibMap[_combs[i]->getCellName()]->getPower());
-    }
 
     cout << "File parsed successfully" << endl;
     in.close();
@@ -264,22 +240,22 @@ void Solver::display()
     cout << "FlipFlops libs:" << endl;
     for(auto ff : _ffsLibList)
     {
-        cout << "Name: " << ff->getCellName() << ", Width: " << ff->getWidth() << ", Height: " << ff->getHeight() << ", Bits: " << ff->getBit() << endl;
-        cout << "Qpin delay: " << ff->getQDelay() << endl;
-        cout << "Power: " << ff->getPower() << endl;
-        for(auto pin : ff->getPins())
+        cout << "Name: " << ff->cell_name << ", Width: " << ff->width << ", Height: " << ff->height << ", Bits: " << ff->bit << endl;
+        cout << "Qpin delay: " << ff->qDelay << endl;
+        cout << "Power: " << ff->power << endl;
+        for(auto pin : ff->pins)
         {
-            cout << "Pin Name: " << pin->getName() << ", X: " << pin->getX() << ", Y: " << pin->getY() << endl;
+            cout << "Pin Name: " << pin.getName() << ", X: " << pin.getX() << ", Y: " << pin.getY() << endl;
         }
     }
     cout << "Gates libs:" << endl;
     for(auto comb : _combsLibList)
     {
-        cout << "Name: " << comb->getCellName() << ", Width: " << comb->getWidth() << ", Height: " << comb->getHeight() << endl;
-        cout << "Power: " << comb->getPower() << endl;
-        for(auto pin : comb->getPins())
+        cout << "Name: " << comb->cell_name << ", Width: " << comb->width << ", Height: " << comb->height << endl;
+        cout << "Power: " << comb->power << endl;
+        for(auto pin : comb->pins)
         {
-            cout << "Pin Name: " << pin->getName() << ", X: " << pin->getX() << ", Y: " << pin->getY() << endl;
+            cout << "Pin Name: " << pin.getName() << ", X: " << pin.getX() << ", Y: " << pin.getY() << endl;
         }
     }
     cout << "====================================" << endl;

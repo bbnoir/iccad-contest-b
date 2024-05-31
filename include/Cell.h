@@ -6,21 +6,52 @@
 class Site;
 class Pin;
 
-// Pin type
+// Cell type
 enum class CellType
 {
-    LIB,
-    INST
+    FF,
+    COMB,
+};
+
+struct LibCell
+{
+    CellType type;
+    int width;
+    int height;
+    double power;
+    double qDelay;
+    int bit;
+    std::string cell_name;
+    std::vector<Pin> pins;
+
+    LibCell()
+    {
+        type = CellType::COMB;
+        width = 0;
+        height = 0;
+        power = 0.0;
+        qDelay = 0.0;
+        bit = 0;
+        cell_name = "";
+    }
+    LibCell(CellType type, int width, int height, double power, double qDelay, int bit, std::string cell_name)
+    {
+        this->type = type;
+        this->width = width;
+        this->height = height;
+        this->power = power;
+        this->qDelay = qDelay;
+        this->bit = bit;
+        this->cell_name = cell_name;
+    }
 };
 
 class Cell
 {
 public:
     Cell();
-    // constructor for library cells
-    Cell(int width, int height, std::string cell_name);
     // constructor for instance cells
-    Cell(int x, int y, int width, int height, std::string inst_name,std::string cell_name);
+    Cell(int x, int y, std::string inst_name, LibCell* lib_cell);
     ~Cell();
 
     int getX();
@@ -36,23 +67,16 @@ public:
 
     void setX(int x);
     void setY(int y);
-    void setPower(double power);
-    void setCellName(std::string cell_name);
     void setInstName(std::string inst_name);
     void setSite(Site* site);
 
     void addPin(Pin* pin);
 
 protected:
-    CellType _type;
+    LibCell* _lib_cell;
     int _x;
     int _y;
-    int _width;
-    int _height;
-    int _area;
-    double _power;
     std::string _inst_name;
-    std::string _cell_name;
     std::vector<Pin*> pins;
     // Site where the cell is placed
     Site* _site;

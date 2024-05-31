@@ -35,10 +35,10 @@ class Solver
         
     private:
         // lib
-        std::vector<Comb*> _combsLibList;
-        std::vector<FF*> _ffsLibList;
-        std::unordered_map<std::string, Comb*, CIHash, CIEqual> _combsLibMap;
-        std::unordered_map<std::string, FF*, CIHash, CIEqual> _ffsLibMap;
+        std::vector<LibCell*> _combsLibList;
+        std::vector<LibCell*> _ffsLibList;
+        std::unordered_map<std::string, LibCell*, CIHash, CIEqual> _combsLibMap;
+        std::unordered_map<std::string, LibCell*, CIHash, CIEqual> _ffsLibMap;
         // I/O
         std::vector<Pin*> _inputPins;
         std::vector<Pin*> _outputPins;

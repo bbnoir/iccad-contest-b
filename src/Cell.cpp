@@ -5,36 +5,21 @@ Cell::Cell()
     _x = 0;
     _y = 0;
     _site = nullptr;
-    _area = 0;
-    _power = 0;
-    _type = CellType::INST;
+    _inst_name = "";
 }
 
-Cell::Cell(int width, int height, std::string cell_name)
-{
-    _x = 0;
-    _y = 0;
-    _width = width;
-    _height = height;
-    _cell_name = cell_name;
-    _site = nullptr;
-    _area = width * height;
-    _type = CellType::LIB;
-    _power = 0;
-}
-
-Cell::Cell(int x, int y, int width, int height, std::string inst_name, std::string cell_name)
+Cell::Cell(int x, int y, std::string inst_name, LibCell* lib_cell)
 {
     _x = x;
     _y = y;
-    _width = width;
-    _height = height;
     _inst_name = inst_name;
-    _cell_name = cell_name;
+    _lib_cell = lib_cell;
     _site = nullptr;
-    _area = width * height;
-    _type = CellType::INST;
-    _power = 0;
+    // copy pins
+    for(auto pin : lib_cell->pins)
+    {
+        pins.push_back(new Pin(pin));
+    }
 }
 
 Cell::~Cell()
@@ -53,12 +38,12 @@ int Cell::getY()
 
 int Cell::getArea()
 {
-    return _area;
+    return _lib_cell->width * _lib_cell->height;
 }
 
 double Cell::getPower()
 {
-    return _power;
+    return _lib_cell->power;
 }
 
 std::string Cell::getInstName()
@@ -68,17 +53,17 @@ std::string Cell::getInstName()
 
 std::string Cell::getCellName()
 {
-    return _cell_name;
+    return _lib_cell->cell_name;
 }
 
 int Cell::getWidth()
 {
-    return _width;
+    return _lib_cell->width;
 }
 
 int Cell::getHeight()
 {
-    return _height;
+    return _lib_cell->height;
 }
 
 std::vector<Pin*> Cell::getPins()
@@ -106,16 +91,6 @@ void Cell::setX(int x)
 void Cell::setY(int y)
 {
     this->_y = y;
-}
-
-void Cell::setPower(double power)
-{
-    this->_power = power;
-}
-
-void Cell::setCellName(std::string cell_name)
-{
-    this->_cell_name = cell_name;
 }
 
 void Cell::setInstName(std::string inst_name)

@@ -11,15 +11,5 @@ class FF : public Cell
 
         int getBit();
         double getQDelay();
-        double getPower();
-
-        void setBit(int bit);
-        void setQDelay(double qDelay);
-        void setPower(double power);
-
     private:
-        
-        int _bit;
-        double _qDelay;
-        double _power;
 };
