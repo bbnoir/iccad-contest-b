@@ -1,4 +1,10 @@
 #include "Solver.h"
+#include "Comb.h"
+#include "FF.h"
+#include "Net.h"
+#include "Pin.h"
+#include "Site.h"
+#include "Bin.h"
 
 // cost metrics
 double ALPHA;
@@ -155,6 +161,7 @@ void Solver::parse_input(std::string filename)
     in >> token >> BIN_WIDTH;
     in >> token >> BIN_HEIGHT;
     in >> token >> BIN_MAX_UTIL;
+    _binMap = new BinMap(DIE_LOW_LEFT_X, DIE_LOW_LEFT_Y, DIE_UP_RIGHT_X, DIE_UP_RIGHT_Y, BIN_WIDTH, BIN_HEIGHT);
     // Read placement rows
     while(!in.eof())
     {
@@ -165,6 +172,9 @@ void Solver::parse_input(std::string filename)
         in >> startX >> startY >> siteWidth >> siteHeight >> numSites;
         _placementRows.push_back({startX, startY, siteWidth, siteHeight, numSites});
     }
+    // Sort placement rows ascending by startY
+    sort(_placementRows.begin(), _placementRows.end(), [](const PlacementRows& a, const PlacementRows& b) -> bool { return a.startY < b.startY; });
+    _siteMap = new SiteMap(_placementRows);
     // Read timing info
     in >> DISP_DELAY;
     for(long unsigned int i = 0; i < _ffsLibList.size(); i++)

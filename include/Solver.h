@@ -5,13 +5,18 @@
 #include <string>
 #include <vector>
 #include <unordered_map>
+#include <cmath>
 #include "param.h"
 #include "util.h"
-#include "Comb.h"
-#include "FF.h"
-#include "Net.h"
-#include "Pin.h"
-#include "Site.h"
+
+class LibCell;
+class Pin;
+class Comb;
+class FF;
+class Net;
+class Site;
+class BinMap;
+class SiteMap;
 
 struct PlacementRows
 {
@@ -53,5 +58,6 @@ class Solver
         std::unordered_map<std::string, FF*, CIHash, CIEqual> _ffsMap;
         // placement
         std::vector<PlacementRows> _placementRows;
-        std::vector<Site*> _sites;
+        BinMap* _binMap;
+        SiteMap* _siteMap;
 };

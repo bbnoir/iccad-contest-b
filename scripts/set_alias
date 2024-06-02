@@ -1,5 +1,5 @@
 alias i="./scripts/cmake_init"
 alias m="./scripts/build"
 
-alias r="./bin/RUN"
+alias r="./scripts/run_sample"
 alias t="./bin/TEST"
