@@ -93,32 +93,80 @@ std::vector<Site*> SiteMap::getSites(int leftDownX, int leftDownY, int rightUpX,
     }
     if (_y2row.find(leftDownY) == _y2row.end())
     {
-        std::cerr << "Error: SiteMap::getSites() - invalid leftDownY" << std::endl;
+        std::cerr << "Error: SiteMap::getSites() - not on site" << std::endl;
         exit(1);
     }
     if (_x2col[_y2row[leftDownY]].find(leftDownX) == _x2col[_y2row[leftDownY]].end())
     {
-        std::cerr << "Error: SiteMap::getSites() - invalid leftDownX" << std::endl;
+        std::cerr << "Error: SiteMap::getSites() - not on site" << std::endl;
         exit(1);
     }
     std::vector<Site*> sites;
-    int startRow = _y2row[leftDownY];
-    int startCol = _x2col[startRow][leftDownX];
-    const int nPlacementRows = _placementRows.size();
-    for (; startRow < nPlacementRows && _placementRows[startRow].startY < rightUpY; startRow++)
+    const int startRow = _y2row[leftDownY];
+    const int endRow = getFirstLargerRow(rightUpY);
+    for (int row = startRow; row < endRow; row++)
     {
-        const int nSites = _sites[startRow].size();
-        for (int col = startCol; col < nSites; col++)
+        const int startCol = getFirstLargerColInRow(row, leftDownX);
+        const int endCol = getFirstLargerColInRow(row, rightUpX);
+        for (int col = startCol; col < endCol; col++)
         {
-            Site* site = _sites[startRow][col];
-            if (site->getX() >= rightUpX)
-            {
-                break;
-            }
-            sites.push_back(site);
+            sites.push_back(_sites[row][col]);
         }
-        startCol = 0;
     }
-
     return sites;
+}
+
+int SiteMap::getFirstLargerRow(int y)
+{
+    if (y < DIE_LOW_LEFT_Y || y > DIE_UP_RIGHT_Y)
+    {
+        std::cerr << "Error: SiteMap::getFirstLargerRow() - out of die boundary" << std::endl;
+        exit(1);
+    }
+    int row = _placementRows.size();
+    // binary search
+    int left = 0;
+    int right = row-1;
+    while (left <= right)
+    {
+        int mid = left + (right - left) / 2;
+        if (_placementRows[mid].startY < y)
+        {
+            left = mid + 1;
+        }
+        else
+        {
+            row = mid;
+            right = mid - 1;
+        }
+    }
+    return row;
+}
+
+int SiteMap::getFirstLargerColInRow(int row, int x)
+{
+    if (x < DIE_LOW_LEFT_X || x > DIE_UP_RIGHT_X)
+    {
+        std::cerr << "Error: SiteMap::getFirstLargerColInRow() - out of die boundary" << std::endl;
+        exit(1);
+    }
+    std::vector<Site*>& sites = _sites[row];
+    int col = sites.size();
+    // binary search
+    int left = 0;
+    int right = col-1;
+    while (left <= right)
+    {
+        int mid = left + (right - left) / 2;
+        if (sites[mid]->getX() < x)
+        {
+            left = mid + 1;
+        }
+        else
+        {
+            col = mid;
+            right = mid - 1;
+        }
+    }
+    return col;
 }

@@ -43,4 +43,8 @@ class SiteMap
         std::vector<std::vector<Site*>> _sites;
         std::unordered_map<int, int> _y2row;
         std::vector<std::unordered_map<int, int>> _x2col;
+
+        // Helper functions
+        int getFirstLargerRow(int y);
+        int getFirstLargerColInRow(int row, int x);
 };
