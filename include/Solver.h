@@ -39,6 +39,8 @@ class Solver
 
         void display();
         
+        // friend
+        friend class Renderer;
     private:
         // lib
         std::vector<LibCell*> _combsLibList;

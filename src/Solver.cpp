@@ -29,6 +29,36 @@ Solver::Solver()
 
 Solver::~Solver()
 {
+    for(auto ff : _ffs)
+    {
+        delete ff;
+    }
+    for(auto comb : _combs)
+    {
+        delete comb;
+    }
+    for(auto net : _nets)
+    {
+        delete net;
+    }
+    for(auto ff : _ffsLibList)
+    {
+        delete ff;
+    }
+    for(auto comb : _combsLibList)
+    {
+        delete comb;
+    }
+    for(auto pin : _inputPins)
+    {
+        delete pin;
+    }
+    for(auto pin : _outputPins)
+    {
+        delete pin;
+    }
+    delete _binMap;
+    delete _siteMap;
 }
 
 void Solver::parse_input(std::string filename)
@@ -160,6 +190,7 @@ void Solver::parse_input(std::string filename)
             pins.push_back(p);
             p->connect(newNet);
         }
+        newNet->setPins(pins);
         _nets.push_back(newNet);
         _netsMap[netName] = newNet;
     }
