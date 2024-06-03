@@ -124,3 +124,21 @@ void Cell::addPin(Pin* pin)
 {
     pins.push_back(pin);
 }
+
+void Cell::removeSite(Site* site)
+{
+    auto it = std::find(_sites.begin(), _sites.end(), site);
+    if(it != _sites.end())
+    {
+        _sites.erase(it);
+    }
+}
+
+void Cell::removeBin(Bin* bin)
+{
+    auto it = std::find(_bins.begin(), _bins.end(), bin);
+    if(it != _bins.end())
+    {
+        _bins.erase(it);
+    }
+}

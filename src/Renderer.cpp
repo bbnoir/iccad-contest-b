@@ -163,6 +163,17 @@ void Renderer::render()
         {
             SDL_RenderDrawLine(_renderer, 10, 10 + i * y_scale, 10 + _die.w, 10 + i * y_scale);
         }
+        // draw placement row
+        for(auto row : _solver->_placementRows)
+        {
+            int rect_x = static_cast<int>(10 + row.startX * x_scale);
+            int rect_y = static_cast<int>(10 + row.startY * y_scale);
+            int rect_width = static_cast<int>(row.siteWidth * row.numSites * x_scale);
+            int rect_height = static_cast<int>(row.siteHeight * y_scale);
+            SDL_Rect rect = {rect_x, rect_y, rect_width, rect_height};
+            SDL_SetRenderDrawColor(_renderer, 173, 216, 230, 255); // Light blue color
+            SDL_RenderFillRect(_renderer, &rect); // Fill the rectangle with the specified color
+        }
         // draw placement        
         for (auto& comb : _solver->_combs)
         {
@@ -220,10 +231,29 @@ void Renderer::render()
             }
         }
         // draw net
-        // for (auto& net : _solver->_nets)
-        // {   
-
-        // }
+        // draw straight line
+        int r, g, b;
+        r = g = b = 0;
+        for (auto& net : _solver->_nets)
+        {   
+            r += 20;
+            g += 30;
+            b += 40;
+            r %= 256;
+            g %= 256;
+            b %= 256;
+            SDL_SetRenderDrawColor(_renderer, r, g, b, 255);
+            std::vector<Pin*> pins = net->getPins();
+            for (long unsigned int i = 0; i < pins.size() - 1; i++)
+            {
+                int x1 = static_cast<int>(10 + pins[i]->getGlobalX() * x_scale);
+                int y1 = static_cast<int>(10 + pins[i]->getGlobalY() * y_scale);
+                int x2 = static_cast<int>(10 + pins[i+1]->getGlobalX() * x_scale);
+                int y2 = static_cast<int>(10 + pins[i+1]->getGlobalY() * y_scale);
+                SDL_SetRenderDrawColor(_renderer, r, g, b, 255);
+                SDL_RenderDrawLine(_renderer, x1, y1, x2, y2);
+            }
+        }
         // update the window
         SDL_RenderSetScale(_renderer, _scale, _scale);
         SDL_RenderSetViewport(_renderer, &_render_viewport);

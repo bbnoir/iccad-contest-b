@@ -63,6 +63,9 @@ void Bin::removeCell(Cell* cell)
     // calculate the overlap area
     int overlapArea = _calOverlapArea(cell);
     _utilization -= (double)overlapArea / (BIN_WIDTH * BIN_HEIGHT);
+    if(_utilization < 1e-15){
+        _utilization = 0;
+    }
 }
 
 int Bin::_calOverlapArea(Cell* cell)
@@ -136,4 +139,46 @@ std::vector<Bin*> BinMap::getBins(int leftDownX, int leftDownY, int rightUpX, in
         }
     }
     return bins;
+}
+
+void BinMap::addCell(Cell* cell)
+{
+    int leftDownX = cell->getX();
+    int leftDownY = cell->getY();
+    int rightUpX = cell->getX() + cell->getWidth();
+    int rightUpY = cell->getY() + cell->getHeight();
+    std::vector<Bin*> bins = getBins(leftDownX, leftDownY, rightUpX, rightUpY);
+    for (auto bin : bins)
+    {
+        bin->addCell(cell);
+        cell->addBin(bin);
+    }
+}
+
+void BinMap::removeCell(Cell* cell)
+{
+    int leftDownX = cell->getX();
+    int leftDownY = cell->getY();
+    int rightUpX = cell->getX() + cell->getWidth();
+    int rightUpY = cell->getY() + cell->getHeight();
+    std::vector<Bin*> bins = getBins(leftDownX, leftDownY, rightUpX, rightUpY);
+    for (auto bin : bins)
+    {
+        bin->removeCell(cell);
+        cell->removeBin(bin);
+    }
+}
+
+void BinMap::moveCell(Cell* cell, int x, int y)
+{
+    removeCell(cell);
+    cell->setX(x);
+    cell->setY(y);
+    addCell(cell);
+}
+
+void BinMap::moveCell(Cell* cell)
+{
+    removeCell(cell);
+    addCell(cell);
 }

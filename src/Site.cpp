@@ -10,7 +10,6 @@ Site::Site()
     _y = 0;
     _width = 0;
     _height = 0;
-    _cell = nullptr;
 }
 
 Site::Site(int x, int y, int width, int height)
@@ -19,7 +18,6 @@ Site::Site(int x, int y, int width, int height)
     this->_y = y;
     this->_width = width;
     this->_height = height;
-    this->_cell = nullptr;
 }
 
 Site::~Site()
@@ -28,22 +26,32 @@ Site::~Site()
 
 void Site::place(Cell* cell)
 {
-    this->_cell = cell;
+    this->_cells.push_back(cell);
 }
 
-void Site::removeCell()
+bool Site::removeCell(Cell* cell)
 {
-    this->_cell = nullptr;
+    if (std::find(_cells.begin(), _cells.end(), cell) != _cells.end())
+    {
+        _cells.erase(std::remove(_cells.begin(), _cells.end(), cell), _cells.end());
+        return true;
+    }
+    return false;
 }
 
 bool Site::isOccupied()
 {
-    return this->_cell != nullptr;
+    return !_cells.empty();
 }
 
-Cell* Site::getCell()
+bool Site::isOverLapping()
 {
-    return this->_cell;
+    return _cells.size() > 1;
+}
+
+std::vector<Cell*> Site::getCell()
+{
+    return this->_cells;
 }
 
 int Site::getX()
@@ -64,6 +72,11 @@ int Site::getWidth()
 int Site::getHeight()
 {
     return this->_height;
+}
+
+int Site::getNumCells()
+{
+    return this->_cells.size();
 }
 
 SiteMap::SiteMap()
@@ -174,4 +187,86 @@ int SiteMap::getFirstLargerColInRow(int row, int x)
     col = std::max(0, col);
     col = std::min(col, _placementRows[row].numSites-1);
     return col;
+}
+
+Site* SiteMap::getNearestSite(int x, int y)
+{
+    if (x < DIE_LOW_LEFT_X || y < DIE_LOW_LEFT_Y || x > DIE_UP_RIGHT_X || y > DIE_UP_RIGHT_Y)
+    {
+        std::cerr << "Error: SiteMap::getNearestSite() - out of die boundary" << std::endl;
+        exit(1);
+    }
+    int distance;
+    int minDistance = -1;
+    Site* nearestSite = nullptr;
+    for (const auto& row : _sites)
+    {
+        for (Site* site : row)
+        {
+            distance = abs(site->getX() - x) + abs(site->getY() - y);
+            if (nearestSite == nullptr || distance < minDistance)
+            {
+                nearestSite = site;
+                minDistance = distance;
+            }
+        }
+    }
+    return nearestSite;
+}
+
+bool SiteMap::place(Cell* cell, bool allowOverlap)
+{
+    const int cellWidth = cell->getWidth();
+    const int cellHeight = cell->getHeight();
+    const int cellX = cell->getX();
+    const int cellY = cell->getY();
+    const int cellRightX = cellX + cellWidth;
+    const int cellUpY = cellY + cellHeight;
+    std::vector<Site*> sites = getSites(cellX, cellY, cellRightX, cellUpY);
+    if(!allowOverlap)
+        for (Site* site : sites)
+        {
+            if (site->isOccupied())
+            {
+                return true;
+            }
+        }
+    for (Site* site : sites)
+    {
+        site->place(cell);
+        cell->addSite(site);
+    }
+    return false;
+}
+
+void SiteMap::removeCell(Cell* cell)
+{
+    const int cellWidth = cell->getWidth();
+    const int cellHeight = cell->getHeight();
+    const int cellX = cell->getX();
+    const int cellY = cell->getY();
+    const int cellRightX = cellX + cellWidth;
+    const int cellUpY = cellY + cellHeight;
+    std::vector<Site*> sites = getSites(cellX, cellY, cellRightX, cellUpY);
+    for (Site* site : sites)
+    {
+        if(site->removeCell(cell))
+            cell->removeSite(site);
+    }
+    return;
+}
+
+bool SiteMap::moveCell(Cell* cell, int x, int y, bool allowOverlap)
+{
+    removeCell(cell);
+    cell->setX(x);
+    cell->setY(y);
+    return place(cell, allowOverlap);
+}
+
+bool SiteMap::moveCell(Cell* cell, bool allowOverlap)
+{
+    const int x = cell->getX();
+    const int y = cell->getY();
+    return moveCell(cell, x, y, allowOverlap);
 }

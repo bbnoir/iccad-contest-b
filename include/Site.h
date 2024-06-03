@@ -14,10 +14,12 @@ class Site
         ~Site();
 
         void place(Cell* cell);
-        void removeCell();
+        bool removeCell(Cell* cell);
 
         bool isOccupied();
-        Cell* getCell();
+        bool isOverLapping();
+        std::vector<Cell*> getCell();
+        int getNumCells();
         int getX();
         int getY();
         int getWidth();
@@ -28,7 +30,7 @@ class Site
         int _y;
         int _width;
         int _height;
-        Cell* _cell;
+        std::vector<Cell*> _cells;
 };
 
 class SiteMap
@@ -39,6 +41,15 @@ class SiteMap
 
         std::vector<Site*> getSites();
         std::vector<Site*> getSites(int leftDownX, int leftDownY, int rightUpX, int rightUpY);
+
+        Site* getNearestSite(int x, int y);
+
+        bool place(Cell* cell, bool allowOverlap = false);
+        void removeCell(Cell* cell);
+        // move cell to (x, y)
+        bool moveCell(Cell* cell, int x, int y, bool allowOverlap = false);
+        // move cell to cell's position
+        bool moveCell(Cell* cell, bool allowOverlap = false);
 
     private:
         std::vector<PlacementRows> _placementRows;

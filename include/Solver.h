@@ -6,11 +6,13 @@
 #include <vector>
 #include <unordered_map>
 #include <cmath>
+#include <climits>
 #include "param.h"
 #include "util.h"
 
 class LibCell;
 class Pin;
+class Cell;
 class Comb;
 class FF;
 class Net;
@@ -63,4 +65,12 @@ class Solver
         std::vector<PlacementRows> _placementRows;
         BinMap* _binMap;
         SiteMap* _siteMap;
+        // functions
+        bool placeCell(Cell* cell, bool allowOverlap = false);
+        void removeCell(Cell* cell);
+        bool moveCell(Cell* cell, int x, int y, bool allowOverlap = false);
+        // algorithms
+        void forceDirectedPlacement();
+        double cal_total_hpwl();
+
 };
