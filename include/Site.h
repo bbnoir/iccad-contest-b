@@ -16,6 +16,7 @@ class Site
         void place(Cell* cell);
         void removeCell();
 
+        bool isOccupied();
         Cell* getCell();
         int getX();
         int getY();
@@ -36,6 +37,7 @@ class SiteMap
         SiteMap();
         SiteMap(std::vector<PlacementRows> placementRows);
 
+        std::vector<Site*> getSites();
         std::vector<Site*> getSites(int leftDownX, int leftDownY, int rightUpX, int rightUpY);
 
     private:

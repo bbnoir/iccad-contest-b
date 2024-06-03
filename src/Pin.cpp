@@ -40,10 +40,20 @@ double Pin::getSlack()
     return _slack;
 }
 
+Cell* Pin::getCell()
+{
+    return _cell;
+}
+
 void Pin::setSlack(double slack)
 {
     _slack = slack;
     _isDpin = true;
+}
+
+void Pin::setCell(Cell* cell)
+{
+    _cell = cell;
 }
 
 void Pin::connect(Net* net)

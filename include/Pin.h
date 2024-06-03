@@ -25,8 +25,10 @@ class Pin
         int getY();
         bool isDpin();
         double getSlack();
+        Cell *getCell();
 
         void setSlack(double slack);
+        void setCell(Cell* cell);
 
         void connect(Net* net);
 

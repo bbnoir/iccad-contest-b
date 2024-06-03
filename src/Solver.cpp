@@ -133,6 +133,7 @@ void Solver::parse_input(std::string filename)
         string netName;
         int pinCount;
         in >> token >> netName >> pinCount;
+        Net* newNet = new Net(netName);
         vector<Pin*> pins;
         for(int j = 0; j < pinCount; j++)
         {
@@ -143,25 +144,30 @@ void Solver::parse_input(std::string filename)
             string pin;
             if(pinName.find('/') != string::npos)
                 pin = pinName.substr(pinName.find('/') + 1);
+            Pin* p = nullptr;
             if(_ffsMap.find(instName) != _ffsMap.end()){
-                pins.push_back(_ffsMap[instName]->getPin(pin));
+                p = _ffsMap[instName]->getPin(pin);
             }else if(_combsMap.find(instName) != _combsMap.end()){
-                pins.push_back(_combsMap[instName]->getPin(pin));
+                p = _combsMap[instName]->getPin(pin);
             }else if(_inputPinsMap.find(pinName) != _inputPinsMap.end()){
-                pins.push_back(_inputPinsMap[pinName]);
+                p = _inputPinsMap[pinName];
             }else if(_outputPinsMap.find(pinName) != _outputPinsMap.end()){
-                pins.push_back(_outputPinsMap[pinName]);
+                p = _outputPinsMap[pinName];
+            }else{
+                cout << "Pin not found: " << pinName << endl;
+                exit(1);
             }
+            pins.push_back(p);
+            p->connect(newNet);
         }
-        _nets.push_back(new Net(netName, pins));
-        _netsMap[netName] = _nets.back();
+        _nets.push_back(newNet);
+        _netsMap[netName] = newNet;
     }
 
     // Read bin info
     in >> token >> BIN_WIDTH;
     in >> token >> BIN_HEIGHT;
     in >> token >> BIN_MAX_UTIL;
-    _binMap = new BinMap(DIE_LOW_LEFT_X, DIE_LOW_LEFT_Y, DIE_UP_RIGHT_X, DIE_UP_RIGHT_Y, BIN_WIDTH, BIN_HEIGHT);
     // Read placement rows
     while(!in.eof())
     {
@@ -172,9 +178,6 @@ void Solver::parse_input(std::string filename)
         in >> startX >> startY >> siteWidth >> siteHeight >> numSites;
         _placementRows.push_back({startX, startY, siteWidth, siteHeight, numSites});
     }
-    // Sort placement rows ascending by startY
-    sort(_placementRows.begin(), _placementRows.end(), [](const PlacementRows& a, const PlacementRows& b) -> bool { return a.startY < b.startY; });
-    _siteMap = new SiteMap(_placementRows);
     // Read timing info
     in >> DISP_DELAY;
     for(long unsigned int i = 0; i < _ffsLibList.size(); i++)
@@ -211,6 +214,70 @@ void Solver::parse_input(std::string filename)
 
     cout << "File parsed successfully" << endl;
     in.close();
+}
+
+void Solver::init_placement()
+{
+    _binMap = new BinMap(DIE_LOW_LEFT_X, DIE_LOW_LEFT_Y, DIE_UP_RIGHT_X, DIE_UP_RIGHT_Y, BIN_WIDTH, BIN_HEIGHT);
+    // Sort placement rows ascending by startY
+    sort(_placementRows.begin(), _placementRows.end(), [](const PlacementRows& a, const PlacementRows& b) -> bool { return a.startY < b.startY; });
+    _siteMap = new SiteMap(_placementRows);
+
+    // place cells
+    for (auto ff : _ffs)
+    {
+        int x1 = ff->getX();
+        int y1 = ff->getY();
+        int x2 = x1 + ff->getWidth();
+        int y2 = y1 + ff->getHeight();
+        std::vector<Site*> sites = _siteMap->getSites(x1, y1, x2, y2);
+        for(auto site : sites)
+        {
+            if(site->isOccupied())
+            {
+                std::cerr << "Overlapped initial placement" << std::endl;
+                exit(1);
+            }
+            else
+            {
+                site->place(ff);
+                ff->addSite(site);
+            }
+                
+        }
+        std::vector<Bin*> bins = _binMap->getBins(x1, y1, x2, y2);
+        for (auto bin : bins)
+        {
+            bin->addCell(ff);
+        }
+    }
+    for (auto comb : _combs)
+    {
+        int x1 = comb->getX();
+        int y1 = comb->getY();
+        int x2 = x1 + comb->getWidth();
+        int y2 = y1 + comb->getHeight();
+        std::vector<Site*> sites = _siteMap->getSites(x1, y1, x2, y2);
+        for(auto site : sites)
+        {
+            if(site->isOccupied())
+            {
+                std::cerr << "Overlapped initial placement" << std::endl;
+                exit(1);
+            }
+            else
+            {
+                site->place(comb);
+                comb->addSite(site);
+            }
+                
+        }
+        std::vector<Bin*> bins = _binMap->getBins(x1, y1, x2, y2);
+        for (auto bin : bins)
+        {
+            bin->addCell(comb);
+        }
+    }
 }
 
 void Solver::solve()

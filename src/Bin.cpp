@@ -39,6 +39,11 @@ bool Bin::isOverMaxUtil()
     return _utilization >= BIN_MAX_UTIL;
 }
 
+const std::vector<Cell*>& Bin::getCells()
+{
+    return _cells;
+}
+
 void Bin::addCell(Cell* cell)
 {
     _cells.push_back(cell);
@@ -77,6 +82,19 @@ BinMap::BinMap(int dieLowerLeftX, int dieLowerLeftY, int dieUpperRightX, int die
         }
         _bins.emplace_back(row);
     }
+}
+
+std::vector<Bin*> BinMap::getBins()
+{
+    std::vector<Bin*> bins;
+    for (auto row : _bins)
+    {
+        for (auto bin : row)
+        {
+            bins.emplace_back(bin);
+        }
+    }
+    return bins;
 }
 
 std::vector<Bin*> BinMap::getBins(int leftDownX, int leftDownY, int rightUpX, int rightUpY)

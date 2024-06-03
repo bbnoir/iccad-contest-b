@@ -10,6 +10,7 @@ Site::Site()
     _y = 0;
     _width = 0;
     _height = 0;
+    _cell = nullptr;
 }
 
 Site::Site(int x, int y, int width, int height)
@@ -18,6 +19,7 @@ Site::Site(int x, int y, int width, int height)
     this->_y = y;
     this->_width = width;
     this->_height = height;
+    this->_cell = nullptr;
 }
 
 Site::~Site()
@@ -32,6 +34,11 @@ void Site::place(Cell* cell)
 void Site::removeCell()
 {
     this->_cell = nullptr;
+}
+
+bool Site::isOccupied()
+{
+    return this->_cell != nullptr;
 }
 
 Cell* Site::getCell()
@@ -82,6 +89,19 @@ SiteMap::SiteMap(std::vector<PlacementRows> placementRows)
             siteX += row.siteWidth;
         }
     }
+}
+
+std::vector<Site*> SiteMap::getSites()
+{
+    std::vector<Site*> sites;
+    for (const auto& row : _sites)
+    {
+        for (Site* site : row)
+        {
+            sites.push_back(site);
+        }
+    }
+    return sites;
 }
 
 std::vector<Site*> SiteMap::getSites(int leftDownX, int leftDownY, int rightUpX, int rightUpY)
@@ -150,23 +170,8 @@ int SiteMap::getFirstLargerColInRow(int row, int x)
         std::cerr << "Error: SiteMap::getFirstLargerColInRow() - out of die boundary" << std::endl;
         exit(1);
     }
-    std::vector<Site*>& sites = _sites[row];
-    int col = sites.size();
-    // binary search
-    int left = 0;
-    int right = col-1;
-    while (left <= right)
-    {
-        int mid = left + (right - left) / 2;
-        if (sites[mid]->getX() < x)
-        {
-            left = mid + 1;
-        }
-        else
-        {
-            col = mid;
-            right = mid - 1;
-        }
-    }
+    int col = (x - _placementRows[row].startX) / _placementRows[row].siteWidth;
+    col = std::max(0, col);
+    col = std::min(col, _placementRows[row].numSites-1);
     return col;
 }
