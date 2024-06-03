@@ -1,4 +1,5 @@
 #include "Solver.h"
+#include "Cell.h"
 #include "Comb.h"
 #include "FF.h"
 #include "Net.h"
@@ -257,62 +258,128 @@ void Solver::init_placement()
     // place cells
     for (auto ff : _ffs)
     {
-        int x1 = ff->getX();
-        int y1 = ff->getY();
-        int x2 = x1 + ff->getWidth();
-        int y2 = y1 + ff->getHeight();
-        std::vector<Site*> sites = _siteMap->getSites(x1, y1, x2, y2);
-        for(auto site : sites)
+        if(!placeCell(ff))
         {
-            if(site->isOccupied())
-            {
-                std::cerr << "Overlapped initial placement" << std::endl;
-                exit(1);
-            }
-            else
-            {
-                site->place(ff);
-                ff->addSite(site);
-            }
-                
-        }
-        std::vector<Bin*> bins = _binMap->getBins(x1, y1, x2, y2);
-        for (auto bin : bins)
-        {
-            bin->addCell(ff);
+            std::cerr << "Overlapped initial placement" << std::endl;
+            exit(1);
         }
     }
     for (auto comb : _combs)
     {
-        int x1 = comb->getX();
-        int y1 = comb->getY();
-        int x2 = x1 + comb->getWidth();
-        int y2 = y1 + comb->getHeight();
-        std::vector<Site*> sites = _siteMap->getSites(x1, y1, x2, y2);
-        for(auto site : sites)
+        if(!placeCell(comb))
         {
-            if(site->isOccupied())
-            {
-                std::cerr << "Overlapped initial placement" << std::endl;
-                exit(1);
-            }
-            else
-            {
-                site->place(comb);
-                comb->addSite(site);
-            }
-                
-        }
-        std::vector<Bin*> bins = _binMap->getBins(x1, y1, x2, y2);
-        for (auto bin : bins)
-        {
-            bin->addCell(comb);
+            std::cerr << "Overlapped initial placement" << std::endl;
+            exit(1);
         }
     }
 }
 
+bool Solver::placeCell(Cell* cell, bool allowOverlap)
+{
+    bool overlap = _siteMap->place(cell, allowOverlap);
+    if(overlap && !allowOverlap)
+    {
+        // not allow 
+        return false;
+    }
+    _binMap->addCell(cell);
+    return true;
+}
+
+void Solver::removeCell(Cell* cell)
+{
+    _siteMap->removeCell(cell);
+    _binMap->removeCell(cell);
+}
+
+bool Solver::moveCell(Cell* cell, int x, int y, bool allowOverlap)
+{
+    removeCell(cell);
+    cell->setX(x);
+    cell->setY(y);
+    return placeCell(cell, allowOverlap);
+}
+
+void Solver::forceDirectedPlacement()
+{
+    std::cout << "Force directed placement" << std::endl;
+    bool converged = false;
+    int ff_idx = 0;
+    int max_iter = 1000;
+    int iter = 0;
+    // only move one ff at a time
+    // until all ffs are converged
+    while(!converged && iter < max_iter){
+        FF* cur_ff = _ffs[ff_idx];
+        ff_idx = (ff_idx + 1) % _ffs.size();
+        iter++;
+        if(iter % 10 == 0){
+            std::cout << "Iteration: " << iter << std::endl;
+            std::cout << "HPWL: " << cal_total_hpwl() << std::endl;
+        }
+        // calculate the force
+        double x_sum = 0.0;
+        double y_sum = 0.0;
+        int num_pins = 0;
+        for(auto pin : cur_ff->getPins())
+        {
+            Net* net = pin->getNet();
+            for(auto other_pin : net->getPins())
+            {
+                if(other_pin == pin)
+                    continue;
+                x_sum += other_pin->getGlobalX();
+                y_sum += other_pin->getGlobalY();
+                num_pins++;
+            }
+        }
+        int x_avg = x_sum / num_pins;
+        int y_avg = y_sum / num_pins;
+        // adjust it to fit the placement rows
+        Site* nearest_site = _siteMap->getNearestSite(x_avg, y_avg);
+        x_avg = nearest_site->getX();
+        y_avg = nearest_site->getY(); 
+        // calculate the displacement
+        double dx = x_avg - cur_ff->getX();
+        double dy = y_avg - cur_ff->getY();
+        double distance = sqrt(dx * dx + dy * dy);
+        if(distance < 1e-5)
+            converged = true;
+        // move the ff
+        moveCell(cur_ff, x_avg, y_avg, true);
+    }
+    std::cout << "Placement converged" << std::endl;
+    std::cout << "HPWL: " << cal_total_hpwl() << std::endl;
+}
+
+double Solver::cal_total_hpwl()
+{
+    double hpwl = 0.0;
+    for(auto net : _nets)
+    {
+        
+
+        int minX = INT_MAX;
+        int minY = INT_MAX;
+        int maxX = INT_MIN;
+        int maxY = INT_MIN;
+        for(auto pin : net->getPins())
+        {
+            int x = pin->getGlobalX();
+            int y = pin->getGlobalY();
+            minX = std::min(minX, x);
+            minY = std::min(minY, y);
+            maxX = std::max(maxX, x);
+            maxY = std::max(maxY, y);
+        }
+        hpwl += (maxX - minX) + (maxY - minY);
+    }
+    return hpwl;
+}
+
 void Solver::solve()
 {
+    forceDirectedPlacement();
 }
 
 void Solver::display()

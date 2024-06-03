@@ -163,6 +163,17 @@ void Renderer::render()
         {
             SDL_RenderDrawLine(_renderer, 10, 10 + i * y_scale, 10 + _die.w, 10 + i * y_scale);
         }
+        // draw placement row
+        for(auto row : _solver->_placementRows)
+        {
+            int rect_x = static_cast<int>(10 + row.startX * x_scale);
+            int rect_y = static_cast<int>(10 + row.startY * y_scale);
+            int rect_width = static_cast<int>(row.siteWidth * row.numSites * x_scale);
+            int rect_height = static_cast<int>(row.siteHeight * y_scale);
+            SDL_Rect rect = {rect_x, rect_y, rect_width, rect_height};
+            SDL_SetRenderDrawColor(_renderer, 173, 216, 230, 255); // Light blue color
+            SDL_RenderFillRect(_renderer, &rect); // Fill the rectangle with the specified color
+        }
         // draw placement        
         for (auto& comb : _solver->_combs)
         {
@@ -224,6 +235,8 @@ void Renderer::render()
         // {   
 
         // }
+        
+
         // update the window
         SDL_RenderSetScale(_renderer, _scale, _scale);
         SDL_RenderSetViewport(_renderer, &_render_viewport);

@@ -29,6 +29,7 @@ class Pin
         double getSlack();
         Cell *getCell();
         PinType getType();
+        Net* getNet();
 
         void setSlack(double slack);
         void setCell(Cell* cell);

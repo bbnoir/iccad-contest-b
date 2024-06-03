@@ -175,3 +175,88 @@ int SiteMap::getFirstLargerColInRow(int row, int x)
     col = std::min(col, _placementRows[row].numSites-1);
     return col;
 }
+
+Site* SiteMap::getNearestSite(int x, int y)
+{
+    if (x < DIE_LOW_LEFT_X || y < DIE_LOW_LEFT_Y || x > DIE_UP_RIGHT_X || y > DIE_UP_RIGHT_Y)
+    {
+        std::cerr << "Error: SiteMap::getNearestSite() - out of die boundary" << std::endl;
+        exit(1);
+    }
+    int distance;
+    int minDistance = -1;
+    Site* nearestSite = nullptr;
+    for (const auto& row : _sites)
+    {
+        for (Site* site : row)
+        {
+            distance = abs(site->getX() - x) + abs(site->getY() - y);
+            if (nearestSite == nullptr || distance < minDistance)
+            {
+                nearestSite = site;
+                minDistance = distance;
+            }
+        }
+    }
+    return nearestSite;
+}
+
+bool SiteMap::place(Cell* cell, bool allowOverlap)
+{
+    const int cellWidth = cell->getWidth();
+    const int cellHeight = cell->getHeight();
+    const int cellX = cell->getX();
+    const int cellY = cell->getY();
+    const int cellRightX = cellX + cellWidth;
+    const int cellUpY = cellY + cellHeight;
+    std::vector<Site*> sites = getSites(cellX, cellY, cellRightX, cellUpY);
+    if(!allowOverlap)
+        for (Site* site : sites)
+        {
+            if (site->isOccupied())
+            {
+                return true;
+            }
+        }
+    for (Site* site : sites)
+    {
+        site->place(cell);
+        cell->addSite(site);
+    }
+    return false;
+}
+
+void SiteMap::removeCell(Cell* cell)
+{
+    const int cellWidth = cell->getWidth();
+    const int cellHeight = cell->getHeight();
+    const int cellX = cell->getX();
+    const int cellY = cell->getY();
+    const int cellRightX = cellX + cellWidth;
+    const int cellUpY = cellY + cellHeight;
+    std::vector<Site*> sites = getSites(cellX, cellY, cellRightX, cellUpY);
+    for (Site* site : sites)
+    {
+        if (site->getCell() == cell)
+        {
+            site->removeCell();
+            cell->removeSite(site);
+        }
+    }
+    return;
+}
+
+bool SiteMap::moveCell(Cell* cell, int x, int y, bool allowOverlap)
+{
+    removeCell(cell);
+    cell->setX(x);
+    cell->setY(y);
+    return place(cell, allowOverlap);
+}
+
+bool SiteMap::moveCell(Cell* cell, bool allowOverlap)
+{
+    const int x = cell->getX();
+    const int y = cell->getY();
+    return moveCell(cell, x, y, allowOverlap);
+}

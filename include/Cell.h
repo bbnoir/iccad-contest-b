@@ -1,5 +1,6 @@
 #pragma once
 #include <string>
+#include <algorithm>
 #include "Site.h"
 #include "Pin.h"
 
@@ -73,8 +74,10 @@ public:
     void setInstName(std::string inst_name);
     void addSite(Site* site);
     void addBin(Bin* bin);
-
     void addPin(Pin* pin);
+
+    void removeSite(Site* site);
+    void removeBin(Bin* bin);
 
 protected:
     LibCell* _lib_cell;

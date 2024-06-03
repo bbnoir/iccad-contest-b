@@ -68,6 +68,11 @@ PinType Pin::getType()
     return _type;
 }
 
+Net* Pin::getNet()
+{
+    return _net;
+}
+
 void Pin::setSlack(double slack)
 {
     _slack = slack;
