@@ -4,7 +4,6 @@ Cell::Cell()
 {
     _x = 0;
     _y = 0;
-    _site = nullptr;
     _inst_name = "";
 }
 
@@ -14,11 +13,14 @@ Cell::Cell(int x, int y, std::string inst_name, LibCell* lib_cell)
     _y = y;
     _inst_name = inst_name;
     _lib_cell = lib_cell;
-    _site = nullptr;
     // copy pins
     for(auto pin : lib_cell->pins)
     {
         pins.push_back(new Pin(pin));
+    }
+    for (auto pin : pins)
+    {
+        pin->setCell(this);
     }
 }
 
@@ -83,6 +85,16 @@ Pin* Cell::getPin(std::string pin_name)
     return nullptr;
 }
 
+std::vector<Site*> Cell::getSites()
+{
+    return _sites;
+}
+
+std::vector<Bin*> Cell::getBins()
+{
+    return _bins;
+}
+
 void Cell::setX(int x)
 {
     this->_x = x;
@@ -98,9 +110,14 @@ void Cell::setInstName(std::string inst_name)
     this->_inst_name = inst_name;
 }
 
-void Cell::setSite(Site* site)
+void Cell::addSite(Site* site)
 {
-    this->_site = site;
+    this->_sites.push_back(site);
+}
+
+void Cell::addBin(Bin* bin)
+{
+    this->_bins.push_back(bin);
 }
 
 void Cell::addPin(Pin* pin)

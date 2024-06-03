@@ -5,6 +5,7 @@
 
 class Site;
 class Pin;
+class Bin;
 
 // Cell type
 enum class CellType
@@ -64,11 +65,14 @@ public:
     std::string getCellName();
     std::vector<Pin*> getPins();
     Pin* getPin(std::string pin_name);
+    std::vector<Site*> getSites();
+    std::vector<Bin*> getBins();
 
     void setX(int x);
     void setY(int y);
     void setInstName(std::string inst_name);
-    void setSite(Site* site);
+    void addSite(Site* site);
+    void addBin(Bin* bin);
 
     void addPin(Pin* pin);
 
@@ -79,5 +83,6 @@ protected:
     std::string _inst_name;
     std::vector<Pin*> pins;
     // Site where the cell is placed
-    Site* _site;
+    std::vector<Site*> _sites;
+    std::vector<Bin*> _bins;
 };

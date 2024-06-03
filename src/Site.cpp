@@ -1,4 +1,8 @@
 #include "Site.h"
+#include "param.h"
+#include "Solver.h"
+#include "Cell.h"
+#include "Bin.h"
 
 Site::Site()
 {
@@ -6,6 +10,7 @@ Site::Site()
     _y = 0;
     _width = 0;
     _height = 0;
+    _cell = nullptr;
 }
 
 Site::Site(int x, int y, int width, int height)
@@ -14,6 +19,7 @@ Site::Site(int x, int y, int width, int height)
     this->_y = y;
     this->_width = width;
     this->_height = height;
+    this->_cell = nullptr;
 }
 
 Site::~Site()
@@ -23,4 +29,149 @@ Site::~Site()
 void Site::place(Cell* cell)
 {
     this->_cell = cell;
+}
+
+void Site::removeCell()
+{
+    this->_cell = nullptr;
+}
+
+bool Site::isOccupied()
+{
+    return this->_cell != nullptr;
+}
+
+Cell* Site::getCell()
+{
+    return this->_cell;
+}
+
+int Site::getX()
+{
+    return this->_x;
+}
+
+int Site::getY()
+{
+    return this->_y;
+}
+
+int Site::getWidth()
+{
+    return this->_width;
+}
+
+int Site::getHeight()
+{
+    return this->_height;
+}
+
+SiteMap::SiteMap()
+{
+}
+
+SiteMap::SiteMap(std::vector<PlacementRows> placementRows)
+{
+    _placementRows = placementRows;
+    _sites.resize(placementRows.size());
+    _x2col.resize(placementRows.size());
+    const int nPlacementRows = placementRows.size();
+    for (int i = 0; i < nPlacementRows; i++)
+    {
+        const PlacementRows& row = placementRows[i];
+        int siteX = row.startX;
+        _y2row[row.startY] = i;
+        for (int j = 0; j < row.numSites; j++)
+        {
+            Site* site = new Site(siteX, row.startY, row.siteWidth, row.siteHeight);
+            _x2col[i][siteX] = j;
+            _sites[i].push_back(site);
+            siteX += row.siteWidth;
+        }
+    }
+}
+
+std::vector<Site*> SiteMap::getSites()
+{
+    std::vector<Site*> sites;
+    for (const auto& row : _sites)
+    {
+        for (Site* site : row)
+        {
+            sites.push_back(site);
+        }
+    }
+    return sites;
+}
+
+std::vector<Site*> SiteMap::getSites(int leftDownX, int leftDownY, int rightUpX, int rightUpY)
+{
+    if (leftDownX < DIE_LOW_LEFT_X || leftDownY < DIE_LOW_LEFT_Y || rightUpX > DIE_UP_RIGHT_X || rightUpY > DIE_UP_RIGHT_Y)
+    {
+        std::cerr << "Error: SiteMap::getSites() - out of die boundary" << std::endl;
+        exit(1);
+    }
+    if (_y2row.find(leftDownY) == _y2row.end())
+    {
+        std::cerr << "Error: SiteMap::getSites() - not on site" << std::endl;
+        exit(1);
+    }
+    if (_x2col[_y2row[leftDownY]].find(leftDownX) == _x2col[_y2row[leftDownY]].end())
+    {
+        std::cerr << "Error: SiteMap::getSites() - not on site" << std::endl;
+        exit(1);
+    }
+    std::vector<Site*> sites;
+    const int startRow = _y2row[leftDownY];
+    const int endRow = getFirstLargerRow(rightUpY);
+    for (int row = startRow; row < endRow; row++)
+    {
+        const int startCol = getFirstLargerColInRow(row, leftDownX);
+        const int endCol = getFirstLargerColInRow(row, rightUpX);
+        for (int col = startCol; col < endCol; col++)
+        {
+            sites.push_back(_sites[row][col]);
+        }
+    }
+    return sites;
+}
+
+int SiteMap::getFirstLargerRow(int y)
+{
+    if (y < DIE_LOW_LEFT_Y || y > DIE_UP_RIGHT_Y)
+    {
+        std::cerr << "Error: SiteMap::getFirstLargerRow() - out of die boundary" << std::endl;
+        exit(1);
+    }
+    int row = _placementRows.size();
+    // binary search
+    int left = 0;
+    int right = row-1;
+    while (left <= right)
+    {
+        int mid = left + (right - left) / 2;
+        if (_placementRows[mid].startY < y)
+        {
+            left = mid + 1;
+        }
+        else
+        {
+            row = mid;
+            right = mid - 1;
+        }
+    }
+    return row;
+}
+
+int SiteMap::getFirstLargerColInRow(int row, int x)
+{
+    if (x < DIE_LOW_LEFT_X || x > DIE_UP_RIGHT_X)
+    {
+        std::cerr << "Error: SiteMap::getFirstLargerColInRow() - out of die boundary" << std::endl;
+        exit(1);
+    }
+    int col = (x - _placementRows[row].startX) / _placementRows[row].siteWidth;
+    col = std::max(0, col);
+    col = std::min(col, _placementRows[row].numSites-1);
+    return col;
 }

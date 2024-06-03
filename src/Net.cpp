@@ -1,5 +1,10 @@
 #include "Net.h"
 
+Net::Net(std::string name)
+{
+    this->name = name;
+}
+
 Net::Net(std::string name, std::vector<Pin*> pins)
 {
     this->name = name;
@@ -18,4 +23,9 @@ std::string Net::getName()
 std::vector<Pin*> Net::getPins()
 {
     return pins;
+}
+
+void Net::setPins(std::vector<Pin*> pins)
+{
+    this->pins = pins;
 }
