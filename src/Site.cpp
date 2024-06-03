@@ -74,6 +74,11 @@ int Site::getHeight()
     return this->_height;
 }
 
+int Site::getNumCells()
+{
+    return this->_cells.size();
+}
+
 SiteMap::SiteMap()
 {
 }

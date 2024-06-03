@@ -19,6 +19,7 @@ class Site
         bool isOccupied();
         bool isOverLapping();
         std::vector<Cell*> getCell();
+        int getNumCells();
         int getX();
         int getY();
         int getWidth();

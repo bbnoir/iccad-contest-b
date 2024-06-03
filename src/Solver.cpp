@@ -493,4 +493,12 @@ void Solver::display()
     {
         cout << "Bin: (" << row->getX() << ", " << row->getY() << "), Utilization: " << row->getUtilization() << endl;
     }
+    // Display placement row
+    cout << "Placement rows:" << endl;
+    std::vector<Site*> sites = _siteMap->getSites();
+    for(auto site : sites)
+    {
+        cout << "Site: (" << site->getX() << ", " << site->getY() << "), Width: " << site->getWidth() << ", Height: " << site->getHeight()<<", NumCells: "<< site->getNumCells() << endl;
+    }
+
 }
