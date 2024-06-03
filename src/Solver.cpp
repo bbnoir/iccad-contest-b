@@ -390,5 +390,11 @@ void Solver::display()
     // Display timing info
     cout << "Timing info:" << endl;
     cout << "DISP_DELAY: " << DISP_DELAY << endl;
-
+    cout << "====================================" << endl;
+    // Display bin utilization
+    cout << "Bin utilization:" << endl;
+    for(auto row : _binMap->getBins())
+    {
+        cout << "Bin: (" << row->getX() << ", " << row->getY() << "), Utilization: " << row->getUtilization() << endl;
+    }
 }
