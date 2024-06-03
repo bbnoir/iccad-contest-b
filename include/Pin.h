@@ -23,9 +23,12 @@ class Pin
         std::string getName();
         int getX();
         int getY();
+        int getGlobalX();
+        int getGlobalY();
         bool isDpin();
         double getSlack();
         Cell *getCell();
+        PinType getType();
 
         void setSlack(double slack);
         void setCell(Cell* cell);
