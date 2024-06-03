@@ -16,6 +16,7 @@ int main(int argc, char* argv[])
 
     solver.parse_input(input_file);
     solver.init_placement();
+    // solver.display();
 
     return 0;
 }

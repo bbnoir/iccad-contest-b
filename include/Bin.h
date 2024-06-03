@@ -25,6 +25,8 @@ class Bin
         int _y;
         double _utilization;
         std::vector<Cell*> _cells;
+
+        int _calOverlapArea(Cell* cell);
 };
 
 class BinMap

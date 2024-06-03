@@ -47,8 +47,10 @@ const std::vector<Cell*>& Bin::getCells()
 void Bin::addCell(Cell* cell)
 {
     _cells.push_back(cell);
-    // TODO: update utilization
-    _utilization += (double)cell->getArea() / (BIN_WIDTH * BIN_HEIGHT);
+    // update utilization
+    // calculate the overlap area
+    int overlapArea = _calOverlapArea(cell);
+    _utilization += (double)overlapArea / (BIN_WIDTH * BIN_HEIGHT);
 }
 
 void Bin::removeCell(Cell* cell)
@@ -57,8 +59,25 @@ void Bin::removeCell(Cell* cell)
     {
         _cells.erase(std::remove(_cells.begin(), _cells.end(), cell), _cells.end());
     }
-    // TODO: update utilization
-    _utilization -= (double)cell->getArea() / (BIN_WIDTH * BIN_HEIGHT);
+    // update utilization
+    // calculate the overlap area
+    int overlapArea = _calOverlapArea(cell);
+    _utilization -= (double)overlapArea / (BIN_WIDTH * BIN_HEIGHT);
+}
+
+int Bin::_calOverlapArea(Cell* cell)
+{
+    int x1 = _x;
+    int y1 = _y;
+    int w1 = BIN_WIDTH;
+    int h1 = BIN_HEIGHT;
+    int x2 = cell->getX();
+    int y2 = cell->getY();
+    int w2 = cell->getWidth();
+    int h2 = cell->getHeight();
+    int x_overlap = std::max(0, std::min(x1 + w1, x2 + w2) - std::max(x1, x2));
+    int y_overlap = std::max(0, std::min(y1 + h1, y2 + h2) - std::max(y1, y2));
+    return x_overlap * y_overlap;
 }
 
 BinMap::BinMap()
