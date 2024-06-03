@@ -22,6 +22,8 @@ int main(int argc, char* argv[])
     Renderer* renderer = new Renderer(solver);
     renderer->render();
 
+    // solver->display();
+
     delete renderer;
     delete solver;
     return 0;

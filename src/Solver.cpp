@@ -357,8 +357,6 @@ double Solver::cal_total_hpwl()
     double hpwl = 0.0;
     for(auto net : _nets)
     {
-        
-
         int minX = INT_MAX;
         int minY = INT_MAX;
         int maxX = INT_MIN;

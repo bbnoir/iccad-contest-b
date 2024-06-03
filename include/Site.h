@@ -14,10 +14,11 @@ class Site
         ~Site();
 
         void place(Cell* cell);
-        void removeCell();
+        bool removeCell(Cell* cell);
 
         bool isOccupied();
-        Cell* getCell();
+        bool isOverLapping();
+        std::vector<Cell*> getCell();
         int getX();
         int getY();
         int getWidth();
@@ -28,7 +29,7 @@ class Site
         int _y;
         int _width;
         int _height;
-        Cell* _cell;
+        std::vector<Cell*> _cells;
 };
 
 class SiteMap

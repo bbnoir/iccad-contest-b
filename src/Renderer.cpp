@@ -231,12 +231,29 @@ void Renderer::render()
             }
         }
         // draw net
-        // for (auto& net : _solver->_nets)
-        // {   
-
-        // }
-        
-
+        // draw straight line
+        int r, g, b;
+        r = g = b = 0;
+        for (auto& net : _solver->_nets)
+        {   
+            r += 20;
+            g += 30;
+            b += 40;
+            r %= 256;
+            g %= 256;
+            b %= 256;
+            SDL_SetRenderDrawColor(_renderer, r, g, b, 255);
+            std::vector<Pin*> pins = net->getPins();
+            for (long unsigned int i = 0; i < pins.size() - 1; i++)
+            {
+                int x1 = static_cast<int>(10 + pins[i]->getGlobalX() * x_scale);
+                int y1 = static_cast<int>(10 + pins[i]->getGlobalY() * y_scale);
+                int x2 = static_cast<int>(10 + pins[i+1]->getGlobalX() * x_scale);
+                int y2 = static_cast<int>(10 + pins[i+1]->getGlobalY() * y_scale);
+                SDL_SetRenderDrawColor(_renderer, r, g, b, 255);
+                SDL_RenderDrawLine(_renderer, x1, y1, x2, y2);
+            }
+        }
         // update the window
         SDL_RenderSetScale(_renderer, _scale, _scale);
         SDL_RenderSetViewport(_renderer, &_render_viewport);

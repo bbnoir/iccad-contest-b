@@ -10,7 +10,6 @@ Site::Site()
     _y = 0;
     _width = 0;
     _height = 0;
-    _cell = nullptr;
 }
 
 Site::Site(int x, int y, int width, int height)
@@ -19,7 +18,6 @@ Site::Site(int x, int y, int width, int height)
     this->_y = y;
     this->_width = width;
     this->_height = height;
-    this->_cell = nullptr;
 }
 
 Site::~Site()
@@ -28,22 +26,32 @@ Site::~Site()
 
 void Site::place(Cell* cell)
 {
-    this->_cell = cell;
+    this->_cells.push_back(cell);
 }
 
-void Site::removeCell()
+bool Site::removeCell(Cell* cell)
 {
-    this->_cell = nullptr;
+    if (std::find(_cells.begin(), _cells.end(), cell) != _cells.end())
+    {
+        _cells.erase(std::remove(_cells.begin(), _cells.end(), cell), _cells.end());
+        return true;
+    }
+    return false;
 }
 
 bool Site::isOccupied()
 {
-    return this->_cell != nullptr;
+    return !_cells.empty();
 }
 
-Cell* Site::getCell()
+bool Site::isOverLapping()
 {
-    return this->_cell;
+    return _cells.size() > 1;
+}
+
+std::vector<Cell*> Site::getCell()
+{
+    return this->_cells;
 }
 
 int Site::getX()
@@ -237,11 +245,8 @@ void SiteMap::removeCell(Cell* cell)
     std::vector<Site*> sites = getSites(cellX, cellY, cellRightX, cellUpY);
     for (Site* site : sites)
     {
-        if (site->getCell() == cell)
-        {
-            site->removeCell();
+        if(site->removeCell(cell))
             cell->removeSite(site);
-        }
     }
     return;
 }

@@ -63,6 +63,9 @@ void Bin::removeCell(Cell* cell)
     // calculate the overlap area
     int overlapArea = _calOverlapArea(cell);
     _utilization -= (double)overlapArea / (BIN_WIDTH * BIN_HEIGHT);
+    if(_utilization < 1e-15){
+        _utilization = 0;
+    }
 }
 
 int Bin::_calOverlapArea(Cell* cell)
