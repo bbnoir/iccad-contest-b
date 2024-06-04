@@ -328,12 +328,26 @@ void Solver::bankFFs(FF* ff1, FF* ff2, LibCell* targetFF)
     std::vector<Pin*> newPins = newFF->getPins();
     // connect clk pin
     newPins[1]->connect(pins1[1]->getNet());
+    pins1[1]->getNet()->addPin(newPins[1]);
     // connect d pin
     newPins[0]->connect(pins1[0]->getNet());
     newPins[3]->connect(pins2[0]->getNet());
+    pins1[0]->getNet()->addPin(newPins[0]);
+    pins2[0]->getNet()->addPin(newPins[3]);
     // connect q pin
     newPins[2]->connect(pins1[2]->getNet());
     newPins[4]->connect(pins2[2]->getNet());
+    pins1[2]->getNet()->addPin(newPins[2]);
+    pins2[2]->getNet()->addPin(newPins[4]);
+    // remove the old pins
+    for(auto pin : pins1)
+    {
+        pin->getNet()->removePin(pin);
+    }
+    for(auto pin : pins2)
+    {
+        pin->getNet()->removePin(pin);
+    }
     // place the new FF
     placeCell(newFF, true);
     forceDirectedPlaceFF(newFF);

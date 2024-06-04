@@ -16,6 +16,8 @@ class Net
         std::vector<Pin*> getPins();
 
         void setPins(std::vector<Pin*> pins);
+        void addPin(Pin* pin);
+        void removePin(Pin* pin);
         
     private:
         std::string name;
