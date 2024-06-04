@@ -300,6 +300,90 @@ bool Solver::moveCell(Cell* cell, int x, int y, bool allowOverlap)
     return placeCell(cell, allowOverlap);
 }
 
+void Solver::addFF(FF* ff)
+{
+    _ffs.push_back(ff);
+    _ffsMap[ff->getInstName()] = ff;
+}
+
+void Solver::deleteFF(FF* ff)
+{
+    _ffs.erase(std::remove(_ffs.begin(), _ffs.end(), ff), _ffs.end());
+    _ffsMap.erase(ff->getInstName());
+    // TODO: fix delete FF also delete nets
+    // delete ff;
+}
+
+void Solver::bankFFs(FF* ff1, FF* ff2, LibCell* targetFF)
+{
+    // calculate the new position
+    int x = ff1->getX();
+    int y = ff1->getY();
+    // create a new FF
+    FF* newFF = new FF(x, y, makeUniqueName("FF"), targetFF);
+    addFF(newFF);
+    // connect the pins
+    std::vector<Pin*> pins1 = ff1->getPins();
+    std::vector<Pin*> pins2 = ff2->getPins();
+    std::vector<Pin*> newPins = newFF->getPins();
+    // connect clk pin
+    newPins[1]->connect(pins1[1]->getNet());
+    // connect d pin
+    newPins[0]->connect(pins1[0]->getNet());
+    newPins[3]->connect(pins2[0]->getNet());
+    // connect q pin
+    newPins[2]->connect(pins1[2]->getNet());
+    newPins[4]->connect(pins2[2]->getNet());
+    // place the new FF
+    placeCell(newFF, true);
+    forceDirectedPlaceFF(newFF);
+    // delete the old FFs
+    removeCell(ff1);
+    removeCell(ff2);
+    deleteFF(ff1);
+    deleteFF(ff2);
+}
+
+std::string Solver::makeUniqueName(std::string name)
+{
+    int i = 1;
+    std::string newName = name;
+    while(_ffsMap.find(newName) != _ffsMap.end() || _combsMap.find(newName) != _combsMap.end())
+    {
+        newName = name + std::to_string(i);
+        i++;
+    }
+    return newName;
+}
+
+void Solver::forceDirectedPlaceFF(FF* ff)
+{
+    // calculate the force
+    double x_sum = 0.0;
+    double y_sum = 0.0;
+    int num_pins = 0;
+    for(auto pin : ff->getPins())
+    {
+        Net* net = pin->getNet();
+        for(auto other_pin : net->getPins())
+        {
+            if(other_pin == pin)
+                continue;
+            x_sum += other_pin->getGlobalX();
+            y_sum += other_pin->getGlobalY();
+            num_pins++;
+        }
+    }
+    int x_avg = x_sum / num_pins;
+    int y_avg = y_sum / num_pins;
+    // adjust it to fit the placement rows
+    Site* nearest_site = _siteMap->getNearestSite(x_avg, y_avg);
+    x_avg = nearest_site->getX();
+    y_avg = nearest_site->getY();
+    // move the ff
+    moveCell(ff, x_avg, y_avg, true);
+}
+
 void Solver::forceDirectedPlacement()
 {
     std::cout << "Force directed placement" << std::endl;
@@ -378,6 +462,8 @@ double Solver::cal_total_hpwl()
 void Solver::solve()
 {
     forceDirectedPlacement();
+    bankFFs(_ffs[1], _ffs[2], _ffsLibList[1]);
+    bankFFs(_ffs[1], _ffs[0], _ffsLibList[1]);
 }
 
 void Solver::display()

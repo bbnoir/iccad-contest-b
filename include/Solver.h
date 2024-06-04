@@ -69,7 +69,12 @@ class Solver
         bool placeCell(Cell* cell, bool allowOverlap = false);
         void removeCell(Cell* cell);
         bool moveCell(Cell* cell, int x, int y, bool allowOverlap = false);
+        void addFF(FF* ff); // add FF to _ffs and _ffsMap
+        void deleteFF(FF* ff); // delete FF from _ffs and _ffsMap
+        void bankFFs(FF* ff1, FF* ff2, LibCell* targetFF);
+        std::string makeUniqueName(std::string name);
         // algorithms
+        void forceDirectedPlaceFF(FF* ff);
         void forceDirectedPlacement();
         double cal_total_hpwl();
 
