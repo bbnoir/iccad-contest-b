@@ -12,7 +12,7 @@ extern int DIE_UP_RIGHT_Y;
 // Bin info
 extern int BIN_WIDTH;
 extern int BIN_HEIGHT;
-extern int BIN_MAX_UTIL;
+extern double BIN_MAX_UTIL;
 // Delay info
 extern double DISP_DELAY;
 // Renderer
