@@ -20,7 +20,7 @@ int DIE_UP_RIGHT_Y;
 // Bin info
 int BIN_WIDTH;
 int BIN_HEIGHT;
-int BIN_MAX_UTIL;
+double BIN_MAX_UTIL;
 // Delay info
 double DISP_DELAY;
 
@@ -475,9 +475,8 @@ double Solver::cal_total_hpwl()
 
 void Solver::solve()
 {
+    init_placement();
     forceDirectedPlacement();
-    bankFFs(_ffs[1], _ffs[2], _ffsLibList[1]);
-    bankFFs(_ffs[1], _ffs[0], _ffsLibList[1]);
 }
 
 void Solver::display()
