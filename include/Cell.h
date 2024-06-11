@@ -24,7 +24,10 @@ struct LibCell
     double qDelay;
     int bit;
     std::string cell_name;
-    std::vector<Pin> pins;
+    std::vector<Pin*> pins;
+    std::vector<Pin*> inputPins;
+    std::vector<Pin*> outputPins;
+    Pin* clkPin;
 
     LibCell()
     {
@@ -65,6 +68,8 @@ public:
     std::string getInstName();
     std::string getCellName();
     std::vector<Pin*> getPins();
+    std::vector<Pin*> getInputPins();
+    std::vector<Pin*> getOutputPins();
     Pin* getPin(std::string pin_name);
     std::vector<Site*> getSites();
     std::vector<Bin*> getBins();
@@ -84,7 +89,10 @@ protected:
     int _x;
     int _y;
     std::string _inst_name;
-    std::vector<Pin*> pins;
+    std::vector<Pin*> _pins;
+    std::vector<Pin*> _inputPins;
+    std::vector<Pin*> _outputPins;
+    Pin* _clkPin;
     // Site where the cell is placed
     std::vector<Site*> _sites;
     std::vector<Bin*> _bins;

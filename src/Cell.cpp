@@ -1,4 +1,5 @@
 #include "Cell.h"
+#include <iostream>
 
 Cell::Cell()
 {
@@ -13,14 +14,31 @@ Cell::Cell(int x, int y, std::string inst_name, LibCell* lib_cell)
     _y = y;
     _inst_name = inst_name;
     _lib_cell = lib_cell;
-    // copy pins
-    for(auto pin : lib_cell->pins)
+    // copy pins and set cell
+
+    for (Pin* pin : lib_cell->inputPins)
     {
-        pins.push_back(new Pin(pin));
+        Pin* newPin = new Pin(*pin);
+        newPin->setCell(this);
+        newPin->setOriginalName();
+        this->_inputPins.push_back(newPin);
+        this->_pins.push_back(newPin);
     }
-    for (auto pin : pins)
+    for (Pin* pin : lib_cell->outputPins)
     {
-        pin->setCell(this);
+        Pin* newPin = new Pin(*pin);
+        newPin->setCell(this);
+        newPin->setOriginalName();
+        this->_outputPins.push_back(newPin);
+        this->_pins.push_back(newPin);
+    }
+    if (lib_cell->clkPin != nullptr)
+    {
+        Pin* newPin = new Pin(*(lib_cell->clkPin));
+        newPin->setCell(this);
+        newPin->setOriginalName();
+        this->_clkPin = newPin;
+        this->_pins.push_back(newPin);
     }
 }
 
@@ -70,14 +88,24 @@ int Cell::getHeight()
 
 std::vector<Pin*> Cell::getPins()
 {
-    return pins;
+    return _pins;
+}
+
+std::vector<Pin*> Cell::getInputPins()
+{
+    return _inputPins;
+}
+
+std::vector<Pin*> Cell::getOutputPins()
+{
+    return _outputPins;
 }
 
 Pin* Cell::getPin(std::string pin_name)
 {
-    for(auto pin : pins)
+    for (auto pin : _pins)
     {
-        if(pin->getName() == pin_name)
+        if (pin->getName() == pin_name)
         {
             return pin;
         }
@@ -122,7 +150,7 @@ void Cell::addBin(Bin* bin)
 
 void Cell::addPin(Pin* pin)
 {
-    pins.push_back(pin);
+    _pins.push_back(pin);
 }
 
 void Cell::removeSite(Site* site)

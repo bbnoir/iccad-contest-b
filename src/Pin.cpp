@@ -32,7 +32,7 @@ int Pin::getY()
 
 int Pin::getGlobalX()
 {
-    if(_type == PinType::CELL)
+    if (_cell != nullptr)
     {
         return _cell->getX() + _x;
     }
@@ -41,7 +41,7 @@ int Pin::getGlobalX()
 
 int Pin::getGlobalY()
 {
-    if(_type == PinType::CELL)
+    if (_cell != nullptr)
     {
         return _cell->getY() + _y;
     }
@@ -82,6 +82,21 @@ void Pin::setSlack(double slack)
 void Pin::setCell(Cell* cell)
 {
     _cell = cell;
+}
+
+void Pin::setOriginalName()
+{
+    _originalCellPinName = this->getCell()->getCellName() + "/" + this->getName();
+}
+
+void Pin::setFaninPin(Pin* pin)
+{
+    _faninPin = pin;
+}
+
+void Pin::addFanoutPin(Pin* pin)
+{
+    _fanoutPins.push_back(pin);
 }
 
 void Pin::connect(Net* net)
