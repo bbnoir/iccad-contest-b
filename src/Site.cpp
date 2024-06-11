@@ -199,16 +199,44 @@ Site* SiteMap::getNearestSite(int x, int y)
     int distance;
     int minDistance = -1;
     Site* nearestSite = nullptr;
-    for (const auto& row : _sites)
+    int topRow = getFirstLargerRow(y);
+    int botRow = topRow - 1;
+    int leftCol = getFirstLargerColInRow(topRow, x);
+    int rightCol = leftCol - 1;
+    if (topRow < int(_placementRows.size()))
     {
-        for (Site* site : row)
+        distance = abs(_placementRows[topRow].startY - y);
+        if (minDistance == -1 || distance < minDistance)
         {
-            distance = abs(site->getX() - x) + abs(site->getY() - y);
-            if (nearestSite == nullptr || distance < minDistance)
-            {
-                nearestSite = site;
-                minDistance = distance;
-            }
+            minDistance = distance;
+            nearestSite = _sites[topRow][leftCol];
+        }
+    }
+    if (botRow >= 0)
+    {
+        distance = abs(_placementRows[botRow].startY + _placementRows[botRow].siteHeight - y);
+        if (minDistance == -1 || distance < minDistance)
+        {
+            minDistance = distance;
+            nearestSite = _sites[botRow][leftCol];
+        }
+    }
+    if (leftCol < _placementRows[topRow].numSites)
+    {
+        distance = abs(_placementRows[topRow].startX - x);
+        if (minDistance == -1 || distance < minDistance)
+        {
+            minDistance = distance;
+            nearestSite = _sites[topRow][leftCol];
+        }
+    }
+    if (rightCol >= 0)
+    {
+        distance = abs(_placementRows[topRow].startX + _placementRows[topRow].siteWidth - x);
+        if (minDistance == -1 || distance < minDistance)
+        {
+            minDistance = distance;
+            nearestSite = _sites[topRow][rightCol];
         }
     }
     return nearestSite;
