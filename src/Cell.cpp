@@ -21,6 +21,7 @@ Cell::Cell(int x, int y, std::string inst_name, LibCell* lib_cell)
         Pin* newPin = new Pin(*pin);
         newPin->setCell(this);
         newPin->setOriginalName();
+        newPin->copyConnection(pin);
         this->_inputPins.push_back(newPin);
         this->_pins.push_back(newPin);
     }
@@ -29,6 +30,7 @@ Cell::Cell(int x, int y, std::string inst_name, LibCell* lib_cell)
         Pin* newPin = new Pin(*pin);
         newPin->setCell(this);
         newPin->setOriginalName();
+        newPin->copyConnection(pin);
         this->_outputPins.push_back(newPin);
         this->_pins.push_back(newPin);
     }

@@ -25,6 +25,7 @@ class Pin
         ~Pin();
         
         std::string getName();
+        std::string getOriginalName();
         int getX();
         int getY();
         int getGlobalX();
@@ -34,14 +35,19 @@ class Pin
         Cell *getCell();
         PinType getType();
         Net* getNet();
+        Pin* getFaninPin();
+        Pin* getFirstFanoutPin();
+        std::vector<Pin*> getFanoutPins();
 
         void setSlack(double slack);
         void setCell(Cell* cell);
         void setOriginalName();
+        void setOriginalName(std::string ori_name);
         void setFaninPin(Pin* pin);
         void addFanoutPin(Pin* pin);
 
         void connect(Net* net);
+        void copyConnection(Pin* pin);
 
     private:
         PinType _type;

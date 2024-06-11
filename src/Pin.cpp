@@ -20,6 +20,11 @@ std::string Pin::getName()
     return _name;
 }
 
+std::string Pin::getOriginalName()
+{
+    return _originalCellPinName;
+}
+
 int Pin::getX()
 {
     return _x;
@@ -86,7 +91,12 @@ void Pin::setCell(Cell* cell)
 
 void Pin::setOriginalName()
 {
-    _originalCellPinName = this->getCell()->getCellName() + "/" + this->getName();
+    _originalCellPinName = this->getCell()->getInstName() + "/" + this->getName();
+}
+
+void Pin::setOriginalName(std::string ori_name)
+{
+    _originalCellPinName = ori_name;
 }
 
 void Pin::setFaninPin(Pin* pin)
@@ -102,4 +112,30 @@ void Pin::addFanoutPin(Pin* pin)
 void Pin::connect(Net* net)
 {
     _net = net;
+}
+
+Pin* Pin::getFaninPin()
+{
+    return _faninPin;
+}
+
+Pin* Pin::getFirstFanoutPin()
+{
+    if (_fanoutPins.size() > 0)
+    {
+        return _fanoutPins[0];
+    }
+    return nullptr;
+}
+
+std::vector<Pin*> Pin::getFanoutPins()
+{
+    return _fanoutPins;
+}
+
+void Pin::copyConnection(Pin* pin)
+{
+    _net = pin->getNet();
+    _faninPin = pin->getFaninPin();
+    _fanoutPins = pin->getFanoutPins();
 }

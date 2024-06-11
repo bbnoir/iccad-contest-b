@@ -121,6 +121,15 @@ void Solver::parse_input(std::string filename)
                     ff->clkPin = new Pin(PinType::FF_CLK, x, y, pinName, nullptr);
                 }
             }
+            // sort the pins by name
+            sort(ff->inputPins.begin(), ff->inputPins.end(), [](Pin* a, Pin* b) -> bool { return a->getName() < b->getName(); });
+            sort(ff->outputPins.begin(), ff->outputPins.end(), [](Pin* a, Pin* b) -> bool { return a->getName() < b->getName(); });
+            // set fanout of input pins to output pins
+            const int numDQpairs = bits;
+            for (int i = 0; i < numDQpairs; i++)
+            {
+                ff->inputPins[i]->addFanoutPin(ff->outputPins[i]);
+            }
             _ffsLibList.push_back(ff);
             _ffsLibMap[name] = ff;
         }else if(token == "Gate"){
@@ -139,6 +148,14 @@ void Solver::parse_input(std::string filename)
                 } else if (pinName[0] == 'O') {
                     comb->outputPins.push_back(new Pin(PinType::GATE_OUT, x, y, pinName, nullptr));
                 }
+            }
+            // sort the pins by name
+            sort(comb->inputPins.begin(), comb->inputPins.end(), [](Pin* a, Pin* b) -> bool { return a->getName() < b->getName(); });
+            sort(comb->outputPins.begin(), comb->outputPins.end(), [](Pin* a, Pin* b) -> bool { return a->getName() < b->getName(); });
+            // set fanout of input pins to output pins
+            for (auto inPin : comb->inputPins)
+            {
+                inPin->addFanoutPin(comb->outputPins[0]);
             }
             _combsLibList.push_back(comb);
             _combsLibMap[name] = comb;
@@ -255,7 +272,7 @@ void Solver::parse_input(std::string filename)
         _ffsMap[instName]->getPin(port)->setSlack(slack);
     }
     // Read power info
-    while(!in.eof())
+    for(long unsigned int i = 0; i < _ffsLibList.size(); i++)
     {
         string cellName;
         double power;
@@ -396,6 +413,64 @@ std::string Solver::makeUniqueName(std::string name)
     return newName;
 }
 
+void Solver::chooseBaseFF()
+{
+    // TODO: change the way to choose the base FF
+    std::vector<LibCell*> oneBitFFs;
+    for (auto ff : _ffsLibList)
+    {
+        if(ff->bit == 1)
+        {
+            oneBitFFs.push_back(ff);
+        }
+    }
+    // choose the FF with the smallest cost
+    double minCost = ALPHA * oneBitFFs[0]->qDelay + BETA * oneBitFFs[0]->power + GAMMA * oneBitFFs[0]->width * oneBitFFs[0]->height;
+    _baseFF = oneBitFFs[0];
+    for (auto ff : oneBitFFs)
+    {
+        double cost = ALPHA * ff->qDelay + BETA * ff->power + GAMMA * ff->width * ff->height;
+        if(cost < minCost)
+        {
+            minCost = cost;
+            _baseFF = ff;
+        }
+    }
+    std::cout << "Base FF: " << _baseFF->cell_name << std::endl;
+}
+
+void Solver::debankAll()
+{
+    std::vector<FF*> debankedFFs;
+    for (auto ff : _ffs)
+    {
+        removeCell(ff);
+    }
+    for (auto ff : _ffs)
+    {
+        if (ff->getCellName() == _baseFF->cell_name)
+        {
+            debankedFFs.push_back(ff);
+            continue;
+        }
+        std::vector<std::pair<Pin*, Pin*>> dqPairs = ff->getDQpairs();
+        Pin* clkPin = ff->getClkPin();
+        const int x = ff->getX();
+        const int y = ff->getY();
+        for (auto dq : dqPairs)
+        {
+            FF* newFF = new FF(x, y, makeUniqueName("FF"), _baseFF, dq, clkPin);
+            debankedFFs.push_back(newFF);
+        }
+    }
+    _ffs.clear();
+    for (auto ff : debankedFFs)
+    {
+        addFF(ff);
+        placeCell(ff, true);
+    }
+}
+
 void Solver::forceDirectedPlaceFF(FF* ff)
 {
     // calculate the force
@@ -501,8 +576,10 @@ double Solver::cal_total_hpwl()
 
 void Solver::solve()
 {
+    chooseBaseFF();
     init_placement();
-    forceDirectedPlacement();
+    debankAll();
+    // forceDirectedPlacement();
 }
 
 void Solver::display()

@@ -49,6 +49,7 @@ class Solver
         std::vector<LibCell*> _ffsLibList;
         std::unordered_map<std::string, LibCell*, CIHash, CIEqual> _combsLibMap;
         std::unordered_map<std::string, LibCell*, CIHash, CIEqual> _ffsLibMap;
+        LibCell* _baseFF;
         // I/O
         std::vector<Pin*> _inputPins;
         std::vector<Pin*> _outputPins;
@@ -74,6 +75,8 @@ class Solver
         void bankFFs(FF* ff1, FF* ff2, LibCell* targetFF);
         std::string makeUniqueName(std::string name);
         // algorithms
+        void chooseBaseFF();
+        void debankAll();
         void forceDirectedPlaceFF(FF* ff);
         void forceDirectedPlacement();
         double cal_total_hpwl();
