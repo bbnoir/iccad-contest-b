@@ -497,31 +497,74 @@ void Solver::forceDirectedPlaceFF(FF* ff)
     moveCell(ff, nearest_site->getX(), nearest_site->getY(), true);
 }
 
+void Solver::forceDirectedPlaceFFLock(const int ff_idx, std::vector<bool>& locked, std::vector<char>& lock_cnt, int& lock_num)
+{
+    if (locked[ff_idx])
+    {
+        return;
+    }
+    // calculate the force
+    double x_sum = 0.0;
+    double y_sum = 0.0;
+    int num_pins = 0;
+    FF* ff = _ffs[ff_idx];
+    bool isAllConnectedToComb = true;
+    for(auto pin : ff->getPins())
+    {
+        Net* net = pin->getNet();
+        for(auto other_pin : net->getPins())
+        {
+            if(other_pin == pin)
+                continue;
+            const PinType type = other_pin->getType();
+            if (type == PinType::FF_D || type == PinType::FF_Q || type == PinType::FF_CLK)
+            {
+                isAllConnectedToComb = false;
+            }
+            x_sum += other_pin->getGlobalX();
+            y_sum += other_pin->getGlobalY();
+            num_pins++;
+        }
+    }
+    int x_avg = x_sum / num_pins;
+    int y_avg = y_sum / num_pins;
+    Site* nearest_site = _siteMap->getNearestSite(x_avg, y_avg);
+    double dist = sqrt(pow(nearest_site->getX() - ff->getX(), 2) + pow(nearest_site->getY() - ff->getY(), 2));
+    moveCell(ff, nearest_site->getX(), nearest_site->getY(), true);
+    if (dist == 0)
+    {
+        lock_cnt[ff_idx]++;
+    }
+    if (isAllConnectedToComb || lock_cnt[ff_idx] > 3)
+    {
+        locked[ff_idx] = true;
+    }
+    if (locked[ff_idx])
+    {
+        lock_num++;
+    }
+}
+
 void Solver::forceDirectedPlacement()
 {
     std::cout << "Force directed placement" << std::endl;
     bool converged = false;
-    int max_iter = 10;
+    int max_iter = 100;
     int iter = 0;
-    double prev_hpwl = cal_total_hpwl();
-    std::cout << "Initial HPWL: " << prev_hpwl << std::endl;
-    // only move one ff at a time
-    // until all ffs are converged
+    const int numFFs = _ffs.size();
+    const int lockThreshold = numFFs;
+    std::cout << "Lock threshold: " << lockThreshold << std::endl;
+    int lock_num = 0;
+    std::vector<char> lock_cnt(numFFs, 0);
+    std::vector<bool> locked(numFFs, false);
     while(!converged && iter++ < max_iter){
-        for (auto cur_ff : _ffs)
+        for (int i = 0; i < numFFs; i++)
         {
-            forceDirectedPlaceFF(cur_ff);
+            forceDirectedPlaceFFLock(i, locked, lock_cnt, lock_num);
         }
-        double cur_hpwl = cal_total_hpwl();
-        double inprovement = prev_hpwl - cur_hpwl;
-        prev_hpwl = cur_hpwl;
-        converged = inprovement < -1000;
-        std::cout << "Iteration: " << iter << std::endl;
-        std::cout << "HPWL: " << cur_hpwl << std::endl;
-        std::cout << "Improvement: " << inprovement << std::endl;
+        std::cout << "Iteration: " << iter << ", Lock/Total: " << lock_num << "/" << numFFs << std::endl;
+        converged = lock_num >= lockThreshold;
     }
-    std::cout << "Placement converged" << std::endl;
-    std::cout << "HPWL: " << cal_total_hpwl() << std::endl;
 }
 
 double Solver::cal_total_hpwl()
