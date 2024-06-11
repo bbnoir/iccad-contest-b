@@ -493,59 +493,32 @@ void Solver::forceDirectedPlaceFF(FF* ff)
     int y_avg = y_sum / num_pins;
     // adjust it to fit the placement rows
     Site* nearest_site = _siteMap->getNearestSite(x_avg, y_avg);
-    x_avg = nearest_site->getX();
-    y_avg = nearest_site->getY();
     // move the ff
-    moveCell(ff, x_avg, y_avg, true);
+    moveCell(ff, nearest_site->getX(), nearest_site->getY(), true);
 }
 
 void Solver::forceDirectedPlacement()
 {
     std::cout << "Force directed placement" << std::endl;
     bool converged = false;
-    int ff_idx = 0;
-    int max_iter = 1000;
+    int max_iter = 10;
     int iter = 0;
+    double prev_hpwl = cal_total_hpwl();
+    std::cout << "Initial HPWL: " << prev_hpwl << std::endl;
     // only move one ff at a time
     // until all ffs are converged
-    while(!converged && iter < max_iter){
-        FF* cur_ff = _ffs[ff_idx];
-        ff_idx = (ff_idx + 1) % _ffs.size();
-        iter++;
-        if(iter % 10 == 0){
-            std::cout << "Iteration: " << iter << std::endl;
-            std::cout << "HPWL: " << cal_total_hpwl() << std::endl;
-        }
-        // calculate the force
-        double x_sum = 0.0;
-        double y_sum = 0.0;
-        int num_pins = 0;
-        for(auto pin : cur_ff->getPins())
+    while(!converged && iter++ < max_iter){
+        for (auto cur_ff : _ffs)
         {
-            Net* net = pin->getNet();
-            for(auto other_pin : net->getPins())
-            {
-                if(other_pin == pin)
-                    continue;
-                x_sum += other_pin->getGlobalX();
-                y_sum += other_pin->getGlobalY();
-                num_pins++;
-            }
+            forceDirectedPlaceFF(cur_ff);
         }
-        int x_avg = x_sum / num_pins;
-        int y_avg = y_sum / num_pins;
-        // adjust it to fit the placement rows
-        Site* nearest_site = _siteMap->getNearestSite(x_avg, y_avg);
-        x_avg = nearest_site->getX();
-        y_avg = nearest_site->getY(); 
-        // calculate the displacement
-        double dx = x_avg - cur_ff->getX();
-        double dy = y_avg - cur_ff->getY();
-        double distance = sqrt(dx * dx + dy * dy);
-        if(distance < 1e-5)
-            converged = true;
-        // move the ff
-        moveCell(cur_ff, x_avg, y_avg, true);
+        double cur_hpwl = cal_total_hpwl();
+        double inprovement = prev_hpwl - cur_hpwl;
+        prev_hpwl = cur_hpwl;
+        converged = inprovement < -1000;
+        std::cout << "Iteration: " << iter << std::endl;
+        std::cout << "HPWL: " << cur_hpwl << std::endl;
+        std::cout << "Improvement: " << inprovement << std::endl;
     }
     std::cout << "Placement converged" << std::endl;
     std::cout << "HPWL: " << cal_total_hpwl() << std::endl;
@@ -579,7 +552,7 @@ void Solver::solve()
     chooseBaseFF();
     init_placement();
     debankAll();
-    // forceDirectedPlacement();
+    forceDirectedPlacement();
 }
 
 void Solver::display()
