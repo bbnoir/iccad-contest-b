@@ -79,6 +79,10 @@ void Renderer::init()
 
 void Renderer::render_text(const char* text, int x, int y, int textSize, SDL_Color color)
 {
+    if (cellOnly)
+    {
+        return;
+    }
     TTF_Font* font = TTF_OpenFont("tool/font/Roboto-Regular.ttf", textSize);
     if (font == nullptr)
     {
@@ -181,6 +185,8 @@ void Renderer::render()
             int rect_y = static_cast<int>(10 + comb->getY() * y_scale);
             int rect_width = static_cast<int>(comb->getWidth() * x_scale);
             int rect_height = static_cast<int>(comb->getHeight() * y_scale);
+            rect_width = std::max(rect_width, 1);
+            rect_height = std::max(rect_height, 1);
             SDL_Rect rect = {rect_x, rect_y, rect_width, rect_height};
             SDL_SetRenderDrawColor(_renderer, 0, 0, 255, 255);
             SDL_RenderFillRect(_renderer, &rect);           
@@ -192,6 +198,8 @@ void Renderer::render()
             int rect_y = static_cast<int>(10 + ff->getY() * y_scale);
             int rect_width = static_cast<int>(ff->getWidth() * x_scale);
             int rect_height = static_cast<int>(ff->getHeight() * y_scale);
+            rect_width = std::max(rect_width, 1);
+            rect_height = std::max(rect_height, 1);
             SDL_Rect rect = {rect_x, rect_y, rect_width, rect_height};
             SDL_SetRenderDrawColor(_renderer, 255, 0, 0, 255);
             SDL_RenderFillRect(_renderer, &rect);
@@ -217,41 +225,44 @@ void Renderer::render()
             SDL_RenderFillRect(_renderer, &rect);   
             render_text(pin->getName().c_str(), rect_x, rect_y+IO_PIN_SIZE, 16, {0, 0, 0, 255});
         }
-        // draw cell pins
-        for (auto& cell : _solver->_ffs)
+        if (!cellOnly)
         {
-            for (auto& pin : cell->getPins())
+            // draw cell pins
+            for (auto& cell : _solver->_ffs)
             {
-                int rect_x = static_cast<int>(10 + pin->getGlobalX() * x_scale - CELL_PIN_SIZE/2.0);
-                int rect_y = static_cast<int>(10 + pin->getGlobalY() * y_scale - CELL_PIN_SIZE/2.0);
-                SDL_Rect rect = {rect_x, rect_y, CELL_PIN_SIZE, CELL_PIN_SIZE};
-                SDL_SetRenderDrawColor(_renderer, 0, 255, 0, 255);
-                SDL_RenderFillRect(_renderer, &rect);
-                render_text(pin->getName().c_str(), rect_x, rect_y+CELL_PIN_SIZE, 8, {0, 0, 0, 255});
+                for (auto& pin : cell->getPins())
+                {
+                    int rect_x = static_cast<int>(10 + pin->getGlobalX() * x_scale - CELL_PIN_SIZE/2.0);
+                    int rect_y = static_cast<int>(10 + pin->getGlobalY() * y_scale - CELL_PIN_SIZE/2.0);
+                    SDL_Rect rect = {rect_x, rect_y, CELL_PIN_SIZE, CELL_PIN_SIZE};
+                    SDL_SetRenderDrawColor(_renderer, 0, 255, 0, 255);
+                    SDL_RenderFillRect(_renderer, &rect);
+                    render_text(pin->getName().c_str(), rect_x, rect_y+CELL_PIN_SIZE, 8, {0, 0, 0, 255});
+                }
             }
-        }
-        // draw net
-        // draw straight line
-        int r, g, b;
-        r = g = b = 0;
-        for (auto& net : _solver->_nets)
-        {   
-            r += 20;
-            g += 30;
-            b += 40;
-            r %= 256;
-            g %= 256;
-            b %= 256;
-            SDL_SetRenderDrawColor(_renderer, r, g, b, 255);
-            std::vector<Pin*> pins = net->getPins();
-            for (long unsigned int i = 0; i < pins.size() - 1; i++)
-            {
-                int x1 = static_cast<int>(10 + pins[i]->getGlobalX() * x_scale);
-                int y1 = static_cast<int>(10 + pins[i]->getGlobalY() * y_scale);
-                int x2 = static_cast<int>(10 + pins[i+1]->getGlobalX() * x_scale);
-                int y2 = static_cast<int>(10 + pins[i+1]->getGlobalY() * y_scale);
+            // draw net
+            // draw straight line
+            int r, g, b;
+            r = g = b = 0;
+            for (auto& net : _solver->_nets)
+            {   
+                r += 20;
+                g += 30;
+                b += 40;
+                r %= 256;
+                g %= 256;
+                b %= 256;
                 SDL_SetRenderDrawColor(_renderer, r, g, b, 255);
-                SDL_RenderDrawLine(_renderer, x1, y1, x2, y2);
+                std::vector<Pin*> pins = net->getPins();
+                for (long unsigned int i = 0; i < pins.size() - 1; i++)
+                {
+                    int x1 = static_cast<int>(10 + pins[i]->getGlobalX() * x_scale);
+                    int y1 = static_cast<int>(10 + pins[i]->getGlobalY() * y_scale);
+                    int x2 = static_cast<int>(10 + pins[i+1]->getGlobalX() * x_scale);
+                    int y2 = static_cast<int>(10 + pins[i+1]->getGlobalY() * y_scale);
+                    SDL_SetRenderDrawColor(_renderer, r, g, b, 255);
+                    SDL_RenderDrawLine(_renderer, x1, y1, x2, y2);
+                }
             }
         }
         // update the window

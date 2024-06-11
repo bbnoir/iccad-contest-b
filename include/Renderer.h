@@ -21,6 +21,8 @@ class Renderer
         void init();
         void close();
 
+        bool cellOnly = true;
+
         void render_text(const char* text, int x, int y, int textSize, SDL_Color color);
     public:
         Renderer(Solver* solver);
