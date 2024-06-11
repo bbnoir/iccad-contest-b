@@ -396,6 +396,31 @@ std::string Solver::makeUniqueName(std::string name)
     return newName;
 }
 
+void Solver::chooseBaseFF()
+{
+    // TODO: change the way to choose the base FF
+    std::vector<LibCell*> oneBitFFs;
+    for (auto ff : _ffsLibList)
+    {
+        if(ff->bit == 1)
+        {
+            oneBitFFs.push_back(ff);
+        }
+    }
+    // choose the FF with the smallest cost
+    double minCost = ALPHA * oneBitFFs[0]->qDelay + BETA * oneBitFFs[0]->power + GAMMA * oneBitFFs[0]->width * oneBitFFs[0]->height;
+    _baseFF = oneBitFFs[0];
+    for (auto ff : oneBitFFs)
+    {
+        double cost = ALPHA * ff->qDelay + BETA * ff->power + GAMMA * ff->width * ff->height;
+        if(cost < minCost)
+        {
+            minCost = cost;
+            _baseFF = ff;
+        }
+    }
+}
+
 void Solver::forceDirectedPlaceFF(FF* ff)
 {
     // calculate the force
@@ -501,8 +526,9 @@ double Solver::cal_total_hpwl()
 
 void Solver::solve()
 {
+    chooseBaseFF();
     init_placement();
-    forceDirectedPlacement();
+    // forceDirectedPlacement();
 }
 
 void Solver::display()
