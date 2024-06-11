@@ -113,7 +113,13 @@ void Solver::parse_input(std::string filename)
                 string pinName;
                 int x, y;
                 in >> token >> pinName >> x >> y;
-                ff->pins.push_back(Pin(PinType::CELL, x, y, pinName, nullptr));
+                if (pinName[0] == 'D') {
+                    ff->inputPins.push_back(new Pin(PinType::FF_D, x, y, pinName, nullptr));
+                } else if (pinName[0] == 'Q') {
+                    ff->outputPins.push_back(new Pin(PinType::FF_Q, x, y, pinName, nullptr));
+                } else if (pinName[0] == 'C') {
+                    ff->clkPin = new Pin(PinType::FF_CLK, x, y, pinName, nullptr);
+                }
             }
             _ffsLibList.push_back(ff);
             _ffsLibMap[name] = ff;
@@ -122,12 +128,17 @@ void Solver::parse_input(std::string filename)
             string name;
             in >> name >> width >> height >> pinCount;
             LibCell* comb = new LibCell(CellType::COMB, width, height, 0.0, 0.0, 0, name);
+            comb->clkPin = nullptr;
             for(int i = 0; i < pinCount; i++)
             {
                 string pinName;
                 int x, y;
                 in >> token >> pinName >> x >> y;
-                comb->pins.push_back(Pin(PinType::CELL, x, y, pinName, nullptr));
+                if (pinName[0] == 'I') {
+                    comb->inputPins.push_back(new Pin(PinType::GATE_IN, x, y, pinName, nullptr));
+                } else if (pinName[0] == 'O') {
+                    comb->outputPins.push_back(new Pin(PinType::GATE_OUT, x, y, pinName, nullptr));
+                }
             }
             _combsLibList.push_back(comb);
             _combsLibMap[name] = comb;
@@ -194,6 +205,21 @@ void Solver::parse_input(std::string filename)
         newNet->setPins(pins);
         _nets.push_back(newNet);
         _netsMap[netName] = newNet;
+        // update pin fanin and fanout
+        for(auto pin : pins)
+        {
+            // assume the first pin is the fanin pin
+            if(pin->getType() == PinType::FF_D || pin->getType() == PinType::GATE_IN)
+            {
+                pin->setFaninPin(pins[0]);
+            }else if(pin->getType() == PinType::FF_Q || pin->getType() == PinType::GATE_OUT)
+            {
+                for(long unsigned int j = 1; j < pins.size(); j++)
+                {
+                    pin->addFanoutPin(pins[j]);
+                }
+            }
+        }
     }
 
     // Read bin info
@@ -517,7 +543,7 @@ void Solver::display()
         cout << "Power: " << ff->power << endl;
         for(auto pin : ff->pins)
         {
-            cout << "Pin Name: " << pin.getName() << ", X: " << pin.getX() << ", Y: " << pin.getY() << endl;
+            cout << "Pin Name: " << pin->getName() << ", X: " << pin->getX() << ", Y: " << pin->getY() << endl;
         }
     }
     cout << "Gates libs:" << endl;
@@ -527,7 +553,7 @@ void Solver::display()
         cout << "Power: " << comb->power << endl;
         for(auto pin : comb->pins)
         {
-            cout << "Pin Name: " << pin.getName() << ", X: " << pin.getX() << ", Y: " << pin.getY() << endl;
+            cout << "Pin Name: " << pin->getName() << ", X: " << pin->getX() << ", Y: " << pin->getY() << endl;
         }
     }
     cout << "====================================" << endl;

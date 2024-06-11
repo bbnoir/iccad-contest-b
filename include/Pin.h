@@ -11,7 +11,11 @@ enum class PinType
 {
     INPUT,
     OUTPUT,
-    CELL
+    GATE_IN,
+    GATE_OUT,
+    FF_D,
+    FF_Q,
+    FF_CLK
 };
 
 class Pin
@@ -33,6 +37,9 @@ class Pin
 
         void setSlack(double slack);
         void setCell(Cell* cell);
+        void setOriginalName();
+        void setFaninPin(Pin* pin);
+        void addFanoutPin(Pin* pin);
 
         void connect(Net* net);
 
@@ -42,11 +49,14 @@ class Pin
         int _x;
         int _y;
         std::string _name;
+        std::string _originalCellPinName;
         // which cell this pin belongs to
         Cell* _cell;
         double _slack;
         bool _isDpin;
         // which net this pin is connected to
         Net* _net;
+        Pin* _faninPin;
+        std::vector<Pin*> _fanoutPins;
 
 };
