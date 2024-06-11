@@ -76,6 +76,7 @@ class Solver
         std::string makeUniqueName(std::string name);
         // algorithms
         void chooseBaseFF();
+        void debankAll();
         void forceDirectedPlaceFF(FF* ff);
         void forceDirectedPlacement();
         double cal_total_hpwl();
