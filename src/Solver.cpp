@@ -506,24 +506,39 @@ void Solver::forceDirectedPlaceFFLock(const int ff_idx, std::vector<bool>& locke
     // calculate the force
     double x_sum = 0.0;
     double y_sum = 0.0;
-    int num_pins = 0;
+    int num_pins = 1;
     FF* ff = _ffs[ff_idx];
+    Pin* clkPin = ff->getClkPin();
+    x_sum += clkPin->getGlobalX();
+    y_sum += clkPin->getGlobalY();
+    for (auto inPin : ff->getInputPins())
+    {
+        Pin* fanin = inPin->getFaninPin();
+        x_sum += fanin->getGlobalX();
+        y_sum += fanin->getGlobalY();
+        num_pins++;
+    }
+    for (auto outPin : ff->getOutputPins())
+    {
+        for (auto fanout : outPin->getFanoutPins())
+        {
+            x_sum += fanout->getGlobalX();
+            y_sum += fanout->getGlobalY();
+            num_pins++;
+        }
+    }
     bool isAllConnectedToComb = true;
-    for(auto pin : ff->getPins())
+    for (auto pin : ff->getPins())
     {
         Net* net = pin->getNet();
-        for(auto other_pin : net->getPins())
+        for (auto other_pin : net->getPins())
         {
-            if(other_pin == pin)
+            if (other_pin == pin)
                 continue;
-            const PinType type = other_pin->getType();
-            if (type == PinType::FF_D || type == PinType::FF_Q || type == PinType::FF_CLK)
+            if (other_pin->getType() == PinType::FF_D || other_pin->getType() == PinType::FF_Q)
             {
                 isAllConnectedToComb = false;
             }
-            x_sum += other_pin->getGlobalX();
-            y_sum += other_pin->getGlobalY();
-            num_pins++;
         }
     }
     int x_avg = x_sum / num_pins;
