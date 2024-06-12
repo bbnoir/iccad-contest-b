@@ -14,35 +14,20 @@ FF::FF(int x, int y, std::string inst_name, LibCell* lib_cell, std::pair<Pin*, P
     _lib_cell = lib_cell;
 
     // clk
-    _clkPin = new Pin(*(lib_cell->clkPin));
-    _clkPin->setCell(this);
-    _clkPin->setOriginalName(clk->getOriginalName());
-    _clkPin->copyConnection(clk);
-    clk->getNet()->addPin(_clkPin);
-    clk->getNet()->removePin(clk);
-    _pins.push_back(_clkPin);
+    _clkPin = clk;
+    _clkPin->transInfo(lib_cell->clkPin);
 
     // d
-    Pin* newInPin = new Pin(*(lib_cell->inputPins[0]));
-    newInPin->setCell(this);
-    newInPin->setOriginalName(dqpair.first->getOriginalName());
-    newInPin->copyConnection(dqpair.first);
-    dqpair.first->getNet()->addPin(newInPin);
-    dqpair.first->getNet()->removePin(dqpair.first);
+    Pin* newInPin = dqpair.first;
+    newInPin->transInfo(lib_cell->inputPins[0]);
     this->_inputPins.push_back(newInPin);
-    this->_pins.push_back(newInPin);
 
     // q
-    Pin* newOutPin = new Pin(*(lib_cell->outputPins[0]));
-    newOutPin->setCell(this);
-    newOutPin->setOriginalName(dqpair.second->getOriginalName());
-    newOutPin->copyConnection(dqpair.second);
-    dqpair.second->getNet()->addPin(newOutPin);
-    dqpair.second->getNet()->removePin(dqpair.second);
+    Pin* newOutPin = dqpair.second;
+    newOutPin->transInfo(lib_cell->outputPins[0]);
     this->_outputPins.push_back(newOutPin);
-    this->_pins.push_back(newOutPin);
 
-    newInPin->addFanoutPin(newOutPin);
+    std::cout << "FF " << _inst_name << " d: " << _inputPins[0]->getName() << " q: " << _outputPins[0]->getName() << " clk: " << _clkPin->getName() << std::endl;
 }
 
 FF::~FF()

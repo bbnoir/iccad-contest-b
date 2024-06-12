@@ -139,3 +139,12 @@ void Pin::copyConnection(Pin* pin)
     _faninPin = pin->getFaninPin();
     _fanoutPins = pin->getFanoutPins();
 }
+
+void Pin::transInfo(Pin* pin)
+{
+    _x = pin->getX();
+    _y = pin->getY();
+    _name = pin->getName();
+    _isDpin = pin->isDpin();
+    _type = pin->getType();
+}
