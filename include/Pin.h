@@ -48,6 +48,7 @@ class Pin
 
         void connect(Net* net);
         void copyConnection(Pin* pin);
+        void transInfo(Pin* pin);
 
     private:
         PinType _type;

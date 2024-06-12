@@ -78,6 +78,7 @@ class Solver
         void chooseBaseFF();
         void debankAll();
         void forceDirectedPlaceFF(FF* ff);
+        void forceDirectedPlaceFFLock(const int ff_idx, std::vector<bool>& locked, std::vector<char>& lock_cnt, int& lock_num);
         void forceDirectedPlacement();
         double cal_total_hpwl();
 

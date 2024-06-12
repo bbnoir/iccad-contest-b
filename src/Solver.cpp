@@ -226,7 +226,7 @@ void Solver::parse_input(std::string filename)
         for(auto pin : pins)
         {
             // assume the first pin is the fanin pin
-            if(pin->getType() == PinType::FF_D || pin->getType() == PinType::GATE_IN)
+            if(pin->getType() == PinType::FF_D || pin->getType() == PinType::GATE_IN || pin->getType() == PinType::FF_CLK)
             {
                 pin->setFaninPin(pins[0]);
             }else if(pin->getType() == PinType::FF_Q || pin->getType() == PinType::GATE_OUT)
@@ -461,6 +461,7 @@ void Solver::debankAll()
         {
             FF* newFF = new FF(x, y, makeUniqueName("FF"), _baseFF, dq, clkPin);
             debankedFFs.push_back(newFF);
+            delete clkPin;
         }
     }
     _ffs.clear();
@@ -497,31 +498,81 @@ void Solver::forceDirectedPlaceFF(FF* ff)
     moveCell(ff, nearest_site->getX(), nearest_site->getY(), true);
 }
 
+void Solver::forceDirectedPlaceFFLock(const int ff_idx, std::vector<bool>& locked, std::vector<char>& lock_cnt, int& lock_num)
+{
+    if (locked[ff_idx])
+    {
+        return;
+    }
+    // calculate the force
+    double x_sum = 0.0;
+    double y_sum = 0.0;
+    int num_pins = 1;
+    FF* ff = _ffs[ff_idx];
+    bool isAllConnectedToComb = true;
+    for (auto inPin : ff->getInputPins())
+    {
+        Pin* fanin = inPin->getFaninPin();
+        x_sum += fanin->getGlobalX();
+        y_sum += fanin->getGlobalY();
+        num_pins++;
+        if (fanin->getType() == PinType::FF_Q)
+        {
+            isAllConnectedToComb = false;
+        }
+    }
+    for (auto outPin : ff->getOutputPins())
+    {
+        for (auto fanout : outPin->getFanoutPins())
+        {
+            x_sum += fanout->getGlobalX();
+            y_sum += fanout->getGlobalY();
+            num_pins++;
+            if (fanout->getType() == PinType::FF_D)
+            {
+                isAllConnectedToComb = false;
+            }
+        }
+    }
+    int x_avg = x_sum / num_pins;
+    int y_avg = y_sum / num_pins;
+    Site* nearest_site = _siteMap->getNearestSite(x_avg, y_avg);
+    double dist = sqrt(pow(nearest_site->getX() - ff->getX(), 2) + pow(nearest_site->getY() - ff->getY(), 2));
+    moveCell(ff, nearest_site->getX(), nearest_site->getY(), true);
+    if (dist < 1e-2)
+    {
+        lock_cnt[ff_idx]++;
+    }
+    if (isAllConnectedToComb || lock_cnt[ff_idx] > 3)
+    {
+        locked[ff_idx] = true;
+    }
+    if (locked[ff_idx])
+    {
+        lock_num++;
+    }
+}
+
 void Solver::forceDirectedPlacement()
 {
     std::cout << "Force directed placement" << std::endl;
     bool converged = false;
-    int max_iter = 10;
+    int max_iter = 1000;
     int iter = 0;
-    double prev_hpwl = cal_total_hpwl();
-    std::cout << "Initial HPWL: " << prev_hpwl << std::endl;
-    // only move one ff at a time
-    // until all ffs are converged
+    const int numFFs = _ffs.size();
+    const int lockThreshold = numFFs;
+    std::cout << "Lock threshold: " << lockThreshold << std::endl;
+    int lock_num = 0;
+    std::vector<char> lock_cnt(numFFs, 0);
+    std::vector<bool> locked(numFFs, false);
     while(!converged && iter++ < max_iter){
-        for (auto cur_ff : _ffs)
+        for (int i = 0; i < numFFs; i++)
         {
-            forceDirectedPlaceFF(cur_ff);
+            forceDirectedPlaceFFLock(i, locked, lock_cnt, lock_num);
         }
-        double cur_hpwl = cal_total_hpwl();
-        double inprovement = prev_hpwl - cur_hpwl;
-        prev_hpwl = cur_hpwl;
-        converged = inprovement < -1000;
-        std::cout << "Iteration: " << iter << std::endl;
-        std::cout << "HPWL: " << cur_hpwl << std::endl;
-        std::cout << "Improvement: " << inprovement << std::endl;
+        std::cout << "Iteration: " << iter << ", Lock/Total: " << lock_num << "/" << numFFs << std::endl;
+        converged = lock_num >= lockThreshold;
     }
-    std::cout << "Placement converged" << std::endl;
-    std::cout << "HPWL: " << cal_total_hpwl() << std::endl;
 }
 
 double Solver::cal_total_hpwl()
