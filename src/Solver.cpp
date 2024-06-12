@@ -693,7 +693,7 @@ void Solver::legalize()
                     orphans.push_back(FFs[k]);
                 break;
             }
-            // move to the next available site
+            // leave the placing site
             while(curX < cell->getX()+cell->getWidth())
             {
                 curX += rowWidth;
