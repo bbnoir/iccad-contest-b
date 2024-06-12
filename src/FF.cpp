@@ -14,8 +14,9 @@ FF::FF(int x, int y, std::string inst_name, LibCell* lib_cell, std::pair<Pin*, P
     _lib_cell = lib_cell;
 
     // clk
-    _clkPin = clk;
-    _clkPin->transInfo(lib_cell->clkPin);
+    Pin* libClkPin = lib_cell->clkPin;
+    _clkPin = new Pin(PinType::FF_CLK, libClkPin->getX(), libClkPin->getY(), libClkPin->getName(), this);
+    _clkPin->copyConnection(clk);
 
     // d
     Pin* newInPin = dqpair.first;

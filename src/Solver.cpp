@@ -461,6 +461,7 @@ void Solver::debankAll()
         {
             FF* newFF = new FF(x, y, makeUniqueName("FF"), _baseFF, dq, clkPin);
             debankedFFs.push_back(newFF);
+            delete clkPin;
         }
     }
     _ffs.clear();
@@ -508,9 +509,6 @@ void Solver::forceDirectedPlaceFFLock(const int ff_idx, std::vector<bool>& locke
     double y_sum = 0.0;
     int num_pins = 1;
     FF* ff = _ffs[ff_idx];
-    Pin* clkPin = ff->getClkPin()->getFaninPin();
-    x_sum += clkPin->getGlobalX();
-    y_sum += clkPin->getGlobalY();
     bool isAllConnectedToComb = true;
     for (auto inPin : ff->getInputPins())
     {
@@ -541,7 +539,7 @@ void Solver::forceDirectedPlaceFFLock(const int ff_idx, std::vector<bool>& locke
     Site* nearest_site = _siteMap->getNearestSite(x_avg, y_avg);
     double dist = sqrt(pow(nearest_site->getX() - ff->getX(), 2) + pow(nearest_site->getY() - ff->getY(), 2));
     moveCell(ff, nearest_site->getX(), nearest_site->getY(), true);
-    if (dist == 0)
+    if (dist < 1e-2)
     {
         lock_cnt[ff_idx]++;
     }
