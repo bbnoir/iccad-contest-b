@@ -1,3 +1,4 @@
+#include <queue>
 #include "Site.h"
 #include "param.h"
 #include "Solver.h"
@@ -42,6 +43,30 @@ bool Site::removeCell(Cell* cell)
 bool Site::isOccupied()
 {
     return !_cells.empty();
+}
+
+bool Site::isOccupiedByComb()
+{
+    for (Cell* cell : _cells)
+    {
+        if (cell->getCellType() == CellType::COMB)
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
+bool Site::isOccupiedByCrossRowCell()
+{
+    for (Cell* cell : _cells)
+    {
+        if (cell->getY() != _y)
+        {
+            return true;
+        }
+    }
+    return false;
 }
 
 bool Site::isOverLapping()
@@ -141,12 +166,22 @@ std::vector<Site*> SiteMap::getSites(int leftDownX, int leftDownY, int rightUpX,
     {
         const int startCol = getFirstLargerColInRow(row, leftDownX);
         const int endCol = getFirstLargerColInRow(row, rightUpX);
+        if(startCol == endCol)
+        {
+            sites.push_back(_sites[row][startCol]);
+            continue;
+        }
         for (int col = startCol; col < endCol; col++)
         {
             sites.push_back(_sites[row][col]);
         }
     }
     return sites;
+}
+
+std::vector<std::vector<Site*>> SiteMap::getSiteRows()
+{
+    return _sites;
 }
 
 int SiteMap::getFirstLargerRow(int y)
@@ -242,6 +277,47 @@ Site* SiteMap::getNearestSite(int x, int y)
     return nearestSite;
 }
 
+Site* SiteMap::getNearestAvailableSite(int x, int y)
+{
+    // BFS from the start site
+    std::queue<Site*> q;
+    q.push(getNearestSite(x,y));
+    while (!q.empty())
+    {
+        Site* site = q.front();
+        q.pop();
+        if (!site->isOccupied())
+        {
+            return site;
+        }
+        int siteX = site->getX();
+        int siteY = site->getY();
+        int siteWidth = site->getWidth();
+        int siteHeight = site->getHeight();
+        Site* topSite = getNearestSite(siteX + siteWidth / 2, siteY + siteHeight);
+        Site* botSite = getNearestSite(siteX + siteWidth / 2, siteY - 1);
+        Site* leftSite = getNearestSite(siteX - 1, siteY + siteHeight / 2);
+        Site* rightSite = getNearestSite(siteX + siteWidth, siteY + siteHeight / 2);
+        if (topSite != nullptr)
+        {
+            q.push(topSite);
+        }
+        if (botSite != nullptr)
+        {
+            q.push(botSite);
+        }
+        if (leftSite != nullptr)
+        {
+            q.push(leftSite);
+        }
+        if (rightSite != nullptr)
+        {
+            q.push(rightSite);
+        }
+    }
+    return nullptr;
+}
+
 bool SiteMap::place(Cell* cell, bool allowOverlap)
 {
     const int cellWidth = cell->getWidth();
@@ -251,7 +327,13 @@ bool SiteMap::place(Cell* cell, bool allowOverlap)
     const int cellRightX = cellX + cellWidth;
     const int cellUpY = cellY + cellHeight;
     std::vector<Site*> sites = getSites(cellX, cellY, cellRightX, cellUpY);
+    // if(sites.empty())
+    // {
+    //     // cout cell info
+    //     std::cout << "Cellx: " << cellX << " Celly: " << cellY << " CellWidth: " << cellWidth << " CellHeight: " << cellHeight << std::endl;
+    // }
     if(!allowOverlap)
+    {
         for (Site* site : sites)
         {
             if (site->isOccupied())
@@ -259,6 +341,8 @@ bool SiteMap::place(Cell* cell, bool allowOverlap)
                 return true;
             }
         }
+    }
+        
     for (Site* site : sites)
     {
         site->place(cell);
@@ -297,4 +381,22 @@ bool SiteMap::moveCell(Cell* cell, bool allowOverlap)
     const int x = cell->getX();
     const int y = cell->getY();
     return moveCell(cell, x, y, allowOverlap);
+}
+
+bool SiteMap::checkOverlap()
+{
+    bool isOverlapping = false;
+    for (const auto& row : _sites)
+    {
+        for (Site* site : row)
+        {
+            if (site->isOverLapping())
+            {
+                isOverlapping = true;
+                // output overlapping sites
+                std::cerr << "Overlapping site at (" << site->getX() << ", " << site->getY() << ")" << std::endl;
+            }
+        }
+    }
+    return isOverlapping;
 }

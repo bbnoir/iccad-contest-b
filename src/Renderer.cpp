@@ -12,7 +12,7 @@ int WINDOW_HEIGHT = 720;
 
 int MOVE_STEP = 6;
 
-int IO_PIN_SIZE = 10;
+int IO_PIN_SIZE = 2;
 int CELL_PIN_SIZE = 2;
 
 Renderer::Renderer(Solver* solver)

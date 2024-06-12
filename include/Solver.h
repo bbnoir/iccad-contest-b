@@ -62,25 +62,34 @@ class Solver
         std::unordered_map<std::string, Net*, CIHash, CIEqual> _netsMap;
         std::unordered_map<std::string, Comb*, CIHash, CIEqual> _combsMap;
         std::unordered_map<std::string, FF*, CIHash, CIEqual> _ffsMap;
+        std::vector<std::vector<FF*>> _ffs_clkdomains;
         // placement
         std::vector<PlacementRows> _placementRows;
         BinMap* _binMap;
         SiteMap* _siteMap;
         int uniqueNameCounter = 0;
-        // functions
+        // Modify Cell
         bool placeCell(Cell* cell, bool allowOverlap = false);
         void removeCell(Cell* cell);
         bool moveCell(Cell* cell, int x, int y, bool allowOverlap = false);
+        // Modify FF
         void addFF(FF* ff); // add FF to _ffs and _ffsMap
         void deleteFF(FF* ff); // delete FF from _ffs and _ffsMap
         void bankFFs(FF* ff1, FF* ff2, LibCell* targetFF);
+        // Trivial
         std::string makeUniqueName();
-        // algorithms
+        double cal_total_hpwl();
+        void checkCLKDomain();
+
+        // Main Algorithms
+        // 1. Debank all FFs
         void chooseBaseFF();
         void debankAll();
+        // 2. Force-directed placement
         void forceDirectedPlaceFF(FF* ff);
         void forceDirectedPlaceFFLock(const int ff_idx, std::vector<bool>& locked, std::vector<char>& lock_cnt, int& lock_num);
         void forceDirectedPlacement();
-        double cal_total_hpwl();
+        // 3. Legalization
+        void legalize();
 
 };

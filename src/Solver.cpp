@@ -189,6 +189,7 @@ void Solver::parse_input(std::string filename)
     in >> token >> netCount;
     for(int i = 0; i < netCount; i++)
     {
+        bool clknet = false;
         string netName;
         int pinCount;
         in >> token >> netName >> pinCount;
@@ -203,9 +204,15 @@ void Solver::parse_input(std::string filename)
             string pin;
             if(pinName.find('/') != string::npos)
                 pin = pinName.substr(pinName.find('/') + 1);
+            if(pin == "CLK" && !clknet){
+                clknet = true;
+                _ffs_clkdomains.push_back(vector<FF*>());
+            }
             Pin* p = nullptr;
             if(_ffsMap.find(instName) != _ffsMap.end()){
                 p = _ffsMap[instName]->getPin(pin);
+                if(pin == "CLK" && clknet)
+                    _ffs_clkdomains.back().push_back(_ffsMap[instName]);
             }else if(_combsMap.find(instName) != _combsMap.end()){
                 p = _combsMap[instName]->getPin(pin);
             }else if(_inputPinsMap.find(pinName) != _inputPinsMap.end()){
@@ -289,6 +296,16 @@ void Solver::parse_input(std::string filename)
 
     cout << "File parsed successfully" << endl;
     in.close();
+}
+
+void Solver::checkCLKDomain(){
+    int sum = 0;
+    for(long unsigned int i=0;i<_ffs_clkdomains.size();i++){
+        sum += _ffs_clkdomains[i].size();
+        std::cout<<"Sum from clk domain "<<i<<" : "<<_ffs_clkdomains[i].size()<<std::endl;
+    }
+    std::cout<<"Sum from CLK domain: "<<sum<<std::endl;
+    std::cout<<"Sum from list: "<<_ffs.size()<<std::endl;
 }
 
 void Solver::init_placement()
@@ -598,6 +615,101 @@ void Solver::solve()
     init_placement();
     debankAll();
     forceDirectedPlacement();
+    legalize();
+
+    // check for overlapping
+    std::vector<std::vector<Site*>> siteRows = _siteMap->getSiteRows();
+    for(long unsigned int i = 0; i < siteRows.size(); i++)
+    {
+        auto row = siteRows[i];
+        for(auto site: row)
+        {
+            if(site->isOverLapping()){
+                std::cerr << "Overlapping site at (" << site->getX() << ", " << site->getY() << ")" << std::endl;
+            }
+        }
+    }
+    // check FFs' placement
+    for(auto ff: _ffs)
+    {
+        if(ff->getSites().size() == 0)
+        {
+            std::cerr << "FF not placed: " << ff->getInstName() << std::endl;
+        }else if(ff->getX()<DIE_LOW_LEFT_X || ff->getX()+ff->getWidth()>DIE_UP_RIGHT_X || ff->getY()<DIE_LOW_LEFT_Y || ff->getY()+ff->getHeight()>DIE_UP_RIGHT_Y){
+            std::cerr << "FF not placed in Die: " << ff->getInstName() << std::endl;
+        }
+    }
+    // checkCLKDomain();
+}
+
+void Solver::legalize()
+{
+    std::vector<std::vector<Site*>> siteRows = _siteMap->getSiteRows();
+    std::vector<Cell*> orphans;
+    for(int i = siteRows.size()-1; i >= 0 ; i--)
+    {
+        auto row = siteRows[i];
+        int rowWidth = row[0]->getWidth();
+        int numSites = row.size();
+        int startX = row[0]->getX();
+        int endX = row[numSites-1]->getX() + rowWidth;
+        // get all FFs in the row
+        std::vector<Cell*> FFs;
+        for(auto site: row)
+        {
+            for(auto cell : site->getCell())
+            {
+                // ff in this row and not repeated
+                if(cell->getCellType() == CellType::FF && std::find(FFs.begin(), FFs.end(), cell) == FFs.end())
+                {
+                    FFs.push_back(cell);
+                }
+            }
+        }
+        if(FFs.size() == 0)
+            continue;
+        // sort cells by x
+        std::sort(FFs.begin(), FFs.end(), [](Cell* a, Cell* b) -> bool { return a->getX() < b->getX(); });
+        int curX = startX;
+        for(long unsigned int j=0;j<FFs.size();j++)
+        {
+            Cell* cell = FFs[j];
+            curX = std::max(curX, cell->getX());
+            // find availabe site
+            while((curX < endX)&&(row[(curX-startX)/rowWidth]->isOccupiedByComb()||row[(curX-startX)/rowWidth]->isOccupiedByCrossRowCell()))
+            {
+                curX += rowWidth;
+            }
+            // move cell if available and needed
+            if(curX < endX && curX != cell->getX())
+            {
+                // std::cout << "Orignal FF: " << cell->getInstName() << " at (" << cell->getX() << ", " << cell->getY() << ")" << std::endl;
+                // std::cout << "Move FF: " << cell->getInstName() << " to (" << curX << ", " << cell->getY() << ")" << std::endl;
+                moveCell(cell, curX, cell->getY(), true);
+            }else if(curX >= endX)
+            {
+                // end of row
+                for(long unsigned int k=j;k<FFs.size();k++)
+                    orphans.push_back(FFs[k]);
+                break;
+            }
+            // leave the placing site
+            while(curX < cell->getX()+cell->getWidth())
+            {
+                curX += rowWidth;
+            }
+        }
+    }
+    // place the orphans
+    // no orphans in the testcase.
+    for(auto cell : orphans)
+    {
+        int x = cell->getX();
+        int y = cell->getY();
+        Site* nearest_site = _siteMap->getNearestAvailableSite(x,y);
+        moveCell(cell, nearest_site->getX(), nearest_site->getY(), true);
+    }
+
 }
 
 void Solver::display()

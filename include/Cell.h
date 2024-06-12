@@ -67,6 +67,7 @@ public:
     double getPower();
     std::string getInstName();
     std::string getCellName();
+    CellType getCellType();
     std::vector<Pin*> getPins();
     std::vector<Pin*> getInputPins();
     std::vector<Pin*> getOutputPins();
