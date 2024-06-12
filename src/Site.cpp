@@ -277,11 +277,11 @@ Site* SiteMap::getNearestSite(int x, int y)
     return nearestSite;
 }
 
-Site* SiteMap::getNearestAvailableSite(Site* site)
+Site* SiteMap::getNearestAvailableSite(int x, int y)
 {
     // BFS from the start site
     std::queue<Site*> q;
-    q.push(site);
+    q.push(getNearestSite(x,y));
     while (!q.empty())
     {
         Site* site = q.front();
