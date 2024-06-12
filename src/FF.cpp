@@ -18,6 +18,8 @@ FF::FF(int x, int y, std::string inst_name, LibCell* lib_cell, std::pair<Pin*, P
     _clkPin->setCell(this);
     _clkPin->setOriginalName(clk->getOriginalName());
     _clkPin->copyConnection(clk);
+    clk->getNet()->addPin(_clkPin);
+    clk->getNet()->removePin(clk);
     _pins.push_back(_clkPin);
 
     // d
@@ -25,6 +27,8 @@ FF::FF(int x, int y, std::string inst_name, LibCell* lib_cell, std::pair<Pin*, P
     newInPin->setCell(this);
     newInPin->setOriginalName(dqpair.first->getOriginalName());
     newInPin->copyConnection(dqpair.first);
+    dqpair.first->getNet()->addPin(newInPin);
+    dqpair.first->getNet()->removePin(dqpair.first);
     this->_inputPins.push_back(newInPin);
     this->_pins.push_back(newInPin);
 
@@ -33,8 +37,12 @@ FF::FF(int x, int y, std::string inst_name, LibCell* lib_cell, std::pair<Pin*, P
     newOutPin->setCell(this);
     newOutPin->setOriginalName(dqpair.second->getOriginalName());
     newOutPin->copyConnection(dqpair.second);
+    dqpair.second->getNet()->addPin(newOutPin);
+    dqpair.second->getNet()->removePin(dqpair.second);
     this->_outputPins.push_back(newOutPin);
     this->_pins.push_back(newOutPin);
+
+    newInPin->addFanoutPin(newOutPin);
 }
 
 FF::~FF()

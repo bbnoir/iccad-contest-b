@@ -203,7 +203,7 @@ Site* SiteMap::getNearestSite(int x, int y)
     int botRow = topRow - 1;
     int leftCol = getFirstLargerColInRow(topRow, x);
     int rightCol = leftCol - 1;
-    if (topRow < int(_placementRows.size()))
+    if (topRow < int(_placementRows.size()) && leftCol < _placementRows[topRow].numSites)
     {
         distance = abs(_placementRows[topRow].startY - y);
         if (minDistance == -1 || distance < minDistance)
@@ -212,31 +212,31 @@ Site* SiteMap::getNearestSite(int x, int y)
             nearestSite = _sites[topRow][leftCol];
         }
     }
-    if (botRow >= 0)
+    if (botRow >= 0 && rightCol >= 0)
     {
         distance = abs(_placementRows[botRow].startY + _placementRows[botRow].siteHeight - y);
         if (minDistance == -1 || distance < minDistance)
         {
             minDistance = distance;
-            nearestSite = _sites[botRow][leftCol];
+            nearestSite = _sites[botRow][rightCol];
         }
     }
-    if (leftCol < _placementRows[topRow].numSites)
-    {
-        distance = abs(_placementRows[topRow].startX - x);
-        if (minDistance == -1 || distance < minDistance)
-        {
-            minDistance = distance;
-            nearestSite = _sites[topRow][leftCol];
-        }
-    }
-    if (rightCol >= 0)
+    if (topRow < int(_placementRows.size()) && rightCol >= 0)
     {
         distance = abs(_placementRows[topRow].startX + _placementRows[topRow].siteWidth - x);
         if (minDistance == -1 || distance < minDistance)
         {
             minDistance = distance;
             nearestSite = _sites[topRow][rightCol];
+        }
+    }
+    if (botRow >= 0 && leftCol < _placementRows[botRow].numSites)
+    {
+        distance = abs(_placementRows[botRow].startX - x);
+        if (minDistance == -1 || distance < minDistance)
+        {
+            minDistance = distance;
+            nearestSite = _sites[botRow][leftCol];
         }
     }
     return nearestSite;
