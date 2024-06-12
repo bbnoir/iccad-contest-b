@@ -26,8 +26,6 @@ FF::FF(int x, int y, std::string inst_name, LibCell* lib_cell, std::pair<Pin*, P
     Pin* newOutPin = dqpair.second;
     newOutPin->transInfo(lib_cell->outputPins[0]);
     this->_outputPins.push_back(newOutPin);
-
-    std::cout << "FF " << _inst_name << " d: " << _inputPins[0]->getName() << " q: " << _outputPins[0]->getName() << " clk: " << _clkPin->getName() << std::endl;
 }
 
 FF::~FF()

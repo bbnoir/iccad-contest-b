@@ -226,7 +226,7 @@ void Solver::parse_input(std::string filename)
         for(auto pin : pins)
         {
             // assume the first pin is the fanin pin
-            if(pin->getType() == PinType::FF_D || pin->getType() == PinType::GATE_IN)
+            if(pin->getType() == PinType::FF_D || pin->getType() == PinType::GATE_IN || pin->getType() == PinType::FF_CLK)
             {
                 pin->setFaninPin(pins[0]);
             }else if(pin->getType() == PinType::FF_Q || pin->getType() == PinType::GATE_OUT)
@@ -508,15 +508,20 @@ void Solver::forceDirectedPlaceFFLock(const int ff_idx, std::vector<bool>& locke
     double y_sum = 0.0;
     int num_pins = 1;
     FF* ff = _ffs[ff_idx];
-    Pin* clkPin = ff->getClkPin();
+    Pin* clkPin = ff->getClkPin()->getFaninPin();
     x_sum += clkPin->getGlobalX();
     y_sum += clkPin->getGlobalY();
+    bool isAllConnectedToComb = true;
     for (auto inPin : ff->getInputPins())
     {
         Pin* fanin = inPin->getFaninPin();
         x_sum += fanin->getGlobalX();
         y_sum += fanin->getGlobalY();
         num_pins++;
+        if (fanin->getType() == PinType::FF_Q)
+        {
+            isAllConnectedToComb = false;
+        }
     }
     for (auto outPin : ff->getOutputPins())
     {
@@ -525,17 +530,7 @@ void Solver::forceDirectedPlaceFFLock(const int ff_idx, std::vector<bool>& locke
             x_sum += fanout->getGlobalX();
             y_sum += fanout->getGlobalY();
             num_pins++;
-        }
-    }
-    bool isAllConnectedToComb = true;
-    for (auto pin : ff->getPins())
-    {
-        Net* net = pin->getNet();
-        for (auto other_pin : net->getPins())
-        {
-            if (other_pin == pin)
-                continue;
-            if (other_pin->getType() == PinType::FF_D || other_pin->getType() == PinType::FF_Q)
+            if (fanout->getType() == PinType::FF_D)
             {
                 isAllConnectedToComb = false;
             }
@@ -564,7 +559,7 @@ void Solver::forceDirectedPlacement()
 {
     std::cout << "Force directed placement" << std::endl;
     bool converged = false;
-    int max_iter = 100;
+    int max_iter = 1000;
     int iter = 0;
     const int numFFs = _ffs.size();
     const int lockThreshold = numFFs;
