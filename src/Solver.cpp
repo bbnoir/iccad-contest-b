@@ -646,7 +646,7 @@ void Solver::legalize()
 {
     std::vector<std::vector<Site*>> siteRows = _siteMap->getSiteRows();
     std::vector<Cell*> orphans;
-    for(long unsigned int i = siteRows.size()-1; i != 0 ; i--)
+    for(int i = siteRows.size()-1; i >= 0 ; i--)
     {
         auto row = siteRows[i];
         int rowWidth = row[0]->getWidth();
@@ -659,8 +659,11 @@ void Solver::legalize()
         {
             for(auto cell : site->getCell())
             {
-                if(cell->getCellType() == CellType::FF)
+                // ff in this row and not repeated
+                if(cell->getCellType() == CellType::FF && std::find(FFs.begin(), FFs.end(), cell) == FFs.end())
+                {
                     FFs.push_back(cell);
+                }
             }
         }
         if(FFs.size() == 0)
@@ -673,25 +676,25 @@ void Solver::legalize()
             Cell* cell = FFs[j];
             curX = std::max(curX, cell->getX());
             // find availabe site
-            while(row[(curX-startX)/rowWidth]->isOccupiedByComb()||row[(curX-startX)/rowWidth]->isOccupiedByCrossRowCell())
+            while((curX < endX)&&(row[(curX-startX)/rowWidth]->isOccupiedByComb()||row[(curX-startX)/rowWidth]->isOccupiedByCrossRowCell()))
             {
                 curX += rowWidth;
-                if(curX >= endX)
-                    break;
             }
             // move cell if available and needed
             if(curX < endX && curX != cell->getX())
             {
+                // std::cout << "Orignal FF: " << cell->getInstName() << " at (" << cell->getX() << ", " << cell->getY() << ")" << std::endl;
                 // std::cout << "Move FF: " << cell->getInstName() << " to (" << curX << ", " << cell->getY() << ")" << std::endl;
                 moveCell(cell, curX, cell->getY(), true);
             }else if(curX >= endX)
             {
                 // end of row
-                std::cout << "Orphan FF: " << cell->getInstName() << std::endl;
-                orphans.push_back(cell);
+                for(long unsigned int k=j;k<FFs.size();k++)
+                    orphans.push_back(FFs[k]);
+                break;
             }
             // move to the next available site
-            while(curX < cell->getX()+rowWidth)
+            while(curX < cell->getX()+cell->getWidth())
             {
                 curX += rowWidth;
             }
