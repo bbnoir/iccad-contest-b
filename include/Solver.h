@@ -66,6 +66,7 @@ class Solver
         std::vector<PlacementRows> _placementRows;
         BinMap* _binMap;
         SiteMap* _siteMap;
+        int uniqueNameCounter = 0;
         // functions
         bool placeCell(Cell* cell, bool allowOverlap = false);
         void removeCell(Cell* cell);
@@ -73,7 +74,7 @@ class Solver
         void addFF(FF* ff); // add FF to _ffs and _ffsMap
         void deleteFF(FF* ff); // delete FF from _ffs and _ffsMap
         void bankFFs(FF* ff1, FF* ff2, LibCell* targetFF);
-        std::string makeUniqueName(std::string name);
+        std::string makeUniqueName();
         // algorithms
         void chooseBaseFF();
         void debankAll();

@@ -363,7 +363,7 @@ void Solver::bankFFs(FF* ff1, FF* ff2, LibCell* targetFF)
     int x = ff1->getX();
     int y = ff1->getY();
     // create a new FF
-    FF* newFF = new FF(x, y, makeUniqueName("FF"), targetFF);
+    FF* newFF = new FF(x, y, makeUniqueName(), targetFF);
     addFF(newFF);
     // connect the pins
     std::vector<Pin*> pins1 = ff1->getPins();
@@ -401,15 +401,9 @@ void Solver::bankFFs(FF* ff1, FF* ff2, LibCell* targetFF)
     deleteFF(ff2);
 }
 
-std::string Solver::makeUniqueName(std::string name)
+std::string Solver::makeUniqueName()
 {
-    int i = 1;
-    std::string newName = name;
-    while(_ffsMap.find(newName) != _ffsMap.end() || _combsMap.find(newName) != _combsMap.end())
-    {
-        newName = name + std::to_string(i);
-        i++;
-    }
+    std::string newName = "A" + std::to_string(uniqueNameCounter++);
     return newName;
 }
 
@@ -459,7 +453,7 @@ void Solver::debankAll()
         const int y = ff->getY();
         for (auto dq : dqPairs)
         {
-            FF* newFF = new FF(x, y, makeUniqueName("FF"), _baseFF, dq, clkPin);
+            FF* newFF = new FF(x, y, makeUniqueName(), _baseFF, dq, clkPin);
             debankedFFs.push_back(newFF);
             delete clkPin;
         }
