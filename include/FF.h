@@ -14,5 +14,9 @@ class FF : public Cell
         double getQDelay();
         Pin* getClkPin();
         std::vector<std::pair<Pin*, Pin*>> getDQpairs();
+        int getClkDomain();
+
+        void setClkDomain(int clkDomain);
     private:
+        int clkDomain;
 };

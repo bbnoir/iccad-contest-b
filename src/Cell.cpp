@@ -78,6 +78,11 @@ std::string Cell::getCellName()
     return _lib_cell->cell_name;
 }
 
+CellType Cell::getCellType()
+{
+    return _lib_cell->type;
+}
+
 int Cell::getWidth()
 {
     return _lib_cell->width;

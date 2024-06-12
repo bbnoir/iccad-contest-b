@@ -75,12 +75,16 @@ class Solver
         void deleteFF(FF* ff); // delete FF from _ffs and _ffsMap
         void bankFFs(FF* ff1, FF* ff2, LibCell* targetFF);
         std::string makeUniqueName();
+        double cal_total_hpwl();
         // algorithms
+        // 1. Debank all FFs
         void chooseBaseFF();
         void debankAll();
+        // 2. Force-directed placement
         void forceDirectedPlaceFF(FF* ff);
         void forceDirectedPlaceFFLock(const int ff_idx, std::vector<bool>& locked, std::vector<char>& lock_cnt, int& lock_num);
         void forceDirectedPlacement();
-        double cal_total_hpwl();
+        // 3. Legalization
+        void legalize();
 
 };

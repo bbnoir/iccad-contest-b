@@ -598,6 +598,88 @@ void Solver::solve()
     init_placement();
     debankAll();
     forceDirectedPlacement();
+    legalize();
+    std::vector<std::vector<Site*>> siteRows = _siteMap->getSiteRows();
+    for(long unsigned int i = 0; i < siteRows.size(); i++)
+    {
+        auto row = siteRows[i];
+        for(auto site: row)
+        {
+            if(site->isOverLapping()){
+                std::cerr << "Overlapping site at (" << site->getX() << ", " << site->getY() << ")" << std::endl;
+            }
+        }
+    }
+    // check FFs not placed
+    for(auto ff: _ffs)
+    {
+        if(ff->getSites().size() == 0)
+        {
+            std::cerr << "FF not placed: " << ff->getInstName() << std::endl;
+        }
+    }
+}
+
+void Solver::legalize()
+{
+    std::vector<std::vector<Site*>> siteRows = _siteMap->getSiteRows();
+    std::vector<Cell*> orphans;
+    for(long unsigned int i = siteRows.size()-1; i != 0 ; i--)
+    {
+        auto row = siteRows[i];
+        int rowWidth = row[0]->getWidth();
+        int numSites = row.size();
+        int startX = row[0]->getX();
+        int endX = row[numSites-1]->getX() + rowWidth;
+        // get all FFs in the row
+        std::vector<Cell*> FFs;
+        for(auto site: row)
+        {
+            for(auto cell : site->getCell())
+            {
+                if(cell->getCellType() == CellType::FF)
+                    FFs.push_back(cell);
+            }
+        }
+        if(FFs.size() == 0)
+            continue;
+        // sort cells by x
+        std::sort(FFs.begin(), FFs.end(), [](Cell* a, Cell* b) -> bool { return a->getX() < b->getX(); });
+        int curX = startX;
+        for(long unsigned int j=0;j<FFs.size();j++)
+        {
+            Cell* cell = FFs[j];
+            curX = std::max(curX, cell->getX());
+            while(row[(curX-startX)/rowWidth]->isOccupiedByComb()||row[(curX-startX)/rowWidth]->isOccupiedByCrossRowCell())
+            {
+                curX += rowWidth;
+            }
+            if(curX < endX && curX != cell->getX())
+            {
+                // std::cout << "Move FF: " << cell->getInstName() << " to (" << curX << ", " << cell->getY() << ")" << std::endl;
+                moveCell(cell, curX, cell->getY(), true);
+            }else if(curX >= endX)
+            {
+                // end of row
+                std::cout << "Orphan FF: " << cell->getInstName() << std::endl;
+                orphans.push_back(cell);
+            }
+            // move to the next available site
+            while(curX < cell->getX()+rowWidth)
+            {
+                curX += rowWidth;
+            }
+        }
+    }
+    // place the orphans
+    for(auto cell : orphans)
+    {
+        int x = cell->getX();
+        int y = cell->getY();
+        Site* nearest_site = _siteMap->getNearestSite(x, y);
+        moveCell(cell, nearest_site->getX(), nearest_site->getY(), true);
+    }
+
 }
 
 void Solver::display()

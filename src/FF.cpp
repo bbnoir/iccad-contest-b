@@ -58,3 +58,13 @@ std::vector<std::pair<Pin*, Pin*>> FF::getDQpairs()
     }
     return dqPairs;
 }
+
+int FF::getClkDomain()
+{
+    return clkDomain;
+}
+
+void FF::setClkDomain(int clkDomain)
+{
+    this->clkDomain = clkDomain;
+}
