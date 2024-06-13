@@ -81,9 +81,10 @@ class Solver
         std::string makeUniqueName();
         double cal_total_hpwl();
         void checkCLKDomain();
+        // Helper
         void constructFFsCLKDomain();
         std::vector<int> regionQuery(std::vector<FF*> ffs, long unsigned int idx, int radius);
-
+        int isAvailabeForMove(std::vector<Site*> row, int width_num_sites, int idx);
         // Main Algorithms
         // 1. Debank all FFs
         void chooseBaseFF();

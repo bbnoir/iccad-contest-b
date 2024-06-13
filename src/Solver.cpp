@@ -482,11 +482,11 @@ void Solver::debankAll()
     }
     for (auto ff : _ffs)
     {
-        if (ff->getCellName() == _baseFF->cell_name)
-        {
-            debankedFFs.push_back(ff);
-            continue;
-        }
+        // if (ff->getCellName() == _baseFF->cell_name)
+        // {
+        //     debankedFFs.push_back(ff);
+        //     continue;
+        // }
         std::vector<std::pair<Pin*, Pin*>> dqPairs = ff->getDQpairs();
         Pin* clkPin = ff->getClkPin();
         const int x = ff->getX();
@@ -500,7 +500,10 @@ void Solver::debankAll()
             delete clkPin;
         }
     }
-    // problem: the old FFs are not deleted
+    for(long unsigned int i=0;i<_ffs.size();i++)
+    {
+        delete _ffs[i];
+    }
     _ffs.clear();
     for (auto ff : debankedFFs)
     {
@@ -546,6 +549,7 @@ void Solver::forceDirectedPlaceFFLock(const int ff_idx, std::vector<bool>& locke
     double y_sum = 0.0;
     int num_pins = 1;
     FF* ff = _ffs[ff_idx];
+    // display ff's info
     bool isAllConnectedToComb = true;
     for (auto inPin : ff->getInputPins())
     {
@@ -564,7 +568,7 @@ void Solver::forceDirectedPlaceFFLock(const int ff_idx, std::vector<bool>& locke
         {
             x_sum += fanout->getGlobalX();
             y_sum += fanout->getGlobalY();
-            num_pins++;
+            num_pins++;            
             if (fanout->getType() == PinType::FF_D)
             {
                 isAllConnectedToComb = false;
@@ -640,12 +644,14 @@ void Solver::solve()
     chooseBaseFF();
     init_placement();
     debankAll();
+    std::cout<<"Start to force directed placement"<<std::endl;
     forceDirectedPlacement();
+    std::cout<<"Start to legalize"<<std::endl;
     legalize();
     for(long unsigned int i = 0; i < _ffs_clkdomains.size(); i++)
     {
         std::vector<std::vector<FF*>> cluster = clusteringFFs(i);
-        std::cout<< "There are "<<cluster.size()<<" clusters in clk domain "<<i<<std::endl;
+        // std::cout<< "There are "<<cluster.size()<<" clusters in clk domain "<<i<<std::endl;
     }
     // check for overlapping
     std::vector<std::vector<Site*>> siteRows = _siteMap->getSiteRows();
@@ -671,6 +677,20 @@ void Solver::solve()
     }
     constructFFsCLKDomain();
 }
+
+int Solver::isAvailabeForMove(std::vector<Site*> row, int width_num_sites, int idx)
+{
+    int numSites = row.size();
+    for(int i = idx; i < idx + width_num_sites; i++)
+    {
+        if(i >= numSites)
+            return numSites;
+        if(row[i]->isOccupiedByComb() || row[i]->isOccupiedByCrossRowCell())
+            return i;
+    }
+    return -1;
+}
+
 
 void Solver::legalize()
 {
@@ -705,11 +725,17 @@ void Solver::legalize()
         {
             Cell* cell = FFs[j];
             curX = std::max(curX, cell->getX());
-            // find availabe site
-            while((curX < endX)&&(row[(curX-startX)/rowWidth]->isOccupiedByComb()||row[(curX-startX)/rowWidth]->isOccupiedByCrossRowCell()))
+            int width_num_sites = std::ceil((double)cell->getWidth() / rowWidth);
+            // find availabe sites
+            do
             {
-                curX += rowWidth;
-            }
+                int idx = isAvailabeForMove(row, width_num_sites, (curX-startX)/rowWidth);
+                if(idx == -1)
+                    break;
+                else{
+                    curX += rowWidth*(idx-(curX-startX)/rowWidth+1);
+                }
+            } while (curX < endX);
             // move cell if available and needed
             if(curX < endX && curX != cell->getX())
             {
@@ -719,6 +745,7 @@ void Solver::legalize()
             }else if(curX >= endX)
             {
                 // end of row
+                std::cout << "End of row" << std::endl;
                 for(long unsigned int k=j;k<FFs.size();k++)
                     orphans.push_back(FFs[k]);
                 break;
@@ -840,6 +867,7 @@ void Solver::greedyBanking(std::vector<std::vector<FF*>> clusters)
         if(cluster.size() < 2)
             continue;
         // find the best pair to bank
+        // TODO: Complete the algorithm
         double maxGain = 0.0;
         FF* bestFF1 = nullptr;
         FF* bestFF2 = nullptr;
