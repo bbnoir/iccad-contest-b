@@ -1030,6 +1030,9 @@ void Solver::dump(std::string filename)
     for (auto ff : _ffs)
     {
         out << "Inst " << ff->getInstName() << " " << ff->getCellName() << " " << ff->getX() << " " << ff->getY() << endl;
+    }
+    for (auto ff : _ffs)
+    {
         for (auto pin : ff->getInputPins())
         {
             out << pin->getOriginalName() << " map " << pin->getCell()->getInstName() << "/" << pin->getName() << endl;
