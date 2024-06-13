@@ -39,6 +39,7 @@ class Solver
         void parse_input(std::string filename);
         void init_placement();
         void solve();
+        void dump(std::string filename);
 
         void display();
         

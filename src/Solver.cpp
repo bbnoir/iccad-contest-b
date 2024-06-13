@@ -1021,3 +1021,24 @@ void Solver::display()
     }
 
 }
+
+void Solver::dump(std::string filename)
+{
+    using namespace std;
+    ofstream out(filename);
+    out << "CellInst " << _ffs.size() << endl;
+    for (auto ff : _ffs)
+    {
+        out << "Inst " << ff->getInstName() << " " << ff->getCellName() << " " << ff->getX() << " " << ff->getY() << endl;
+        for (auto pin : ff->getInputPins())
+        {
+            out << pin->getOriginalName() << " map " << pin->getCell()->getInstName() << "/" << pin->getName() << endl;
+        }
+        for (auto pin : ff->getOutputPins())
+        {
+            out << pin->getOriginalName() << " map " << pin->getCell()->getInstName() << "/" << pin->getName() << endl;
+        }
+        Pin* clkPin = ff->getClkPin();
+        out << clkPin->getOriginalName() << " map " << clkPin->getCell()->getInstName() << "/" << clkPin->getName() << endl;
+    }
+}
