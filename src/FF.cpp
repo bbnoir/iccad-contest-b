@@ -22,11 +22,13 @@ FF::FF(int x, int y, std::string inst_name, LibCell* lib_cell, std::pair<Pin*, P
     Pin* newInPin = dqpair.first;
     newInPin->transInfo(lib_cell->inputPins[0]);
     this->_inputPins.push_back(newInPin);
+    newInPin->setCell(this);
 
     // q
     Pin* newOutPin = dqpair.second;
     newOutPin->transInfo(lib_cell->outputPins[0]);
     this->_outputPins.push_back(newOutPin);
+    newOutPin->setCell(this);
 }
 
 FF::~FF()

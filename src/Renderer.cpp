@@ -205,6 +205,29 @@ void Renderer::render()
             SDL_RenderFillRect(_renderer, &rect);
             render_text(ff->getInstName().c_str(), rect_x, rect_y+rect_height, 16, {0, 0, 0, 255});
         }
+        // draw rect that bound all ffs in the corresponding time domain
+        if(false)
+        for(auto& ffs: _solver->_ffs_clkdomains)
+        {
+            int rect_x_1 = DIE_UP_RIGHT_X;
+            int rect_y_1 = DIE_UP_RIGHT_Y;
+            int rect_x_2 = DIE_LOW_LEFT_X;
+            int rect_y_2 = DIE_LOW_LEFT_Y;
+            for(auto& ff: ffs)
+            {
+                int curr_x = static_cast<int>(10 + ff->getX() * x_scale);
+                int curr_y = static_cast<int>(10 + ff->getY() * y_scale);
+                rect_x_1 = std::min(rect_x_1, curr_x);
+                rect_y_1 = std::min(rect_y_1, curr_y);
+                rect_x_2 = std::max(rect_x_2, curr_x);
+                rect_y_2 = std::max(rect_y_2, curr_y);
+            }
+            int rect_width = rect_x_2 - rect_x_1;
+            int rect_height = rect_y_2 - rect_y_1;
+            SDL_Rect rect = {rect_x_1, rect_y_1, rect_width, rect_height};
+            SDL_SetRenderDrawColor(_renderer, 255, 255, 0, 255);
+            SDL_RenderDrawRect(_renderer, &rect);
+        }
         // draw input pins
         for (auto& pin : _solver->_inputPins)
         {
