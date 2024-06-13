@@ -211,8 +211,10 @@ void Solver::parse_input(std::string filename)
             Pin* p = nullptr;
             if(_ffsMap.find(instName) != _ffsMap.end()){
                 p = _ffsMap[instName]->getPin(pin);
-                if(pin == "CLK" && clknet)
+                if(pin == "CLK" && clknet){
                     _ffs_clkdomains.back().push_back(_ffsMap[instName]);
+                    _ffs_clkdomains.back().back()->setClkDomain(_ffs_clkdomains.size()-1);
+                }
             }else if(_combsMap.find(instName) != _combsMap.end()){
                 p = _combsMap[instName]->getPin(pin);
             }else if(_inputPinsMap.find(pinName) != _inputPinsMap.end()){
@@ -298,7 +300,9 @@ void Solver::parse_input(std::string filename)
     in.close();
 }
 
-void Solver::checkCLKDomain(){
+void Solver::checkCLKDomain()
+{
+    constructFFsCLKDomain();
     int sum = 0;
     for(long unsigned int i=0;i<_ffs_clkdomains.size();i++){
         sum += _ffs_clkdomains[i].size();
@@ -306,6 +310,25 @@ void Solver::checkCLKDomain(){
     }
     std::cout<<"Sum from CLK domain: "<<sum<<std::endl;
     std::cout<<"Sum from list: "<<_ffs.size()<<std::endl;
+}
+
+void Solver::constructFFsCLKDomain()
+{
+    _ffs_clkdomains.clear();
+    // domain map to index
+    std::map<int, int> clkDomainMap;
+    for(auto ff: _ffs)
+    {   
+        int clkDomain = ff->getClkDomain();
+        if(clkDomainMap.find(clkDomain) == clkDomainMap.end())
+        {
+            clkDomainMap[clkDomain] = _ffs_clkdomains.size();
+            _ffs_clkdomains.push_back(std::vector<FF*>());
+            _ffs_clkdomains.back().push_back(ff);
+        }else{
+            _ffs_clkdomains[clkDomainMap[clkDomain]].push_back(ff);
+        }
+    }
 }
 
 void Solver::init_placement()
@@ -468,13 +491,16 @@ void Solver::debankAll()
         Pin* clkPin = ff->getClkPin();
         const int x = ff->getX();
         const int y = ff->getY();
+        const int clkDomain = ff->getClkDomain();
         for (auto dq : dqPairs)
         {
             FF* newFF = new FF(x, y, makeUniqueName(), _baseFF, dq, clkPin);
+            newFF->setClkDomain(clkDomain);
             debankedFFs.push_back(newFF);
             delete clkPin;
         }
     }
+    // problem: the old FFs are not deleted
     _ffs.clear();
     for (auto ff : debankedFFs)
     {
@@ -616,7 +642,11 @@ void Solver::solve()
     debankAll();
     forceDirectedPlacement();
     legalize();
-
+    for(long unsigned int i = 0; i < _ffs_clkdomains.size(); i++)
+    {
+        std::vector<std::vector<FF*>> cluster = clusteringFFs(i);
+        std::cout<< "There are "<<cluster.size()<<" clusters in clk domain "<<i<<std::endl;
+    }
     // check for overlapping
     std::vector<std::vector<Site*>> siteRows = _siteMap->getSiteRows();
     for(long unsigned int i = 0; i < siteRows.size(); i++)
@@ -639,7 +669,7 @@ void Solver::solve()
             std::cerr << "FF not placed in Die: " << ff->getInstName() << std::endl;
         }
     }
-    // checkCLKDomain();
+    constructFFsCLKDomain();
 }
 
 void Solver::legalize()
@@ -710,6 +740,135 @@ void Solver::legalize()
         moveCell(cell, nearest_site->getX(), nearest_site->getY(), true);
     }
 
+}
+
+std::vector<int> Solver::regionQuery(std::vector<FF*> FFs, long unsigned int idx, int eps)
+{
+    std::vector<int> neighbors;
+    for(long unsigned int i = 0; i < FFs.size(); i++)
+    {
+        if(i == idx)
+            continue;
+        // Manhattan distance
+        int dist = abs(FFs[i]->getX() - FFs[idx]->getX()) + abs(FFs[i]->getY() - FFs[idx]->getY());
+        if(dist <= eps)
+        {
+            neighbors.push_back(i);
+        }
+    }
+    return neighbors;
+}
+
+std::vector<std::vector<FF*>> Solver::clusteringFFs(long unsigned int clkdomain_idx)
+{
+    if(clkdomain_idx >= _ffs_clkdomains.size())
+    {
+        std::cerr << "Invalid clk domain index" << std::endl;
+        return std::vector<std::vector<FF*>>();
+    }
+    std::vector<FF*> FFs = _ffs_clkdomains[clkdomain_idx];
+    std::vector<std::vector<FF*>> clusters;
+    std::vector<bool> visited(FFs.size(), false);
+    // DBSCAN
+    // TODO: optimize the algorithm or change to other clustering algorithm
+    for(long unsigned int i = 0; i < FFs.size(); i++)
+    {
+        if(visited[i])
+            continue;
+        visited[i] = true;
+        std::vector<FF*> cluster;
+        cluster.push_back(FFs[i]);
+        std::vector<int> neighbors = regionQuery(FFs, i, 10000);
+        if(neighbors.size() < 2)
+        {
+            // noise
+            clusters.push_back(cluster);
+            continue;
+        }
+        for(long unsigned int j = 0; j < neighbors.size(); j++)
+        {
+            int idx = neighbors[j];
+            if(!visited[idx])
+            {
+                visited[idx] = true;
+                std::vector<int> new_neighbors = regionQuery(FFs, idx, 100);
+                if(new_neighbors.size() >= 2)
+                {
+                    for(long unsigned int k = 0; k < new_neighbors.size(); k++)
+                    {
+                        if(std::find(neighbors.begin(), neighbors.end(), new_neighbors[k]) == neighbors.end())
+                        {
+                            neighbors.push_back(new_neighbors[k]);
+                        }
+                    }
+                }
+            }
+            if(std::find(cluster.begin(), cluster.end(), FFs[idx]) == cluster.end())
+            {
+                cluster.push_back(FFs[idx]);
+            }
+        }
+        clusters.push_back(cluster);
+    }
+
+    return clusters;
+}
+
+double Solver::cal_banking_gain(FF* ff1, FF* ff2, LibCell* targetFF)
+{
+    if(ff1->getBit()+ff2->getBit()!=targetFF->bit){
+        std::cout << "Invalid target FF" << std::endl;
+        return -INT_MAX;
+    }
+    double gain = 0.0;
+    // calculate the cost of the original FFs
+    double cost1 = ALPHA * ff1->getQDelay() + BETA * ff1->getPower() + GAMMA * ff1->getArea();
+    double cost2 = ALPHA * ff2->getQDelay() + BETA * ff2->getPower() + GAMMA * ff2->getArea();
+    // calculate the cost of the target FF
+    double targetCost = ALPHA * targetFF->qDelay + BETA * targetFF->power + GAMMA * targetFF->width * targetFF->height;
+    // TODO: consider the wirelength and slack
+    
+    // calculate the gain
+    gain = cost1 + cost2 - targetCost;
+    return gain;
+}
+
+void Solver::greedyBanking(std::vector<std::vector<FF*>> clusters)
+{
+    for(auto cluster : clusters)
+    {
+        if(cluster.size() < 2)
+            continue;
+        // find the best pair to bank
+        double maxGain = 0.0;
+        FF* bestFF1 = nullptr;
+        FF* bestFF2 = nullptr;
+        LibCell* targetFF = nullptr;
+        for(long unsigned int i = 0; i < cluster.size(); i++)
+        {
+            for(long unsigned int j = i+1; j < cluster.size(); j++)
+            {
+                FF* ff1 = cluster[i];
+                FF* ff2 = cluster[j];
+                for(auto ff : _ffsLibList)
+                {
+                    if(ff->bit == ff1->getBit() + ff2->getBit())
+                    {
+                        double gain = cal_banking_gain(ff1, ff2, ff);
+                        if(gain > maxGain)
+                        {
+                            maxGain = gain;
+                            bestFF1 = ff1;
+                            bestFF2 = ff2;
+                            targetFF = ff;
+                        }
+                    }
+                }
+            }
+        }
+        // TODO: bank the best pair
+
+    }
 }
 
 void Solver::display()

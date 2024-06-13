@@ -4,6 +4,7 @@
 #include <sstream>
 #include <string>
 #include <vector>
+#include <map>
 #include <unordered_map>
 #include <cmath>
 #include <climits>
@@ -80,6 +81,8 @@ class Solver
         std::string makeUniqueName();
         double cal_total_hpwl();
         void checkCLKDomain();
+        void constructFFsCLKDomain();
+        std::vector<int> regionQuery(std::vector<FF*> ffs, long unsigned int idx, int radius);
 
         // Main Algorithms
         // 1. Debank all FFs
@@ -89,7 +92,11 @@ class Solver
         void forceDirectedPlaceFF(FF* ff);
         void forceDirectedPlaceFFLock(const int ff_idx, std::vector<bool>& locked, std::vector<char>& lock_cnt, int& lock_num);
         void forceDirectedPlacement();
-        // 3. Legalization
+        // 3. Clustering in each clock domain
+        std::vector<std::vector<FF*>> clusteringFFs(long unsigned int clkdomain_idx);
+        // 4. Greedy banking
+        void greedyBanking(std::vector<std::vector<FF*>> clusters);
+        double cal_banking_gain(FF* ff1, FF* ff2, LibCell* targetFF);
+        // 5. Legalization
         void legalize();
-
 };
