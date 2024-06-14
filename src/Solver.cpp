@@ -497,8 +497,8 @@ void Solver::debankAll()
             FF* newFF = new FF(x, y, makeUniqueName(), _baseFF, dq, clkPin);
             newFF->setClkDomain(clkDomain);
             debankedFFs.push_back(newFF);
-            delete clkPin;
         }
+        delete clkPin;
     }
     for(long unsigned int i=0;i<_ffs.size();i++)
     {
