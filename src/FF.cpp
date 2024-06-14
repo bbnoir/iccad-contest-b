@@ -50,7 +50,11 @@ FF::FF(int x, int y, std::string inst_name, LibCell* lib_cell, std::vector<std::
     _clkPin->copyConnection(clks[0]);
     for (auto clk : clks)
     {
-        _clkPin->addOriginalName(clk->getOriginalName());
+        std::vector<std::string> ori_names = clk->getOriginalNames();
+        for (auto ori_name : ori_names)
+        {
+            _clkPin->addOriginalName(ori_name);
+        }
     }
 
     // dq
