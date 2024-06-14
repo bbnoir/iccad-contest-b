@@ -413,10 +413,12 @@ void Solver::bankFFs(FF* ff1, FF* ff2, LibCell* targetFF)
     std::vector<std::pair<Pin*, Pin*>> dqPairs;
     dqPairs.insert(dqPairs.end(), dqPairs1.begin(), dqPairs1.end());
     dqPairs.insert(dqPairs.end(), dqPairs2.begin(), dqPairs2.end());
-    Pin* clkPin = ff1->getClkPin();
+    std::vector<Pin*> clkPins;
+    clkPins.push_back(ff1->getClkPin());
+    clkPins.push_back(ff2->getClkPin());
     // create a new FF
     int x = ff1->getX(), y = ff1->getY();
-    FF* newFF = new FF(x, y, makeUniqueName(), targetFF, dqPairs, clkPin);
+    FF* newFF = new FF(x, y, makeUniqueName(), targetFF, dqPairs, clkPins);
     newFF->setClkDomain(ff1->getClkDomain());
     addFF(newFF);
     // place the new FF
@@ -1033,6 +1035,10 @@ void Solver::dump(std::string filename)
             out << pin->getOriginalName() << " map " << pin->getCell()->getInstName() << "/" << pin->getName() << endl;
         }
         Pin* clkPin = ff->getClkPin();
-        out << clkPin->getOriginalName() << " map " << clkPin->getCell()->getInstName() << "/" << clkPin->getName() << endl;
+        std::vector<std::string> clkPinNames = ff->getClkPin()->getOriginalNames();
+        for(auto clkPinName : clkPinNames)
+        {
+            out << clkPinName << " map " << clkPin->getCell()->getInstName() << "/" << clkPin->getName() << endl;
+        }
     }
 }

@@ -22,7 +22,12 @@ std::string Pin::getName()
 
 std::string Pin::getOriginalName()
 {
-    return _originalCellPinName;
+    return _originalCellPinNames[0];
+}
+
+std::vector<std::string> Pin::getOriginalNames()
+{
+    return _originalCellPinNames;
 }
 
 int Pin::getX()
@@ -91,12 +96,19 @@ void Pin::setCell(Cell* cell)
 
 void Pin::setOriginalName()
 {
-    _originalCellPinName = this->getCell()->getInstName() + "/" + this->getName();
+    _originalCellPinNames.clear();
+    _originalCellPinNames.push_back(this->getCell()->getInstName() + "/" + this->getName());
 }
 
 void Pin::setOriginalName(std::string ori_name)
 {
-    _originalCellPinName = ori_name;
+    _originalCellPinNames.clear();
+    _originalCellPinNames.push_back(ori_name);
+}
+
+void Pin::addOriginalName(std::string ori_name)
+{
+    _originalCellPinNames.push_back(ori_name);
 }
 
 void Pin::setFaninPin(Pin* pin)

@@ -26,6 +26,7 @@ class Pin
         
         std::string getName();
         std::string getOriginalName();
+        std::vector<std::string> getOriginalNames();
         int getX();
         int getY();
         int getGlobalX();
@@ -43,6 +44,7 @@ class Pin
         void setCell(Cell* cell);
         void setOriginalName();
         void setOriginalName(std::string ori_name);
+        void addOriginalName(std::string ori_name);
         void setFaninPin(Pin* pin);
         void addFanoutPin(Pin* pin);
 
@@ -56,7 +58,7 @@ class Pin
         int _x;
         int _y;
         std::string _name;
-        std::string _originalCellPinName;
+        std::vector<std::string> _originalCellPinNames;
         // which cell this pin belongs to
         Cell* _cell;
         double _slack;

@@ -32,7 +32,7 @@ FF::FF(int x, int y, std::string inst_name, LibCell* lib_cell, std::pair<Pin*, P
     newOutPin->setCell(this);
 }
 
-FF::FF(int x, int y, std::string inst_name, LibCell* lib_cell, std::vector<std::pair<Pin*, Pin*>> dqpairs, Pin* clk)
+FF::FF(int x, int y, std::string inst_name, LibCell* lib_cell, std::vector<std::pair<Pin*, Pin*>> dqpairs, std::vector<Pin*> clks)
 {
     if (lib_cell->bit < int(dqpairs.size()))
     {
@@ -47,8 +47,11 @@ FF::FF(int x, int y, std::string inst_name, LibCell* lib_cell, std::vector<std::
     // clk
     Pin* libClkPin = lib_cell->clkPin;
     _clkPin = new Pin(PinType::FF_CLK, libClkPin->getX(), libClkPin->getY(), libClkPin->getName(), this);
-    _clkPin->copyConnection(clk);
-    _clkPin->setOriginalName(clk->getOriginalName());
+    _clkPin->copyConnection(clks[0]);
+    for (auto clk : clks)
+    {
+        _clkPin->addOriginalName(clk->getOriginalName());
+    }
 
     // dq
     for (size_t i = 0; i < dqpairs.size(); i++)
