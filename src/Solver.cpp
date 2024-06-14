@@ -634,13 +634,22 @@ void Solver::solve()
     debankAll();
     std::cout<<"Start to force directed placement"<<std::endl;
     forceDirectedPlacement();
-    constructFFsCLKDomain();
     std::cout << "Start clustering and banking" << std::endl;
-    for(long unsigned int i = 0; i < _ffs_clkdomains.size(); i++)
+    size_t prev_ffs_size;
+    std::cout << "FFs size: " << _ffs.size() << std::endl;
+    do
     {
-        std::vector<std::vector<FF*>> cluster = clusteringFFs(i);
-        greedyBanking(cluster);
-    }
+        constructFFsCLKDomain();
+        prev_ffs_size = _ffs.size();
+        for(long unsigned int i = 0; i < _ffs_clkdomains.size(); i++)
+        {
+            std::vector<std::vector<FF*>> cluster = clusteringFFs(i);
+            greedyBanking(cluster);
+        }
+        std::cout << "FFs size after greedy banking: " << _ffs.size() << std::endl;
+    } while (prev_ffs_size != _ffs.size());
+    std::cout << "Start to force directed placement (second)" << std::endl;
+    forceDirectedPlacement();
     std::cout<<"Start to legalize"<<std::endl;
     legalize();
     // check for overlapping
@@ -859,36 +868,42 @@ void Solver::greedyBanking(std::vector<std::vector<FF*>> clusters)
             continue;
         // find the best pair to bank
         // TODO: Complete the algorithm
-        double maxGain = 0.0;
-        FF* bestFF1 = nullptr;
-        FF* bestFF2 = nullptr;
-        LibCell* targetFF = nullptr;
-        for(size_t i = 0; i < cluster.size(); i++)
+        double maxGain;
+        do
         {
-            for(size_t j = i+1; j < cluster.size(); j++)
+            maxGain = 0.0;
+            FF* bestFF1 = nullptr;
+            FF* bestFF2 = nullptr;
+            LibCell* targetFF = nullptr;
+            for(size_t i = 0; i < cluster.size(); i++)
             {
-                FF* ff1 = cluster[i];
-                FF* ff2 = cluster[j];
-                for(auto ff : _ffsLibList)
+                for(size_t j = i+1; j < cluster.size(); j++)
                 {
-                    if(ff->bit == ff1->getBit() + ff2->getBit())
+                    FF* ff1 = cluster[i];
+                    FF* ff2 = cluster[j];
+                    for(auto ff : _ffsLibList)
                     {
-                        double gain = cal_banking_gain(ff1, ff2, ff);
-                        if(gain > maxGain || bestFF1 == nullptr)
+                        if(ff->bit == ff1->getBit() + ff2->getBit())
                         {
-                            maxGain = gain;
-                            bestFF1 = ff1;
-                            bestFF2 = ff2;
-                            targetFF = ff;
+                            double gain = cal_banking_gain(ff1, ff2, ff);
+                            if(gain > maxGain || bestFF1 == nullptr)
+                            {
+                                maxGain = gain;
+                                bestFF1 = ff1;
+                                bestFF2 = ff2;
+                                targetFF = ff;
+                            }
                         }
                     }
                 }
             }
-        }
-        if (bestFF1 != nullptr && bestFF2 != nullptr && targetFF != nullptr)
-        {
-            bankFFs(bestFF1, bestFF2, targetFF);
-        }
+            if (maxGain > 0)
+            {
+                bankFFs(bestFF1, bestFF2, targetFF);
+                cluster.erase(std::remove(cluster.begin(), cluster.end(), bestFF1), cluster.end());
+                cluster.erase(std::remove(cluster.begin(), cluster.end(), bestFF2), cluster.end());
+            }
+        } while (maxGain > 0);
     }
 }
 
