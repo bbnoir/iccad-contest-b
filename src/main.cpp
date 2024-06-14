@@ -20,7 +20,7 @@ int main(int argc, char* argv[])
     solver->dump(output_file);
 
     Renderer* renderer = new Renderer(solver);
-    // renderer->render();
+    renderer->render();
 
     // solver->display();
 
