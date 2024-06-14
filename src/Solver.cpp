@@ -393,50 +393,36 @@ void Solver::deleteFF(FF* ff)
 {
     _ffs.erase(std::remove(_ffs.begin(), _ffs.end(), ff), _ffs.end());
     _ffsMap.erase(ff->getInstName());
-    // TODO: fix delete FF also delete nets
-    // delete ff;
+    delete ff;
 }
 
 void Solver::bankFFs(FF* ff1, FF* ff2, LibCell* targetFF)
 {
-    // calculate the new position
-    int x = ff1->getX();
-    int y = ff1->getY();
+    if (ff1->getClkDomain() != ff2->getClkDomain())
+    {
+        std::cerr << "Error: Banking FFs in different clk domains" << std::endl;
+        std::cerr << "FF1: " << ff1->getInstName() << " clk domain: " << ff1->getClkDomain() << std::endl;
+        std::cerr << "FF2: " << ff2->getInstName() << " clk domain: " << ff2->getClkDomain() << std::endl;
+        exit(1);
+    }
+    removeCell(ff1);
+    removeCell(ff2);
+    // get the DQ pairs and clk pin
+    std::vector<std::pair<Pin*, Pin*>> dqPairs1 = ff1->getDQpairs();
+    std::vector<std::pair<Pin*, Pin*>> dqPairs2 = ff2->getDQpairs();
+    std::vector<std::pair<Pin*, Pin*>> dqPairs;
+    dqPairs.insert(dqPairs.end(), dqPairs1.begin(), dqPairs1.end());
+    dqPairs.insert(dqPairs.end(), dqPairs2.begin(), dqPairs2.end());
+    Pin* clkPin = ff1->getClkPin();
     // create a new FF
-    FF* newFF = new FF(x, y, makeUniqueName(), targetFF);
+    int x = ff1->getX(), y = ff1->getY();
+    FF* newFF = new FF(x, y, makeUniqueName(), targetFF, dqPairs, clkPin);
+    newFF->setClkDomain(ff1->getClkDomain());
     addFF(newFF);
-    // connect the pins
-    std::vector<Pin*> pins1 = ff1->getPins();
-    std::vector<Pin*> pins2 = ff2->getPins();
-    std::vector<Pin*> newPins = newFF->getPins();
-    // connect clk pin
-    newPins[1]->connect(pins1[1]->getNet());
-    pins1[1]->getNet()->addPin(newPins[1]);
-    // connect d pin
-    newPins[0]->connect(pins1[0]->getNet());
-    newPins[3]->connect(pins2[0]->getNet());
-    pins1[0]->getNet()->addPin(newPins[0]);
-    pins2[0]->getNet()->addPin(newPins[3]);
-    // connect q pin
-    newPins[2]->connect(pins1[2]->getNet());
-    newPins[4]->connect(pins2[2]->getNet());
-    pins1[2]->getNet()->addPin(newPins[2]);
-    pins2[2]->getNet()->addPin(newPins[4]);
-    // remove the old pins
-    for(auto pin : pins1)
-    {
-        pin->getNet()->removePin(pin);
-    }
-    for(auto pin : pins2)
-    {
-        pin->getNet()->removePin(pin);
-    }
     // place the new FF
     placeCell(newFF, true);
     forceDirectedPlaceFF(newFF);
     // delete the old FFs
-    removeCell(ff1);
-    removeCell(ff2);
     deleteFF(ff1);
     deleteFF(ff2);
 }
@@ -482,11 +468,6 @@ void Solver::debankAll()
     }
     for (auto ff : _ffs)
     {
-        // if (ff->getCellName() == _baseFF->cell_name)
-        // {
-        //     debankedFFs.push_back(ff);
-        //     continue;
-        // }
         std::vector<std::pair<Pin*, Pin*>> dqPairs = ff->getDQpairs();
         Pin* clkPin = ff->getClkPin();
         const int x = ff->getX();
@@ -505,6 +486,7 @@ void Solver::debankAll()
         delete _ffs[i];
     }
     _ffs.clear();
+    _ffsMap.clear();
     for (auto ff : debankedFFs)
     {
         addFF(ff);
@@ -518,16 +500,20 @@ void Solver::forceDirectedPlaceFF(FF* ff)
     double x_sum = 0.0;
     double y_sum = 0.0;
     int num_pins = 0;
-    for(auto pin : ff->getPins())
+    for (auto inPin : ff->getInputPins())
     {
-        Net* net = pin->getNet();
-        for(auto other_pin : net->getPins())
+        Pin* fanin = inPin->getFaninPin();
+        x_sum += fanin->getGlobalX();
+        y_sum += fanin->getGlobalY();
+        num_pins++;
+    }
+    for (auto outPin : ff->getOutputPins())
+    {
+        for (auto fanout : outPin->getFanoutPins())
         {
-            if(other_pin == pin)
-                continue;
-            x_sum += other_pin->getGlobalX();
-            y_sum += other_pin->getGlobalY();
-            num_pins++;
+            x_sum += fanout->getGlobalX();
+            y_sum += fanout->getGlobalY();
+            num_pins++;            
         }
     }
     int x_avg = x_sum / num_pins;
@@ -646,13 +632,15 @@ void Solver::solve()
     debankAll();
     std::cout<<"Start to force directed placement"<<std::endl;
     forceDirectedPlacement();
-    std::cout<<"Start to legalize"<<std::endl;
-    legalize();
+    constructFFsCLKDomain();
+    std::cout << "Start clustering and banking" << std::endl;
     for(long unsigned int i = 0; i < _ffs_clkdomains.size(); i++)
     {
         std::vector<std::vector<FF*>> cluster = clusteringFFs(i);
-        // std::cout<< "There are "<<cluster.size()<<" clusters in clk domain "<<i<<std::endl;
+        greedyBanking(cluster);
     }
+    std::cout<<"Start to legalize"<<std::endl;
+    legalize();
     // check for overlapping
     std::vector<std::vector<Site*>> siteRows = _siteMap->getSiteRows();
     for(long unsigned int i = 0; i < siteRows.size(); i++)
@@ -675,7 +663,6 @@ void Solver::solve()
             std::cerr << "FF not placed in Die: " << ff->getInstName() << std::endl;
         }
     }
-    constructFFsCLKDomain();
 }
 
 int Solver::isAvailabeForMove(std::vector<Site*> row, int width_num_sites, int idx)
@@ -815,6 +802,8 @@ std::vector<std::vector<FF*>> Solver::clusteringFFs(long unsigned int clkdomain_
         for(long unsigned int j = 0; j < neighbors.size(); j++)
         {
             int idx = neighbors[j];
+            if (visited[idx])
+                continue;
             if(!visited[idx])
             {
                 visited[idx] = true;
@@ -872,9 +861,9 @@ void Solver::greedyBanking(std::vector<std::vector<FF*>> clusters)
         FF* bestFF1 = nullptr;
         FF* bestFF2 = nullptr;
         LibCell* targetFF = nullptr;
-        for(long unsigned int i = 0; i < cluster.size(); i++)
+        for(size_t i = 0; i < cluster.size(); i++)
         {
-            for(long unsigned int j = i+1; j < cluster.size(); j++)
+            for(size_t j = i+1; j < cluster.size(); j++)
             {
                 FF* ff1 = cluster[i];
                 FF* ff2 = cluster[j];
@@ -883,7 +872,7 @@ void Solver::greedyBanking(std::vector<std::vector<FF*>> clusters)
                     if(ff->bit == ff1->getBit() + ff2->getBit())
                     {
                         double gain = cal_banking_gain(ff1, ff2, ff);
-                        if(gain > maxGain)
+                        if(gain > maxGain || bestFF1 == nullptr)
                         {
                             maxGain = gain;
                             bestFF1 = ff1;
@@ -894,8 +883,10 @@ void Solver::greedyBanking(std::vector<std::vector<FF*>> clusters)
                 }
             }
         }
-        // TODO: bank the best pair
-
+        if (bestFF1 != nullptr && bestFF2 != nullptr && targetFF != nullptr)
+        {
+            bankFFs(bestFF1, bestFF2, targetFF);
+        }
     }
 }
 
