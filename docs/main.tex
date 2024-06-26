@@ -63,6 +63,16 @@ The debanking process is shown in Figure \ref{fig:debanking}. The debanked flip-
 \end{figure}
 
 \subsubsection{Force-directed placement}
+After debanking the flip-flops, we perform force-directed placement to determine the placement of the single-bit flip-flops. The force(weight) of each net is determined by the slack of the net. The first debanking step and this step are used to optimize the timing condition of the circuit.
+
+In this problem, the cells are split into two types, combinational cells and flip-flops. The combinational cells are not allowed to move. So we should deal with two conditions when moving a flip-flop:
+
+\begin{itemize}
+    \item \textbf{All the connected cells of this flip-flop are combinational cells:} In this case, we can directly move the flip-flop to the timing optimal position.
+    \item \textbf{There are flip-flops in the connected cells:} In this case, directly moving the flip-flop may not achieve the best timing condition since other connected flip-flops may move as well. So we should consider the movement of the connected flip-flops and the movement of the flip-flop itself. We use a iterative greedy method to solve this problem: We move one flip-flop at a time and fix the position of the other flip-flops. We repeat this process until the positions of all flip-flops are fixed or the distances converge.
+\end{itemize}
+
+For this step, we introduce a \textbf{"lock" mechanism} to achieve high efficiency. The lock mechanism is used to lock the position of the flip-flops that have been placed in the optimal position or the distances for several iterations have converged. The locked flip-flops will not be moved in the following iterations. Since the condition 1 discussed above will lock the flip-flop in the first iteration, \textbf{there is no need to consider which condition the flip-flop belongs to}, highly improving the efficiency of the algorithm.
 
 \subsubsection{Clustering}
 
