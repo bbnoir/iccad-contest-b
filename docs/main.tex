@@ -8,12 +8,9 @@
 \setlength{\parskip}{2pt}
 \usepackage{moresize}
 \usepackage{placeins}
-\usepackage{xcolor}
-\usepackage{minted}
-\usemintedstyle{fruity}
+\usepackage{indentfirst}
 \usepackage{amsmath}
-\usepackage{caption}
-\usepackage{subcaption}
+\usepackage{caption, subcaption}
 
 \begin{document}
 
@@ -28,7 +25,8 @@
 \section{ICCAD 繳交截圖}
 
 \section{Introduction}
-We take the \textbf{problem B} of the ICCAD contest as our final project. The problem is "Power and Timing Optimization Using Multibit Flip-Flop". Our method to solve this problem is mainly based on \textbf{clustering} and \textbf{gain-based greedy algorithm}. The clustering algorithm we use is inspired by the "Effective Mean Shift Algorithm" described in the paper "Graceful Register Clustering by Effective Mean Shift Algorithm for Power and Timing Balancing" \cite{jiang}.
+
+\indent We take the \textbf{problem B} of the ICCAD contest as our final project. The problem is "Power and Timing Optimization Using Multibit Flip-Flop". Our method to solve this problem is mainly based on \textbf{clustering} and \textbf{gain-based greedy algorithm}. The clustering algorithm we use is inspired by the "Effective Mean Shift Algorithm" described in the paper "Graceful Register Clustering by Effective Mean Shift Algorithm for Power and Timing Balancing" \cite{jiang}.
 
 \section{Method}
 
@@ -36,7 +34,7 @@ We take the \textbf{problem B} of the ICCAD contest as our final project. The pr
 
 \begin{figure}[htbp]
     \centering
-    \includegraphics[width=0.7\textwidth]{flowchart.png}
+    \includegraphics[width=0.9\textwidth]{flowchart2.png}
     \caption{Flowchart of our method}
     \label{fig:flowchart}
 \end{figure}
@@ -53,6 +51,16 @@ We take the \textbf{problem B} of the ICCAD contest as our final project. The pr
 Our flow of the method is shown in Figure \ref{fig:flowchart}. We will explain each step in detail in the following subsections.
 
 \subsubsection{Debanking all flip-flops}
+In the initial given circuit, there are flip-flops of different bit-widths and different types. We first debank all flip-flops to single-bit flip-flops. The type of the single-bit flip-flop, called \textbf{base flip-flop} in our method, is chosen to be the single-bit flip-flop with the least cost calculated by the given cost function. The timing part of the cost is calculated by the q pin delay of the flip-flop in this step.
+
+The debanking process is shown in Figure \ref{fig:debanking}. The debanked flip-flops are placed in the same position as the original flip-flops, and the connections are also kept the same. In this step, we allow the cells to overlap with each other.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.7\textwidth]{debank.png}
+    \caption{Debanking process}
+    \label{fig:debanking}
+\end{figure}
 
 \subsubsection{Force-directed placement}
 
