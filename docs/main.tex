@@ -76,6 +76,14 @@ For this step, we introduce a \textbf{"lock" mechanism} to achieve high efficien
 
 \subsubsection{Clustering}
 
+Our clustering algorithm is inspired by the "Effective Mean Shift Algorithm" described in the paper "Graceful Register Clustering by Effective Mean Shift Algorithm for Power and Timing Balancing" \cite{jiang}. However, we have made some modifications to adapt it to our specific needs. \textbf{Instead of directly applying the clustering algorithm for power and timing balancing, we use it to create clusters of flip-flops for our next step, which is greedy banking.} This allows us to optimize the time complexity of the greedy banking process by performing it on smaller clusters rather than on all flip-flops at once. Additionally, we believe that the greedy banking process should only consider nearby flip-flops within each cluster, which further improves its efficiency.
+
+In this step, there are two part of parameters to be tuned:
+\begin{itemize}
+    \item \textbf{Bandwidth:} The bandwidth of the clustering algorithm. This parameter determines the size of the cluster. A larger bandwidth will result in fewer clusters, while a smaller bandwidth will result in more clusters. Fewer clusters may lead to a better banking result, but it also increases the time complexity of the greedy banking process.
+    \item \textbf{Effective Negihbors:} The number of effective neighbors of a flip-flop. This parameter determines the number of flip-flops that are considered as neighbors of a flip-flop when calculating the mean shift. This parameter mainly affects the runtime of the clustering algorithm.
+\end{itemize}
+
 \subsubsection{Greedy banking in each cluster}
 
 \subsubsection{Placement legalization}
@@ -90,7 +98,7 @@ For this step, we introduce a \textbf{"lock" mechanism} to achieve high efficien
 
 \begin{thebibliography}{9}
     \bibitem{jiang} 
-    Ya-Chu Chang, Tung-Wei Lin, Iris Hui-Ru Jiang, and GiJoon Nam. "Graceful Register Clustering by Effective Mean Shift Algorithm for Power and Timing Balancing." Proceedings of the 2019 International Symposium on Physical Design (ISPD '19), 2019.
+    Ya-Chu Chang, Tung-Wei Lin, Iris Hui-Ru Jiang, and GiJoon Nam. "Graceful Register Clustering by Effective Mean Shift Algorithm for Power and Timing Balancing." \textit{Proceedings of the 2019 International Symposium on Physical Design (ISPD '19)}, 2019.
 \end{thebibliography}
 
 \end{document}
