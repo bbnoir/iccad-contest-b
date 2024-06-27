@@ -86,7 +86,26 @@ In this step, there are two part of parameters to be tuned:
 
 \subsubsection{Greedy banking in each cluster}
 
+After clustering the flip-flops, we perform the greedy banking algorithm in each cluster. The greedy banking algorithm is as follows:
+
+\begin{enumerate}
+    \item Calculate the gain of all pairs of flip-flops in the cluster. The gain of a pair of flip-flops is defined as \textbf{the reduction of the cost function if the two flip-flops are banked together and placed in the optimal position using the force-directed placement algorithm}. The cost function is provided in the problem as follows:
+    $$
+    $$
+    \item Choose the pair of flip-flops with the highest gain and bank them together.
+    \item Repeat step 1 and 2 until no pair of flip-flops has a positive gain.
+\end{enumerate}
+
+
+After the greedy banking process, the positions of the flip-flops are updated, and the connections are also updated accordingly. This may lead to non-optimal timing conditions in this state. So we need to \textbf{perform the force-directed placement algorithm again} to optimize the timing condition.
+
 \subsubsection{Placement legalization}
+
+The above steps would lead to illegal placements as they allow the flip-flops to overlap with each other. So we need to perform placement legalization to avoid the overlap of flip-flops. Our placement legalization algorithm is as follows:
+
+\begin{enumerate}
+    \item 
+\end{enumerate}
 
 \subsubsection{Finetuning based on utilization}
 
