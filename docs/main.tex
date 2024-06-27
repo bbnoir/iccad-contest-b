@@ -22,7 +22,11 @@
     \large \textbf{110511010 楊育陞 110511067 葉哲伍}
 \end{center}
 
-\section{ICCAD 繳交截圖}
+\begin{figure}[ht]
+    \centering
+    \includegraphics[width=0.7\textwidth]{handin.png}
+    \caption*{ICCAD Contest 繳交截圖}
+\end{figure}
 
 \section{Introduction}
 
@@ -76,21 +80,132 @@ For this step, we introduce a \textbf{"lock" mechanism} to achieve high efficien
 
 \subsubsection{Clustering}
 
+Our clustering algorithm is inspired by the "Effective Mean Shift Algorithm" described in the paper "Graceful Register Clustering by Effective Mean Shift Algorithm for Power and Timing Balancing" \cite{jiang}. However, we have made some modifications to adapt it to our specific needs. \textbf{Instead of directly applying the clustering algorithm for power and timing balancing, we use it to create clusters of flip-flops for our next step, which is greedy banking.} This allows us to optimize the time complexity of the greedy banking process by performing it on smaller clusters rather than on all flip-flops at once. Additionally, we believe that the greedy banking process should only consider nearby flip-flops within each cluster, which further improves its efficiency.
+
+In this step, there are two part of parameters to be tuned:
+\begin{itemize}
+    \item \textbf{Bandwidth:} The bandwidth of the clustering algorithm. This parameter determines the size of the cluster. A larger bandwidth will result in fewer clusters, while a smaller bandwidth will result in more clusters. Fewer clusters may lead to a better banking result, but it also increases the time complexity of the greedy banking process.
+    \item \textbf{Effective Negihbors:} The number of effective neighbors of a flip-flop. This parameter determines the number of flip-flops that are considered as neighbors of a flip-flop when calculating the mean shift. This parameter mainly affects the runtime of the clustering algorithm.
+\end{itemize}
+
 \subsubsection{Greedy banking in each cluster}
+
+After clustering the flip-flops, we perform the greedy banking algorithm in each cluster. The greedy banking algorithm is as follows:
+
+\begin{enumerate}
+    \item Calculate the gain of all pairs of flip-flops in the cluster. The gain of a pair of flip-flops is defined as \textbf{the reduction of the cost function if the two flip-flops are banked together and placed in the optimal position using the force-directed placement algorithm}. The cost function is provided in the problem as follows, here the penalty term $D$ is ignored in this step:
+    $$
+    \sum_{\forall i \in FF}(\alpha \cdot TNS(i) + \beta \cdot Power(i) + \gamma \cdot Area(i)) + \lambda \cdot D
+    $$
+    \item Choose the pair of flip-flops with the highest gain and bank them together.
+    \item Repeat step 1 and 2 until no pair of flip-flops has a positive gain.
+\end{enumerate}
+
+
+After the greedy banking process, the positions of the flip-flops are updated, and the connections are also updated accordingly. This may lead to non-optimal timing conditions in this state. So we need to \textbf{perform the force-directed placement algorithm again} to optimize the timing condition.
 
 \subsubsection{Placement legalization}
 
+The above steps would lead to illegal placements as they allow the flip-flops to overlap with each other. So we need to perform placement legalization to avoid the overlap of flip-flops. Our placement legalization algorithm is as follows:
+
+Starting from the bottom row, for each row:
+
+\begin{enumerate}
+    \item Remove every FF from the row and sort the FFs based on their x coordinates.
+    \item Scan the row from left to right and place the FFs if available.
+    \item If the scan is done and there are remaining FFs, store them as orphans.
+\end{enumerate}
+
+Once all rows are finished, find the available sites for orphans by performing a BFS from their original positions.
+
 \subsubsection{Finetuning based on utilization}
+
+In the cost function provided in the problem, there is a penalty term $D$ that is related to the utilization rate of cells in the bins. All the above steps ignore this term. So we fineture the placement based on the utilization rate to optimize the cost function in this step. Consider one bin at a time, if the utilization rate of the bin is higher than a threshold, we try to move the flip-flops in the bin to other bins to reduce the utilization rate. This would lead to a higher cost as the change of wirelength. \textbf{If the cost function is reduced, we accept the move, otherwise we reject the move.} We repeat this process until the cost converges.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.9\textwidth]{util.png}
+    \caption{Finetuning based on utilization}
+    \label{fig:finetuning}
+\end{figure}
 
 \subsubsection{Back to clustering with different parameters}
 
+After above steps, we iteratively go back to the clustering step with different parameters then perform following steps. The different parameters aim to avoid same clustering results as the previous iteration to expand the search space.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.7\textwidth]{back.png}
+    \caption{Back to clustering with different parameters}
+    \label{fig:back}
+\end{figure}
+\FloatBarrier
+
+\subsection{Parallelization}
+
+When designing our method, we carefully considered the potential for parallelization. We will explain the potential for parallelization in each step:
+
+\begin{itemize}
+    \item \textbf{Debanking:} This step can be parallelized by debanking different flip-flops in parallel since there is no overlap between different flip-flops in the initial circuit.
+    \item \textbf{Force-directed placement:} This step can be parallelized by moving different flip-flops in parallel. \textbf{To avoid conflicts, we allow the flip-flops to overlap with each other in this step.}
+    \item \textbf{Clustering:} This step can be parallelized by mean shifting different flip-flops in parallel as in the original paper.
+    \item \textbf{Greedy banking:} This step can be parallelized by applying the greedy banking algorithm to different clusters in parallel.
+\end{itemize}
+
+Since the runtime of our program in this contest is limited, we want to make the best use of the parallelization to improve the efficiency of our method. But the implementation of parallelization is relatively complex, so we consider to implement it in the clustering and greedy banking steps first, which are the most time-consuming steps in our method.
+
+
 \section{Result}
+
+For convinience, we develop a visualization tool to show the placement of cells. In the following figures, the red rectangles represent the flip-flops, the blue rectangles represent the combinational cells, and the shallow blue lines represent the placement rows provided in the testcase. All the wires are not shown in the figures.
+
+\newpage
+
+\subsection{Result of the provided testcase}
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.9\textwidth]{results/init.png}
+    \caption{Initial placement}
+\end{figure}
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.9\textwidth]{results/debank.png}
+    \caption{After debanking}
+\end{figure}
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.9\textwidth]{results/force1.png}
+    \caption{After force-directed placement}
+\end{figure}
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.9\textwidth]{results/banking.png}
+    \caption{After greedy banking}
+\end{figure}
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.9\textwidth]{results/force2.png}
+    \caption{After force-directed placement again}
+\end{figure}
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.9\textwidth]{results/legal.png}
+    \caption{After placement legalization}
+\end{figure}
+
+\FloatBarrier
 
 \section{Conclusion}
 
 \begin{thebibliography}{9}
     \bibitem{jiang} 
-    Ya-Chu Chang, Tung-Wei Lin, Iris Hui-Ru Jiang, and GiJoon Nam. "Graceful Register Clustering by Effective Mean Shift Algorithm for Power and Timing Balancing." Proceedings of the 2019 International Symposium on Physical Design (ISPD '19), 2019.
+    Ya-Chu Chang, Tung-Wei Lin, Iris Hui-Ru Jiang, and GiJoon Nam. "Graceful Register Clustering by Effective Mean Shift Algorithm for Power and Timing Balancing." \textit{Proceedings of the 2019 International Symposium on Physical Design (ISPD '19)}, 2019.
 \end{thebibliography}
 
 \end{document}
