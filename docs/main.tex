@@ -89,8 +89,9 @@ In this step, there are two part of parameters to be tuned:
 After clustering the flip-flops, we perform the greedy banking algorithm in each cluster. The greedy banking algorithm is as follows:
 
 \begin{enumerate}
-    \item Calculate the gain of all pairs of flip-flops in the cluster. The gain of a pair of flip-flops is defined as \textbf{the reduction of the cost function if the two flip-flops are banked together and placed in the optimal position using the force-directed placement algorithm}. The cost function is provided in the problem as follows:
+    \item Calculate the gain of all pairs of flip-flops in the cluster. The gain of a pair of flip-flops is defined as \textbf{the reduction of the cost function if the two flip-flops are banked together and placed in the optimal position using the force-directed placement algorithm}. The cost function is provided in the problem as follows, here the penalty term $D$ is ignored in this step:
     $$
+    \sum_{\forall i \in FF}(\alpha \cdot TNS(i) + \beta \cdot Power(i) + \gamma \cdot Area(i)) + \lambda \cdot D
     $$
     \item Choose the pair of flip-flops with the highest gain and bank them together.
     \item Repeat step 1 and 2 until no pair of flip-flops has a positive gain.
