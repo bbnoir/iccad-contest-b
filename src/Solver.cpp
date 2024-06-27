@@ -222,7 +222,7 @@ void Solver::parse_input(std::string filename)
             }else if(_outputPinsMap.find(pinName) != _outputPinsMap.end()){
                 p = _outputPinsMap[pinName];
             }else{
-                cout << "Pin not found: " << pinName << endl;
+                // cout << "Pin not found: " << pinName << endl;
                 exit(1);
             }
             pins.push_back(p);
@@ -296,7 +296,7 @@ void Solver::parse_input(std::string filename)
     }
     // set power to instances
 
-    cout << "File parsed successfully" << endl;
+    // cout << "File parsed successfully" << endl;
     in.close();
 }
 
@@ -306,10 +306,10 @@ void Solver::checkCLKDomain()
     int sum = 0;
     for(long unsigned int i=0;i<_ffs_clkdomains.size();i++){
         sum += _ffs_clkdomains[i].size();
-        std::cout<<"Sum from clk domain "<<i<<" : "<<_ffs_clkdomains[i].size()<<std::endl;
+        // std::cout<<"Sum from clk domain "<<i<<" : "<<_ffs_clkdomains[i].size()<<std::endl;
     }
-    std::cout<<"Sum from CLK domain: "<<sum<<std::endl;
-    std::cout<<"Sum from list: "<<_ffs.size()<<std::endl;
+    // std::cout<<"Sum from CLK domain: "<<sum<<std::endl;
+    // std::cout<<"Sum from list: "<<_ffs.size()<<std::endl;
 }
 
 void Solver::constructFFsCLKDomain()
@@ -458,7 +458,7 @@ void Solver::chooseBaseFF()
             _baseFF = ff;
         }
     }
-    std::cout << "Base FF: " << _baseFF->cell_name << std::endl;
+    // std::cout << "Base FF: " << _baseFF->cell_name << std::endl;
 }
 
 void Solver::debankAll()
@@ -584,13 +584,13 @@ void Solver::forceDirectedPlaceFFLock(const int ff_idx, std::vector<bool>& locke
 
 void Solver::forceDirectedPlacement()
 {
-    std::cout << "Force directed placement" << std::endl;
+    // std::cout << "Force directed placement" << std::endl;
     bool converged = false;
     int max_iter = 1000;
     int iter = 0;
     const int numFFs = _ffs.size();
     const int lockThreshold = numFFs;
-    std::cout << "Lock threshold: " << lockThreshold << std::endl;
+    // std::cout << "Lock threshold: " << lockThreshold << std::endl;
     int lock_num = 0;
     std::vector<char> lock_cnt(numFFs, 0);
     std::vector<bool> locked(numFFs, false);
@@ -599,7 +599,7 @@ void Solver::forceDirectedPlacement()
         {
             forceDirectedPlaceFFLock(i, locked, lock_cnt, lock_num);
         }
-        std::cout << "Iteration: " << iter << ", Lock/Total: " << lock_num << "/" << numFFs << std::endl;
+        // std::cout << "Iteration: " << iter << ", Lock/Total: " << lock_num << "/" << numFFs << std::endl;
         converged = lock_num >= lockThreshold;
     }
 }
@@ -632,11 +632,11 @@ void Solver::solve()
     chooseBaseFF();
     init_placement();
     debankAll();
-    std::cout<<"Start to force directed placement"<<std::endl;
+    // std::cout<<"Start to force directed placement"<<std::endl;
     forceDirectedPlacement();
-    std::cout << "Start clustering and banking" << std::endl;
+    // std::cout << "Start clustering and banking" << std::endl;
     size_t prev_ffs_size;
-    std::cout << "FFs size: " << _ffs.size() << std::endl;
+    // std::cout << "FFs size: " << _ffs.size() << std::endl;
     do
     {
         constructFFsCLKDomain();
@@ -646,34 +646,34 @@ void Solver::solve()
             std::vector<std::vector<FF*>> cluster = clusteringFFs(i);
             greedyBanking(cluster);
         }
-        std::cout << "FFs size after greedy banking: " << _ffs.size() << std::endl;
+        // std::cout << "FFs size after greedy banking: " << _ffs.size() << std::endl;
     } while (prev_ffs_size != _ffs.size());
-    std::cout << "Start to force directed placement (second)" << std::endl;
+    // std::cout << "Start to force directed placement (second)" << std::endl;
     forceDirectedPlacement();
-    std::cout<<"Start to legalize"<<std::endl;
+    // std::cout<<"Start to legalize"<<std::endl;
     legalize();
     // check for overlapping
-    std::vector<std::vector<Site*>> siteRows = _siteMap->getSiteRows();
-    for(long unsigned int i = 0; i < siteRows.size(); i++)
-    {
-        auto row = siteRows[i];
-        for(auto site: row)
-        {
-            if(site->isOverLapping()){
-                std::cerr << "Overlapping site at (" << site->getX() << ", " << site->getY() << ")" << std::endl;
-            }
-        }
-    }
-    // check FFs' placement
-    for(auto ff: _ffs)
-    {
-        if(ff->getSites().size() == 0)
-        {
-            std::cerr << "FF not placed: " << ff->getInstName() << std::endl;
-        }else if(ff->getX()<DIE_LOW_LEFT_X || ff->getX()+ff->getWidth()>DIE_UP_RIGHT_X || ff->getY()<DIE_LOW_LEFT_Y || ff->getY()+ff->getHeight()>DIE_UP_RIGHT_Y){
-            std::cerr << "FF not placed in Die: " << ff->getInstName() << std::endl;
-        }
-    }
+    // std::vector<std::vector<Site*>> siteRows = _siteMap->getSiteRows();
+    // for(long unsigned int i = 0; i < siteRows.size(); i++)
+    // {
+    //     auto row = siteRows[i];
+    //     for(auto site: row)
+    //     {
+    //         if(site->isOverLapping()){
+    //             std::cerr << "Overlapping site at (" << site->getX() << ", " << site->getY() << ")" << std::endl;
+    //         }
+    //     }
+    // }
+    // // check FFs' placement
+    // for(auto ff: _ffs)
+    // {
+    //     if(ff->getSites().size() == 0)
+    //     {
+    //         std::cerr << "FF not placed: " << ff->getInstName() << std::endl;
+    //     }else if(ff->getX()<DIE_LOW_LEFT_X || ff->getX()+ff->getWidth()>DIE_UP_RIGHT_X || ff->getY()<DIE_LOW_LEFT_Y || ff->getY()+ff->getHeight()>DIE_UP_RIGHT_Y){
+    //         std::cerr << "FF not placed in Die: " << ff->getInstName() << std::endl;
+    //     }
+    // }
 }
 
 int Solver::isAvailabeForMove(std::vector<Site*> row, int width_num_sites, int idx)
@@ -776,7 +776,7 @@ void Solver::legalize()
     }
     // place the orphans
     // no orphans in the testcase.
-    std::cout << "Orphans size: " << orphans.size() << std::endl;
+    // std::cout << "Orphans size: " << orphans.size() << std::endl;
     for(long unsigned int i = 0; i < orphans.size(); i++)
     {
         Cell* cell = orphans[i];
@@ -786,7 +786,7 @@ void Solver::legalize()
         cell->setX(nearest_site->getX());
         cell->setY(nearest_site->getY());
         placeCell(cell, false);
-        std::cout<<"i: "<<i<<std::endl;
+        // std::cout<<"i: "<<i<<std::endl;
         // std::cout << "Orphan FF: " << cell->getInstName() << " at (" << x << ", " << y << ")" << std::endl;
     }
 
@@ -869,7 +869,7 @@ std::vector<std::vector<FF*>> Solver::clusteringFFs(long unsigned int clkdomain_
 double Solver::cal_banking_gain(FF* ff1, FF* ff2, LibCell* targetFF)
 {
     if(ff1->getBit()+ff2->getBit()!=targetFF->bit){
-        std::cout << "Invalid target FF" << std::endl;
+        // std::cout << "Invalid target FF" << std::endl;
         return -INT_MAX;
     }
     double gain = 0.0;
