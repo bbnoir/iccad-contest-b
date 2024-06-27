@@ -1,9 +1,22 @@
 #include <queue>
+#include <utility>
 #include "Site.h"
 #include "param.h"
 #include "Solver.h"
 #include "Cell.h"
 #include "Bin.h"
+
+bool isPlacable(std::vector<Site*> sites)
+{
+    for (Site* site : sites)
+    {
+        if (site->isOccupied())
+        {
+            return false;
+        }
+    }
+    return true;
+}
 
 Site::Site()
 {
@@ -146,18 +159,18 @@ std::vector<Site*> SiteMap::getSites(int leftDownX, int leftDownY, int rightUpX,
 {
     if (leftDownX < DIE_LOW_LEFT_X || leftDownY < DIE_LOW_LEFT_Y || rightUpX > DIE_UP_RIGHT_X || rightUpY > DIE_UP_RIGHT_Y)
     {
-        std::cerr << "Error: SiteMap::getSites() - out of die boundary" << std::endl;
-        exit(1);
+        // std::cerr << "Error: SiteMap::getSites() - out of die boundary" << std::endl;
+        return std::vector<Site*>();    
     }
     if (_y2row.find(leftDownY) == _y2row.end())
     {
-        std::cerr << "Error: SiteMap::getSites() - not on site" << std::endl;
-        exit(1);
+        // std::cerr << "Error: SiteMap::getSites() - not on site" << std::endl;
+        return std::vector<Site*>();    
     }
     if (_x2col[_y2row[leftDownY]].find(leftDownX) == _x2col[_y2row[leftDownY]].end())
     {
-        std::cerr << "Error: SiteMap::getSites() - not on site" << std::endl;
-        exit(1);
+        // std::cerr << "Error: SiteMap::getSites() - not on site" << std::endl;
+        return std::vector<Site*>();
     }
     std::vector<Site*> sites;
     const int startRow = _y2row[leftDownY];
@@ -277,42 +290,47 @@ Site* SiteMap::getNearestSite(int x, int y)
     return nearestSite;
 }
 
-Site* SiteMap::getNearestAvailableSite(int x, int y)
+Site* SiteMap::getNearestAvailableSite(int x, int y, Cell* cell)
 {
     // BFS from the start site
-    std::queue<Site*> q;
-    q.push(getNearestSite(x,y));
+    std::queue<std::pair<int,int>> q;
+    std::vector<std::vector<bool>> visited(_placementRows.size(), std::vector<bool>(_placementRows[0].numSites, false));
+    int cellWidth = cell->getWidth();
+    int cellHeight = cell->getHeight();
+    Site* startSite = getNearestSite(x, y);
+    int siteX_idx = _x2col[_y2row[startSite->getY()]][startSite->getX()];
+    int siteY_idx = _y2row[startSite->getY()];
+    q.push(std::make_pair(siteX_idx, siteY_idx));
+
     while (!q.empty())
     {
-        Site* site = q.front();
+        std::pair<int,int> cur = q.front();
         q.pop();
-        if (!site->isOccupied())
+        if(visited[cur.second][cur.first])
+            continue;
+        visited[cur.second][cur.first] = true;
+        int curX_idx = cur.first;
+        int curY_idx = cur.second;
+        std::vector<Site*> sites = getSites(_sites[curY_idx][curX_idx]->getX(), _sites[curY_idx][curX_idx]->getY(), _sites[curY_idx][curX_idx]->getX() + cellWidth, _sites[curY_idx][curX_idx]->getY() + cellHeight);
+        if (isPlacable(sites))
         {
-            return site;
+            return _sites[curY_idx][curX_idx];
         }
-        int siteX = site->getX();
-        int siteY = site->getY();
-        int siteWidth = site->getWidth();
-        int siteHeight = site->getHeight();
-        Site* topSite = getNearestSite(siteX + siteWidth / 2, siteY + siteHeight);
-        Site* botSite = getNearestSite(siteX + siteWidth / 2, siteY - 1);
-        Site* leftSite = getNearestSite(siteX - 1, siteY + siteHeight / 2);
-        Site* rightSite = getNearestSite(siteX + siteWidth, siteY + siteHeight / 2);
-        if (topSite != nullptr)
+        if (curX_idx + 1 < _placementRows[curY_idx].numSites)
         {
-            q.push(topSite);
+            q.push(std::make_pair(curX_idx + 1, curY_idx));
         }
-        if (botSite != nullptr)
+        if (curY_idx + 1 < int(_placementRows.size()))
         {
-            q.push(botSite);
+            q.push(std::make_pair(curX_idx, curY_idx + 1));
         }
-        if (leftSite != nullptr)
+        if (curX_idx > 0)
         {
-            q.push(leftSite);
+            q.push(std::make_pair(curX_idx - 1, curY_idx));
         }
-        if (rightSite != nullptr)
+        if (curY_idx > 0)
         {
-            q.push(rightSite);
+            q.push(std::make_pair(curX_idx, curY_idx - 1));
         }
     }
     return nullptr;

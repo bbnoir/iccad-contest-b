@@ -700,7 +700,9 @@ void Solver::legalize()
         int rowWidth = row[0]->getWidth();
         int numSites = row.size();
         int startX = row[0]->getX();
+        int rowY = row[0]->getY();
         int endX = row[numSites-1]->getX() + rowWidth;
+        
         // get all FFs in the row
         std::vector<Cell*> FFs;
         for(auto site: row)
@@ -716,6 +718,11 @@ void Solver::legalize()
         }
         if(FFs.size() == 0)
             continue;
+        // remove FFs from the row
+        for(auto cell : FFs)
+        {
+            removeCell(cell);
+        }
         // sort cells by x
         std::sort(FFs.begin(), FFs.end(), [](Cell* a, Cell* b) -> bool { return a->getX() < b->getX(); });
         int curX = startX;
@@ -723,26 +730,39 @@ void Solver::legalize()
         {
             Cell* cell = FFs[j];
             curX = std::max(curX, cell->getX());
-            int width_num_sites = std::ceil((double)cell->getWidth() / rowWidth);
             // find availabe sites
             do
             {
-                int idx = isAvailabeForMove(row, width_num_sites, (curX-startX)/rowWidth);
-                if(idx == -1)
+                std::vector<Site*> sites = _siteMap->getSites(curX, rowY, curX+cell->getWidth(), rowY+cell->getHeight());
+                if(sites.size() == 0)
+                {
+                    // no available site in this row
+                    curX = endX;
                     break;
-                else{
-                    curX += rowWidth*(idx-(curX-startX)/rowWidth+1);
+                }
+                bool available = true;
+                for(long unsigned int k=0;k<sites.size();k++)
+                {
+                    if(sites[k]->isOccupied())
+                    {
+                        available = false;
+                        curX += rowWidth*(k+1);
+                        break;
+                    }
+                }
+                if(available)
+                {
+                    break;
                 }
             } while (curX < endX);
             // move cell if available and needed
-            if(curX < endX && curX != cell->getX())
+            if(curX < endX)
             {
-                // std::cout << "Orignal FF: " << cell->getInstName() << " at (" << cell->getX() << ", " << cell->getY() << ")" << std::endl;
-                // std::cout << "Move FF: " << cell->getInstName() << " to (" << curX << ", " << cell->getY() << ")" << std::endl;
-                moveCell(cell, curX, cell->getY(), true);
+                cell->setX(curX);
+                cell->setY(rowY);
+                placeCell(cell, false);
             }else if(curX >= endX)
             {
-                // end of row
                 for(long unsigned int k=j;k<FFs.size();k++)
                     orphans.push_back(FFs[k]);
                 break;
@@ -757,13 +777,17 @@ void Solver::legalize()
     // place the orphans
     // no orphans in the testcase.
     std::cout << "Orphans size: " << orphans.size() << std::endl;
-    for(auto cell : orphans)
+    for(long unsigned int i = 0; i < orphans.size(); i++)
     {
+        Cell* cell = orphans[i];
         int x = cell->getX();
         int y = cell->getY();
-        Site* nearest_site = _siteMap->getNearestAvailableSite(x,y);
-        moveCell(cell, nearest_site->getX(), nearest_site->getY(), true);
-        std::cout << "Orphan FF: " << cell->getInstName() << " at (" << x << ", " << y << ")" << std::endl;
+        Site* nearest_site = _siteMap->getNearestAvailableSite(x,y, cell);
+        cell->setX(nearest_site->getX());
+        cell->setY(nearest_site->getY());
+        placeCell(cell, false);
+        std::cout<<"i: "<<i<<std::endl;
+        // std::cout << "Orphan FF: " << cell->getInstName() << " at (" << x << ", " << y << ")" << std::endl;
     }
 
 }
