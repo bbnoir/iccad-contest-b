@@ -21,9 +21,11 @@ struct CIHash {
 // Custom case-insensitive equality function
 struct CIEqual {
     bool operator()(const std::string& str1, const std::string& str2) const {
-        return std::equal(str1.begin(), str1.end(), str2.begin(), str2.end(),
-            [](char c1, char c2) {
-                return tolower(c1) == tolower(c2);
-            });
+        const size_t len = str1.length();
+        if (len != str2.length()) return false;
+        for (size_t i = 0; i < len; ++i) {
+            if (tolower(str1[i]) != tolower(str2[i])) return false;
+        }
+        return true;
     }
 };
