@@ -743,7 +743,6 @@ void Solver::legalize()
             }else if(curX >= endX)
             {
                 // end of row
-                std::cout << "End of row" << std::endl;
                 for(long unsigned int k=j;k<FFs.size();k++)
                     orphans.push_back(FFs[k]);
                 break;
@@ -757,12 +756,14 @@ void Solver::legalize()
     }
     // place the orphans
     // no orphans in the testcase.
+    std::cout << "Orphans size: " << orphans.size() << std::endl;
     for(auto cell : orphans)
     {
         int x = cell->getX();
         int y = cell->getY();
         Site* nearest_site = _siteMap->getNearestAvailableSite(x,y);
         moveCell(cell, nearest_site->getX(), nearest_site->getY(), true);
+        std::cout << "Orphan FF: " << cell->getInstName() << " at (" << x << ", " << y << ")" << std::endl;
     }
 
 }
