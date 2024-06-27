@@ -92,6 +92,20 @@ In this step, there are two part of parameters to be tuned:
 
 \subsubsection{Back to clustering with different parameters}
 
+\subsection{Parallelization}
+
+When designing our method, we carefully considered the potential for parallelization. We will explain the potential for parallelization in each step:
+
+\begin{itemize}
+    \item \textbf{Debanking:} This step can be parallelized by debanking different flip-flops in parallel since there is no overlap between different flip-flops in the initial circuit.
+    \item \textbf{Force-directed placement:} This step can be parallelized by moving different flip-flops in parallel. \textbf{To avoid conflicts, we allow the flip-flops to overlap with each other in this step.}
+    \item \textbf{Clustering:} This step can be parallelized by mean shifting different flip-flops in parallel as in the original paper.
+    \item \textbf{Greedy banking:} This step can be parallelized by applying the greedy banking algorithm to different clusters in parallel.
+\end{itemize}
+
+Since the runtime of our program in this contest is limited, we want to make the best use of the parallelization to improve the efficiency of our method. But the implementation of parallelization is relatively complex, so we consider to implement it in the clustering and greedy banking steps first, which are the most time-consuming steps in our method.
+
+
 \section{Result}
 
 \section{Conclusion}
