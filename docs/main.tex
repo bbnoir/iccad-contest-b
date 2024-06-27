@@ -104,13 +104,38 @@ After the greedy banking process, the positions of the flip-flops are updated, a
 
 The above steps would lead to illegal placements as they allow the flip-flops to overlap with each other. So we need to perform placement legalization to avoid the overlap of flip-flops. Our placement legalization algorithm is as follows:
 
+Starting from the bottom row, for each row:
+
 \begin{enumerate}
-    \item 
+    \item Remove every FF from the row and sort the FFs based on their x coordinates.
+    \item Scan the row from left to right and place the FFs if available.
+    \item If the scan is done and there are remaining FFs, store them as orphans.
 \end{enumerate}
+
+Once all rows are finished, find the available sites for orphans by performing a BFS from their original positions.
 
 \subsubsection{Finetuning based on utilization}
 
+In the cost function provided in the problem, there is a penalty term $D$ that is related to the utilization rate of cells in the bins. All the above steps ignore this term. So we fineture the placement based on the utilization rate to optimize the cost function in this step. Consider one bin at a time, if the utilization rate of the bin is higher than a threshold, we try to move the flip-flops in the bin to other bins to reduce the utilization rate. This would lead to a higher cost as the change of wirelength. \textbf{If the cost function is reduced, we accept the move, otherwise we reject the move.} We repeat this process until the cost converges.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.9\textwidth]{util.png}
+    \caption{Finetuning based on utilization}
+    \label{fig:finetuning}
+\end{figure}
+
 \subsubsection{Back to clustering with different parameters}
+
+After above steps, we iteratively go back to the clustering step with different parameters then perform following steps. The different parameters aim to avoid same clustering results as the previous iteration to expand the search space.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.7\textwidth]{back.png}
+    \caption{Back to clustering with different parameters}
+    \label{fig:back}
+\end{figure}
+\FloatBarrier
 
 \subsection{Parallelization}
 
