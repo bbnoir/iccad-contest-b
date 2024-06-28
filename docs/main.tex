@@ -101,6 +101,7 @@ After clustering the flip-flops, we perform the greedy banking algorithm in each
     \item Repeat step 1 and 2 until no pair of flip-flops has a positive gain.
 \end{enumerate}
 
+\textbf{This step aims to deal with that the cost function differs in each testcase.} But this might lead to a local optimal solution as we only consider choosing the pair with positive gain.
 
 After the greedy banking process, the positions of the flip-flops are updated, and the connections are also updated accordingly. This may lead to non-optimal timing conditions in this state. So we need to \textbf{perform the force-directed placement algorithm again} to optimize the timing condition.
 
@@ -179,29 +180,54 @@ For convinience, we develop a visualization tool to show the placement of cells.
     \centering
     \includegraphics[width=0.9\textwidth]{results/force1.png}
     \caption{After force-directed placement}
+    \label{fig:force1}
 \end{figure}
 
 \begin{figure}[htbp]
     \centering
     \includegraphics[width=0.9\textwidth]{results/banking.png}
     \caption{After greedy banking}
+    \label{fig:banking}
 \end{figure}
 
 \begin{figure}[htbp]
     \centering
     \includegraphics[width=0.9\textwidth]{results/force2.png}
     \caption{After force-directed placement again}
+    \label{fig:force2}
 \end{figure}
 
 \begin{figure}[htbp]
     \centering
     \includegraphics[width=0.9\textwidth]{results/legal.png}
     \caption{After placement legalization}
+    \label{fig:legal}
+\end{figure}
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.9\textwidth]{results/second_iter.png}
+    \caption{After the second iteration}
+    \label{fig:second_iter}
 \end{figure}
 
 \FloatBarrier
 
+\subsection{Analysis of the result}
+
+As the information of the problem keeps changing, we have a hard time to calculate the overall cost of the result. Though lacking the overall cost, we still analyze the result from the figures above:
+
+\begin{itemize}
+    \item After debanking and the first force-directed placement, the flip-flops are placed in the optimal position for timing as Figure \ref{fig:force1}. The flip-flops are placed densely, which means the initial placement is a timing compromised placement.
+    \item After greedy banking, the flip-flops are banked together to reduce the power and area cost as Figure \ref{fig:banking}. There are some multibit flip-flops with larger area generated. Also, there are some large position changes of flip-flops.
+    \item The second force-directed placement optimizes the timing condition of the circuit again. The Figure \ref{fig:force2} shows that the position of the flip-flops changes compared to the Figure \ref{fig:banking}, which means the there are some space to optimize the timing condition in the banking step.
+    \item After placement legalization as Figure \ref{fig:legal}, the flip-flops are placed in a legal position without overlap. The most significant change from the original placement is the total area of the circuit.
+    \item After the second iteration, there are more flip-flops banked together as Figure \ref{fig:second_iter}.
+\end{itemize}
+
 \section{Conclusion}
+
+In this project, we propose a method to solve the problem of "Power and Timing Optimization Using Multibit Flip-Flop". Our method is mainly based on clustering and gain-based greedy algorithm. We think the gain-based greedy algorithm can achieve a good result in this problem as the cost function differs in each testcase. But there are still some works to be done to improve our method, include the calculation of the overall cost and the improvement of the efficiency. Also we need to do more experiments to modify the algorithm to achieve better results after the contest release more testcases and information.
 
 \begin{thebibliography}{9}
     \bibitem{jiang} 
