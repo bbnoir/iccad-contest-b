@@ -58,30 +58,6 @@ bool Site::isOccupied()
     return !_cells.empty();
 }
 
-bool Site::isOccupiedByComb()
-{
-    for (Cell* cell : _cells)
-    {
-        if (cell->getCellType() == CellType::COMB)
-        {
-            return true;
-        }
-    }
-    return false;
-}
-
-bool Site::isOccupiedByCrossRowCell()
-{
-    for (Cell* cell : _cells)
-    {
-        if (cell->getY() != _y)
-        {
-            return true;
-        }
-    }
-    return false;
-}
-
 bool Site::isOverLapping()
 {
     return _cells.size() > 1;

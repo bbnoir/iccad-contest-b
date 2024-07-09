@@ -17,8 +17,6 @@ class Site
         bool removeCell(Cell* cell);
 
         bool isOccupied();
-        bool isOccupiedByComb();
-        bool isOccupiedByCrossRowCell();
         bool isOverLapping();
         std::vector<Cell*> getCell();
         int getNumCells();

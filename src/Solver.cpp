@@ -604,29 +604,6 @@ void Solver::forceDirectedPlacement()
     }
 }
 
-double Solver::cal_total_hpwl()
-{
-    double hpwl = 0.0;
-    for(auto net : _nets)
-    {
-        int minX = INT_MAX;
-        int minY = INT_MAX;
-        int maxX = INT_MIN;
-        int maxY = INT_MIN;
-        for(auto pin : net->getPins())
-        {
-            int x = pin->getGlobalX();
-            int y = pin->getGlobalY();
-            minX = std::min(minX, x);
-            minY = std::min(minY, y);
-            maxX = std::max(maxX, x);
-            maxY = std::max(maxY, y);
-        }
-        hpwl += (maxX - minX) + (maxY - minY);
-    }
-    return hpwl;
-}
-
 void Solver::solve()
 {
     chooseBaseFF();
@@ -653,18 +630,8 @@ void Solver::solve()
     std::cout<<"Start to legalize"<<std::endl;
     legalize();
     // check for overlapping
-    std::vector<std::vector<Site*>> siteRows = _siteMap->getSiteRows();
-    for(long unsigned int i = 0; i < siteRows.size(); i++)
-    {
-        auto row = siteRows[i];
-        for(auto site: row)
-        {
-            if(site->isOverLapping()){
-                std::cerr << "Overlapping site at (" << site->getX() << ", " << site->getY() << ")" << std::endl;
-            }
-        }
-    }
-    // check FFs' placement
+    _siteMap->checkOverlap();
+    // check FFs in Die
     for(auto ff: _ffs)
     {
         if(ff->getSites().size() == 0)
@@ -676,22 +643,9 @@ void Solver::solve()
     }
 }
 
-int Solver::isAvailabeForMove(std::vector<Site*> row, int width_num_sites, int idx)
-{
-    int numSites = row.size();
-    for(int i = idx; i < idx + width_num_sites; i++)
-    {
-        if(i >= numSites)
-            return numSites;
-        if(row[i]->isOccupiedByComb() || row[i]->isOccupiedByCrossRowCell())
-            return i;
-    }
-    return -1;
-}
-
-
 void Solver::legalize()
 {
+    // TODO: Read the paper and implement the legalization algorithm
     std::vector<std::vector<Site*>> siteRows = _siteMap->getSiteRows();
     std::vector<Cell*> orphans;
     for(int i = siteRows.size()-1; i >= 0 ; i--)
@@ -775,7 +729,6 @@ void Solver::legalize()
         }
     }
     // place the orphans
-    // no orphans in the testcase.
     std::cout << "Orphans size: " << orphans.size() << std::endl;
     for(long unsigned int i = 0; i < orphans.size(); i++)
     {
@@ -787,7 +740,6 @@ void Solver::legalize()
         cell->setY(nearest_site->getY());
         placeCell(cell, false);
         std::cout<<"i: "<<i<<std::endl;
-        // std::cout << "Orphan FF: " << cell->getInstName() << " at (" << x << ", " << y << ")" << std::endl;
     }
 
 }
