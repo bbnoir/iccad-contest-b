@@ -71,9 +71,9 @@ class Solver
         SiteMap* _siteMap;
         int uniqueNameCounter = 0;
         // Modify Cell
-        bool placeCell(Cell* cell, bool allowOverlap = false);
+        bool placeCell(Cell* cell);
         void removeCell(Cell* cell);
-        bool moveCell(Cell* cell, int x, int y, bool allowOverlap = false);
+        bool moveCell(Cell* cell, int x, int y);
         // Modify FF
         void addFF(FF* ff); // add FF to _ffs and _ffsMap
         void deleteFF(FF* ff); // delete FF from _ffs and _ffsMap

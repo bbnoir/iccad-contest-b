@@ -312,7 +312,7 @@ Site* SiteMap::getNearestAvailableSite(int x, int y, Cell* cell)
     return nullptr;
 }
 
-bool SiteMap::place(Cell* cell, bool allowOverlap)
+bool SiteMap::place(Cell* cell)
 {
     const int cellWidth = cell->getWidth();
     const int cellHeight = cell->getHeight();
@@ -321,27 +321,21 @@ bool SiteMap::place(Cell* cell, bool allowOverlap)
     const int cellRightX = cellX + cellWidth;
     const int cellUpY = cellY + cellHeight;
     std::vector<Site*> sites = getSites(cellX, cellY, cellRightX, cellUpY);
-    // if(sites.empty())
-    // {
-    //     // cout cell info
-    //     std::cout << "Cellx: " << cellX << " Celly: " << cellY << " CellWidth: " << cellWidth << " CellHeight: " << cellHeight << std::endl;
-    // }
-    if(!allowOverlap)
-    {
-        for (Site* site : sites)
-        {
-            if (site->isOccupied())
-            {
-                return true;
-            }
-        }
-    }
         
     for (Site* site : sites)
     {
         site->place(cell);
         cell->addSite(site);
     }
+    // return true if overlap
+    for (Site* site : sites)
+    {
+        if (site->isOccupied())
+        {
+            return true;
+        }
+    }
+
     return false;
 }
 
@@ -362,19 +356,19 @@ void SiteMap::removeCell(Cell* cell)
     return;
 }
 
-bool SiteMap::moveCell(Cell* cell, int x, int y, bool allowOverlap)
+bool SiteMap::moveCell(Cell* cell, int x, int y)
 {
     removeCell(cell);
     cell->setX(x);
     cell->setY(y);
-    return place(cell, allowOverlap);
+    return place(cell);
 }
 
-bool SiteMap::moveCell(Cell* cell, bool allowOverlap)
+bool SiteMap::moveCell(Cell* cell)
 {
     const int x = cell->getX();
     const int y = cell->getY();
-    return moveCell(cell, x, y, allowOverlap);
+    return moveCell(cell, x, y);
 }
 
 bool SiteMap::checkOverlap()

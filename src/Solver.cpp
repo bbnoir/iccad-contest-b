@@ -357,16 +357,10 @@ void Solver::init_placement()
     }
 }
 
-bool Solver::placeCell(Cell* cell, bool allowOverlap)
+bool Solver::placeCell(Cell* cell)
 {
-    bool overlap = _siteMap->place(cell, allowOverlap);
-    if(overlap && !allowOverlap)
-    {
-        // not allow 
-        return false;
-    }
     _binMap->addCell(cell);
-    return true;
+    return _siteMap->place(cell);
 }
 
 void Solver::removeCell(Cell* cell)
@@ -375,12 +369,12 @@ void Solver::removeCell(Cell* cell)
     _binMap->removeCell(cell);
 }
 
-bool Solver::moveCell(Cell* cell, int x, int y, bool allowOverlap)
+bool Solver::moveCell(Cell* cell, int x, int y)
 {
     removeCell(cell);
     cell->setX(x);
     cell->setY(y);
-    return placeCell(cell, allowOverlap);
+    return placeCell(cell);
 }
 
 void Solver::addFF(FF* ff)
@@ -422,7 +416,7 @@ void Solver::bankFFs(FF* ff1, FF* ff2, LibCell* targetFF)
     newFF->setClkDomain(ff1->getClkDomain());
     addFF(newFF);
     // place the new FF
-    placeCell(newFF, true);
+    placeCell(newFF);
     forceDirectedPlaceFF(newFF);
     // delete the old FFs
     deleteFF(ff1);
@@ -492,7 +486,7 @@ void Solver::debankAll()
     for (auto ff : debankedFFs)
     {
         addFF(ff);
-        placeCell(ff, true);
+        placeCell(ff);
     }
 }
 
@@ -523,7 +517,7 @@ void Solver::forceDirectedPlaceFF(FF* ff)
     // adjust it to fit the placement rows
     Site* nearest_site = _siteMap->getNearestSite(x_avg, y_avg);
     // move the ff
-    moveCell(ff, nearest_site->getX(), nearest_site->getY(), true);
+    moveCell(ff, nearest_site->getX(), nearest_site->getY());
 }
 
 void Solver::forceDirectedPlaceFFLock(const int ff_idx, std::vector<bool>& locked, std::vector<char>& lock_cnt, int& lock_num)
@@ -567,7 +561,7 @@ void Solver::forceDirectedPlaceFFLock(const int ff_idx, std::vector<bool>& locke
     int y_avg = y_sum / num_pins;
     Site* nearest_site = _siteMap->getNearestSite(x_avg, y_avg);
     double dist = sqrt(pow(nearest_site->getX() - ff->getX(), 2) + pow(nearest_site->getY() - ff->getY(), 2));
-    moveCell(ff, nearest_site->getX(), nearest_site->getY(), true);
+    moveCell(ff, nearest_site->getX(), nearest_site->getY());
     if (dist < 1e-2)
     {
         lock_cnt[ff_idx]++;
@@ -609,8 +603,10 @@ void Solver::solve()
     chooseBaseFF();
     init_placement();
     debankAll();
+    
     std::cout<<"Start to force directed placement"<<std::endl;
     forceDirectedPlacement();
+    
     std::cout << "Start clustering and banking" << std::endl;
     size_t prev_ffs_size;
     std::cout << "FFs size: " << _ffs.size() << std::endl;
@@ -625,10 +621,13 @@ void Solver::solve()
         }
         std::cout << "FFs size after greedy banking: " << _ffs.size() << std::endl;
     } while (prev_ffs_size != _ffs.size());
+    
     std::cout << "Start to force directed placement (second)" << std::endl;
     forceDirectedPlacement();
+    
     std::cout<<"Start to legalize"<<std::endl;
     legalize();
+    
     // check for overlapping
     _siteMap->checkOverlap();
     // check FFs in Die
@@ -714,7 +713,7 @@ void Solver::legalize()
             {
                 cell->setX(curX);
                 cell->setY(rowY);
-                placeCell(cell, false);
+                placeCell(cell);
             }else if(curX >= endX)
             {
                 for(long unsigned int k=j;k<FFs.size();k++)
@@ -738,7 +737,7 @@ void Solver::legalize()
         Site* nearest_site = _siteMap->getNearestAvailableSite(x,y, cell);
         cell->setX(nearest_site->getX());
         cell->setY(nearest_site->getY());
-        placeCell(cell, false);
+        placeCell(cell);
         std::cout<<"i: "<<i<<std::endl;
     }
 
