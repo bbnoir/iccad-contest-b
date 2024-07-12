@@ -6,6 +6,7 @@
 #include "Pin.h"
 #include "Site.h"
 #include "Bin.h"
+#include "Legalizer.h"
 
 // cost metrics
 double ALPHA;
@@ -26,10 +27,13 @@ double DISP_DELAY;
 
 Solver::Solver()
 {
+    _legalizer = new Legalizer(this);
 }
 
 Solver::~Solver()
 {
+    delete _legalizer;
+
     for(auto ff : _ffs)
     {
         delete ff;
@@ -363,6 +367,14 @@ bool Solver::placeCell(Cell* cell)
     return _siteMap->place(cell);
 }
 
+bool Solver::placeCell(Cell* cell, int x, int y)
+{
+    cell->setX(x);
+    cell->setY(y);
+    _binMap->addCell(cell);
+    return _siteMap->place(cell);
+}
+
 void Solver::removeCell(Cell* cell)
 {
     _siteMap->removeCell(cell);
@@ -601,6 +613,7 @@ void Solver::forceDirectedPlacement()
 void Solver::solve()
 {
     chooseBaseFF();
+    // TODO: placing FFs on the die before legalizing is unnecessary 
     init_placement();
     debankAll();
     
@@ -626,7 +639,8 @@ void Solver::solve()
     forceDirectedPlacement();
     
     std::cout<<"Start to legalize"<<std::endl;
-    legalize();
+    // legalize();
+    _legalizer->legalize();
     
     // check for overlapping
     _siteMap->checkOverlap();
@@ -644,7 +658,13 @@ void Solver::solve()
 
 void Solver::legalize()
 {
-    // TODO: Read the paper and implement the legalization algorithm
+    std::vector<int> x_optimal;
+    std::vector<int> y_optimal;
+    for(long unsigned int i = 0; i < _ffs.size(); i++)
+    {
+        x_optimal.push_back(_ffs[i]->getX());
+        y_optimal.push_back(_ffs[i]->getY());
+    }
     std::vector<std::vector<Site*>> siteRows = _siteMap->getSiteRows();
     std::vector<Cell*> orphans;
     for(int i = siteRows.size()-1; i >= 0 ; i--)
@@ -740,7 +760,14 @@ void Solver::legalize()
         placeCell(cell);
         std::cout<<"i: "<<i<<std::endl;
     }
-
+    // calculate the displacement in Manhattan distance
+    unsigned long long total_disp = 0;
+    for(long unsigned int i = 0; i < _ffs.size(); i++)
+    {
+        total_disp += abs(_ffs[i]->getX() - x_optimal[i]) + abs(_ffs[i]->getY() - y_optimal[i]);
+    }
+    std::cout << "Total displacement: " << total_disp << std::endl;
+    // 4323731820
 }
 
 std::vector<int> Solver::regionQuery(std::vector<FF*> FFs, long unsigned int idx, int eps)

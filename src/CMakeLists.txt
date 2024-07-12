@@ -28,6 +28,7 @@ set(RUN_SOURCE
     ${BA_SOURCE_DIR}/Site.cpp
     ${BA_SOURCE_DIR}/Solver.cpp
     ${BA_SOURCE_DIR}/Renderer.cpp
+    ${BA_SOURCE_DIR}/Legalizer.cpp
     ${BA_SOURCE_DIR}/main.cpp
     )
 add_executable(RUN ${RUN_SOURCE})

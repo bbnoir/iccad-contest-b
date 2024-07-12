@@ -20,6 +20,7 @@ class Net;
 class Site;
 class BinMap;
 class SiteMap;
+class Legalizer;
 
 struct PlacementRows
 {
@@ -45,6 +46,7 @@ class Solver
         
         // friend
         friend class Renderer;
+        friend class Legalizer;
     private:
         // lib
         std::vector<LibCell*> _combsLibList;
@@ -70,8 +72,11 @@ class Solver
         BinMap* _binMap;
         SiteMap* _siteMap;
         int uniqueNameCounter = 0;
+        // Legalizer
+        Legalizer* _legalizer;
         // Modify Cell
         bool placeCell(Cell* cell);
+        bool placeCell(Cell* cell, int x, int y);
         void removeCell(Cell* cell);
         bool moveCell(Cell* cell, int x, int y);
         // Modify FF
