@@ -46,12 +46,12 @@ class SiteMap
         Site* getNearestSite(int x, int y);
         Site* getNearestAvailableSite(int x, int y, Cell* cell);
 
-        bool place(Cell* cell, bool allowOverlap = false);
+        bool place(Cell* cell);
         void removeCell(Cell* cell);
         // move cell to (x, y)
-        bool moveCell(Cell* cell, int x, int y, bool allowOverlap = false);
+        bool moveCell(Cell* cell, int x, int y);
         // move cell to cell's position
-        bool moveCell(Cell* cell, bool allowOverlap = false);
+        bool moveCell(Cell* cell);
 
         bool checkOverlap();
     private:
