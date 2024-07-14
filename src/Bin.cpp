@@ -50,7 +50,7 @@ void Bin::addCell(Cell* cell)
     // update utilization
     // calculate the overlap area
     int overlapArea = _calOverlapArea(cell);
-    _utilization += (double)overlapArea / (BIN_WIDTH * BIN_HEIGHT);
+    _utilization += 100.*overlapArea / (BIN_WIDTH * BIN_HEIGHT);
 }
 
 void Bin::removeCell(Cell* cell)
@@ -62,8 +62,8 @@ void Bin::removeCell(Cell* cell)
     // update utilization
     // calculate the overlap area
     int overlapArea = _calOverlapArea(cell);
-    _utilization -= (double)overlapArea / (BIN_WIDTH * BIN_HEIGHT);
-    if(_utilization < 1e-15){
+    _utilization -= 100.*overlapArea / (BIN_WIDTH * BIN_HEIGHT);
+    if(_utilization < 1e-12){
         _utilization = 0;
     }
 }

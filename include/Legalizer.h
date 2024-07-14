@@ -9,6 +9,8 @@ class FF;
 class Site;
 
 struct SubRow{
+    int centerX;
+    int rowY;
     std::vector<Site*> _sites;
     SubRow(std::vector<Site*> sites);
     ~SubRow();
@@ -23,6 +25,7 @@ class Legalizer{
         
         void removeAllFFs();
         void generateSubRows();
+        std::vector<int> getNearSubRows(int ffIndex, int distance);
         double placeRow(int ffIndex, int subRowIndex, bool trial = false);
     public:
         Legalizer(Solver* solver);
