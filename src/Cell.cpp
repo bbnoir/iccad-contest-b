@@ -63,11 +63,6 @@ int Cell::getArea()
     return _lib_cell->width * _lib_cell->height;
 }
 
-double Cell::getPower()
-{
-    return _lib_cell->power;
-}
-
 std::string Cell::getInstName()
 {
     return _inst_name;

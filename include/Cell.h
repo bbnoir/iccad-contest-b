@@ -64,7 +64,6 @@ public:
     int getWidth();
     int getHeight();
     int getArea();
-    double getPower();
     std::string getInstName();
     std::string getCellName();
     CellType getCellType();

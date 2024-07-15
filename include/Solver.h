@@ -89,6 +89,7 @@ class Solver
         // Helper
         void constructFFsCLKDomain();
         std::vector<int> regionQuery(std::vector<FF*> ffs, long unsigned int idx, int radius);
+        double calCost();
         // Main Algorithms
         // 1. Debank all FFs
         void chooseBaseFF();

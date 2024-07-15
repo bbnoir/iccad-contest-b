@@ -37,6 +37,7 @@ class BinMap
 
         std::vector<Bin*> getBins();
         std::vector<Bin*> getBins(int leftDownX, int leftDownY, int rightUpX, int rightUpY);
+        int getNumOfViolatedBins();
 
         void addCell(Cell* cell);
         void removeCell(Cell* cell);

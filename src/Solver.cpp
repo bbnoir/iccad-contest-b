@@ -33,7 +33,6 @@ Solver::Solver()
 Solver::~Solver()
 {
     delete _legalizer;
-
     for(auto ff : _ffs)
     {
         delete ff;
@@ -242,7 +241,7 @@ void Solver::parse_input(std::string filename)
             if(pin->getType() == PinType::FF_D || pin->getType() == PinType::GATE_IN || pin->getType() == PinType::FF_CLK)
             {
                 pin->setFaninPin(pins[0]);
-            }else if(pin->getType() == PinType::FF_Q || pin->getType() == PinType::GATE_OUT)
+            }else if(pin->getType() == PinType::FF_Q || pin->getType() == PinType::GATE_OUT || pin->getType() == PinType::INPUT)
             {
                 for(long unsigned int j = 1; j < pins.size(); j++)
                 {
@@ -302,6 +301,70 @@ void Solver::parse_input(std::string filename)
 
     cout << "File parsed successfully" << endl;
     in.close();
+}
+
+double Solver::calCost()
+{
+    double tns = 0.0;
+    double power = 0.0;
+    double area = 0.0;
+    int numOfBinsViolated = _binMap->getNumOfViolatedBins();
+    for(auto ff : _ffs)
+    {
+        tns += ff->getTotalNegativeSlack();
+        power += ff->getPower();
+        area += ff->getArea();
+    }
+    std::cout<<"Alpha: "<<ALPHA<<" ";
+    std::cout<<"Beta: "<<BETA<<" ";
+    std::cout<<"Gamma: "<<GAMMA<<" ";
+    std::cout<<"Lambda: "<<LAMBDA<<std::endl;
+    std::cout<<"TNS: "<<tns<<std::endl;
+    std::cout<<"Power: "<<power<<std::endl;
+    std::cout<<"Area: "<<area<<std::endl;
+    std::cout<<"Num of bins violated: "<<numOfBinsViolated<<std::endl;
+    double cost = ALPHA * tns + BETA * power + GAMMA * area + LAMBDA * numOfBinsViolated;
+    std::cout<<"Cost: "<<cost<<std::endl;
+    return cost;
+
+    // std::vector<Cell*> cells;
+    // for(auto input:_inputPins){
+    //     std::vector<Pin*> fanout = input->getFanoutPins();
+    //     for(auto pin:fanout){
+    //         cells.push_back(pin->getCell());
+    //     }
+    // }
+    // std::vector<Cell*> next;
+    // for(auto cell:cells){
+    //     if(cell->getCellType() == CellType::FF){
+    //         std::vector<Pin*> outputPins = cell->getOutputPins();
+    //         for(auto output:outputPins){
+    //             std::vector<Pin*> fanout = output->getFanoutPins();
+    //             for(auto pin:fanout){
+    //                 next.push_back(pin->getCell());
+    //             }
+    //         }
+    //     }
+    // }
+    // for(auto cell:next){
+    //     if(cell->getCellType() == CellType::FF){
+    //         Pin* d = cell->getInputPins()[0];
+    //         Pin* fanIn = d->getFaninPin();
+    //         double wl = abs(d->getGlobalX() - fanIn->getGlobalX()) + abs(d->getGlobalY() - fanIn->getGlobalY());
+    //         FF* last = static_cast<FF*>(fanIn->getCell());
+    //         std::cout<<"FF0: "<<last->getInstName()<<std::endl;
+    //         std::cout<<"Slack: "<<last->getPin("D")->getSlack()<<std::endl;
+    //         std::cout<<"QDelay: "<<last->getQDelay()<<std::endl;
+    //         std::cout<<"Q Position: "<<last->getPin("Q")->getGlobalX()<<" "<<last->getPin("Q")->getGlobalY()<<std::endl;
+    //         std::cout<<"FFN: "<<cell->getInstName()<<std::endl;
+    //         std::cout<<"D Position: "<<d->getGlobalX()<<" "<<d->getGlobalY()<<std::endl;
+    //         std::cout<<"Init Slack: "<<d->getSlack()<<std::endl;
+    //         std::cout<<"WL: "<<wl<<std::endl;
+    //         std::cout<<"Calculated Slack: "<<last->getPin("D")->getSlack() + last->getQDelay() + DISP_DELAY*wl<<std::endl;
+    //         std::cout<<"--------------------------------"<<std::endl;}
+    // }
+
+    // return 0.0;
 }
 
 void Solver::checkCLKDomain()
@@ -612,9 +675,12 @@ void Solver::forceDirectedPlacement()
 
 void Solver::solve()
 {
-    chooseBaseFF();
-    // TODO: placing FFs on the die before legalizing is unnecessary 
     init_placement();
+    
+    double initialCost = calCost();
+
+    // TODO: placing FFs on the die when global placement is unnecessary 
+    chooseBaseFF();
     debankAll();
     
     std::cout<<"Start to force directed placement"<<std::endl;
@@ -637,23 +703,31 @@ void Solver::solve()
     
     std::cout << "Start to force directed placement (second)" << std::endl;
     forceDirectedPlacement();
-    
-    std::cout<<"Start to legalize"<<std::endl;
-    // legalize();
-    _legalizer->legalize();
-    
-    // check for overlapping
-    _siteMap->checkOverlap();
-    // check FFs in Die
+
+    // cal total area
+    double total_area = 0.0;
     for(auto ff: _ffs)
     {
-        if(ff->getSites().size() == 0)
-        {
-            std::cerr << "FF not placed: " << ff->getInstName() << std::endl;
-        }else if(ff->getX()<DIE_LOW_LEFT_X || ff->getX()+ff->getWidth()>DIE_UP_RIGHT_X || ff->getY()<DIE_LOW_LEFT_Y || ff->getY()+ff->getHeight()>DIE_UP_RIGHT_Y){
-            std::cerr << "FF not placed in Die: " << ff->getInstName() << std::endl;
-        }
+        total_area += ff->getArea();
     }
+    std::cout << "Total area: " << total_area << std::endl;
+    
+    // std::cout<<"Start to legalize"<<std::endl;
+    // // legalize();
+    // _legalizer->legalize();
+    
+    // // check for overlapping
+    // _siteMap->checkOverlap();
+    // // check FFs in Die
+    // for(auto ff: _ffs)
+    // {
+    //     if(ff->getSites().size() == 0)
+    //     {
+    //         std::cerr << "FF not placed: " << ff->getInstName() << std::endl;
+    //     }else if(ff->getX()<DIE_LOW_LEFT_X || ff->getX()+ff->getWidth()>DIE_UP_RIGHT_X || ff->getY()<DIE_LOW_LEFT_Y || ff->getY()+ff->getHeight()>DIE_UP_RIGHT_Y){
+    //         std::cerr << "FF not placed in Die: " << ff->getInstName() << std::endl;
+    //     }
+    // }
 }
 
 void Solver::legalize()
@@ -982,7 +1056,6 @@ void Solver::display()
     for(auto comb : _combs)
     {
         cout << "Name: " << comb->getInstName() << ", Lib: " << comb->getCellName() << ", X: " << comb->getX() << ", Y: " << comb->getY() << ", Width: " << comb->getWidth() << ", Height: " << comb->getHeight() << endl;
-        cout << "Power: " << comb->getPower() << endl;
         for(auto pin : comb->getPins())
         {
             cout << "Pin Name: " << pin->getName() << ", X: " << pin->getX() << ", Y: " << pin->getY() << endl;

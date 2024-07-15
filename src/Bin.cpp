@@ -141,6 +141,22 @@ std::vector<Bin*> BinMap::getBins(int leftDownX, int leftDownY, int rightUpX, in
     return bins;
 }
 
+int BinMap::getNumOfViolatedBins()
+{
+    int numViolatedBins = 0;
+    for (auto row : _bins)
+    {
+        for (auto bin : row)
+        {
+            if (bin->isOverMaxUtil())
+            {
+                numViolatedBins++;
+            }
+        }
+    }
+    return numViolatedBins;
+}
+
 void BinMap::addCell(Cell* cell)
 {
     int leftDownX = cell->getX();

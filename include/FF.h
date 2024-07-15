@@ -14,6 +14,8 @@ class FF : public Cell
         int getBit();
         int getOccupiedBit();
         double getQDelay();
+        double getPower();
+        double getTotalNegativeSlack();
         Pin* getClkPin();
         std::vector<std::pair<Pin*, Pin*>> getDQpairs();
         int getClkDomain();
