@@ -209,7 +209,7 @@ int SiteMap::getFirstLargerColInRow(int row, int x)
     }
     int col = (x - _placementRows[row].startX) / _placementRows[row].siteWidth;
     col = std::max(0, col);
-    col = std::min(col, _placementRows[row].numSites-1);
+    col = std::min(col, _placementRows[row].numSites);
     return col;
 }
 
