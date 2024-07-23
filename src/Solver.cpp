@@ -250,6 +250,85 @@ void Solver::parse_input(std::string filename)
             }
         }
     }
+    // Set prev and next stage pins
+    for (auto ff : _ffs)
+    {
+        for (auto inPin : ff->getInputPins())
+        {
+            queue<Pin*> q;
+            q.push(inPin->getFaninPin());
+            while(!q.empty())
+            {
+                Pin* curPin = q.front();
+                q.pop();
+                if(curPin->getType() == PinType::FF_Q)
+                {
+                    inPin->addPrevStagePin(curPin);
+                    continue;
+                }
+                if(curPin->getType() == PinType::INPUT)
+                {
+                    // TODO: check if INPUT have slack
+                    // inPin->addPrevStagePin(curPin);
+                    continue;
+                }
+                for(auto prevInPin : curPin->getCell()->getInputPins())
+                {
+                    q.push(prevInPin->getFaninPin());
+                }
+            }
+        }
+        for (auto outPin : ff->getOutputPins())
+        {
+            queue<Pin*> q;
+            for (auto fanout : outPin->getFanoutPins())
+            {
+                q.push(fanout);
+            }
+            while(!q.empty())
+            {
+                Pin* curPin = q.front();
+                q.pop();
+                if(curPin->getType() == PinType::FF_D)
+                {
+                    outPin->addNextStagePin(curPin);
+                    continue;
+                }
+                if(curPin->getType() == PinType::OUTPUT)
+                {
+                    //TODO: check if OUTPUT have slack
+                    // outPin->addNextStagePin(curPin);
+                    continue;
+                }
+                for(auto nextOutPin : curPin->getCell()->getOutputPins())
+                {
+                    for(auto fanout : nextOutPin->getFanoutPins())
+                    {
+                        q.push(fanout);
+                    }
+                }
+            }
+        }
+    }
+    // show prev and next stage pins
+    // for (auto ff : _ffs)
+    // {
+    //     cout << "FF: " << ff->getInstName() << endl;
+    //     for (auto inPin : ff->getInputPins())
+    //     {
+    //         for (auto prevPin : inPin->getPrevStagePins())
+    //         {
+    //             cout << "Prev: " << prevPin->getCell()->getInstName() << "/" << prevPin->getName() << endl;
+    //         }
+    //     }
+    //     for (auto outPin : ff->getOutputPins())
+    //     {
+    //         for (auto nextPin : outPin->getNextStagePins())
+    //         {
+    //             cout << "Next: " << nextPin->getCell()->getInstName() << "/" << nextPin->getName() << endl;
+    //         }
+    //     }
+    // }
 
     // Read bin info
     in >> token >> BIN_WIDTH;
@@ -677,7 +756,6 @@ void Solver::forceDirectedPlaceFFLock(const int ff_idx, std::vector<bool>& locke
 
     // calculate the differece of cost
     double diff_cost = 0;
-    std::cout << "Moving FF: " << ff->getInstName() << " from (" << source_x << ", " << source_y << ") to (" << target_x << ", " << target_y << ")" << std::endl;
     for (auto inPin : ff->getInputPins())
     {
         const int inpin_source_x = source_x + inPin->getX();

@@ -121,6 +121,16 @@ void Pin::addFanoutPin(Pin* pin)
     _fanoutPins.push_back(pin);
 }
 
+void Pin::addPrevStagePin(Pin* pin)
+{
+    _prevStagePins.push_back(pin);
+}
+
+void Pin::addNextStagePin(Pin* pin)
+{
+    _nextStagePins.push_back(pin);
+}
+
 void Pin::connect(Net* net)
 {
     _net = net;
@@ -143,6 +153,16 @@ Pin* Pin::getFirstFanoutPin()
 std::vector<Pin*> Pin::getFanoutPins()
 {
     return _fanoutPins;
+}
+
+std::vector<Pin*> Pin::getPrevStagePins()
+{
+    return _prevStagePins;
+}
+
+std::vector<Pin*> Pin::getNextStagePins()
+{
+    return _nextStagePins;
 }
 
 void Pin::copyConnection(Pin* pin)

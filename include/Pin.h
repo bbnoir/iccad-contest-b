@@ -1,5 +1,6 @@
 #pragma once
 #include <string>
+#include <queue>
 #include "Cell.h"
 #include "Net.h"
 
@@ -39,6 +40,8 @@ class Pin
         Pin* getFaninPin();
         Pin* getFirstFanoutPin();
         std::vector<Pin*> getFanoutPins();
+        std::vector<Pin*> getPrevStagePins();
+        std::vector<Pin*> getNextStagePins();
 
         void setSlack(double slack);
         void setCell(Cell* cell);
@@ -47,6 +50,8 @@ class Pin
         void addOriginalName(std::string ori_name);
         void setFaninPin(Pin* pin);
         void addFanoutPin(Pin* pin);
+        void addPrevStagePin(Pin* pin);
+        void addNextStagePin(Pin* pin);
 
         void connect(Net* net);
         void copyConnection(Pin* pin);
@@ -67,5 +72,10 @@ class Pin
         Net* _net;
         Pin* _faninPin;
         std::vector<Pin*> _fanoutPins;
+
+        // Previous stage pins
+        std::vector<Pin*> _prevStagePins;
+        // Next stage pins
+        std::vector<Pin*> _nextStagePins;
 
 };
