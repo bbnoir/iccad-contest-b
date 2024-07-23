@@ -72,6 +72,10 @@ class Solver
         BinMap* _binMap;
         SiteMap* _siteMap;
         int uniqueNameCounter = 0;
+        // cost
+        double _initCost;
+        double _currCost;
+        double calDiffCost(double oldSlack, double newSlack); // calculate the cost difference given the old and new slack, the return value should be "added" to the current cost
         // Legalizer
         Legalizer* _legalizer;
         // Modify Cell

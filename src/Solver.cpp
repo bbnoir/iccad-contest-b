@@ -595,6 +595,24 @@ void Solver::forceDirectedPlaceFF(FF* ff)
     moveCell(ff, nearest_site->getX(), nearest_site->getY());
 }
 
+double Solver::calDiffCost(double oldSlack, double newSlack)
+{
+    double diff_neg_slack = 0; // difference of negative slack
+    if (oldSlack <= 0 && newSlack <= 0)
+    {
+        diff_neg_slack = oldSlack - newSlack;
+    }
+    else if (oldSlack <= 0)
+    {
+        diff_neg_slack = oldSlack;
+    }
+    else if (newSlack <= 0)
+    {
+        diff_neg_slack = -newSlack;
+    }
+    return ALPHA * diff_neg_slack;
+}
+
 void Solver::forceDirectedPlaceFFLock(const int ff_idx, std::vector<bool>& locked, std::vector<char>& lock_cnt, int& lock_num)
 {
     if (locked[ff_idx])
@@ -635,8 +653,15 @@ void Solver::forceDirectedPlaceFFLock(const int ff_idx, std::vector<bool>& locke
     int x_avg = x_sum / num_pins;
     int y_avg = y_sum / num_pins;
     Site* nearest_site = _siteMap->getNearestSite(x_avg, y_avg);
-    double dist = sqrt(pow(nearest_site->getX() - ff->getX(), 2) + pow(nearest_site->getY() - ff->getY(), 2));
-    moveCell(ff, nearest_site->getX(), nearest_site->getY());
+    const int source_x = ff->getX();
+    const int source_y = ff->getY();
+    const int target_x = nearest_site->getX();
+    const int target_y = nearest_site->getY();
+    // TODO: maybe change to manhattan distance
+    double dist = sqrt(pow(source_x - target_x, 2) + pow(source_y - target_y, 2));
+    moveCell(ff, target_x, target_y);
+
+    // check if the ff should be locked
     if (dist < 1e-2)
     {
         lock_cnt[ff_idx]++;
@@ -649,6 +674,27 @@ void Solver::forceDirectedPlaceFFLock(const int ff_idx, std::vector<bool>& locke
     {
         lock_num++;
     }
+
+    // calculate the differece of cost
+    double diff_cost = 0;
+    std::cout << "Moving FF: " << ff->getInstName() << " from (" << source_x << ", " << source_y << ") to (" << target_x << ", " << target_y << ")" << std::endl;
+    for (auto inPin : ff->getInputPins())
+    {
+        const int inpin_source_x = source_x + inPin->getX();
+        const int inpin_source_y = source_y + inPin->getY();
+        const int inpin_target_x = target_x + inPin->getX();
+        const int inpin_target_y = target_y + inPin->getY();
+        const int faninpin_x = inPin->getFaninPin()->getGlobalX();
+        const int faninpin_y = inPin->getFaninPin()->getGlobalY();
+        const int diff_dist = abs(inpin_target_x - faninpin_x) + abs(inpin_target_y - faninpin_y) - abs(inpin_source_x - faninpin_x) - abs(inpin_source_y - faninpin_y);
+        const double old_slack = inPin->getSlack();
+        const double new_slack = old_slack - DISP_DELAY * diff_dist;
+        inPin->setSlack(new_slack);
+        diff_cost += calDiffCost(old_slack, new_slack);
+    }
+    // TODO: calculate the differece of cost for output pins
+    // TODO: fix issues on multiple output pins
+    _currCost += diff_cost;
 }
 
 void Solver::forceDirectedPlacement()
@@ -677,7 +723,8 @@ void Solver::solve()
 {
     init_placement();
     
-    double initialCost = calCost();
+    _initCost = calCost();
+    _currCost = _initCost;
 
     // TODO: placing FFs on the die when global placement is unnecessary 
     chooseBaseFF();
@@ -685,32 +732,33 @@ void Solver::solve()
     
     std::cout<<"Start to force directed placement"<<std::endl;
     forceDirectedPlacement();
-    
-    std::cout << "Start clustering and banking" << std::endl;
-    size_t prev_ffs_size;
-    std::cout << "FFs size: " << _ffs.size() << std::endl;
-    do
-    {
-        constructFFsCLKDomain();
-        prev_ffs_size = _ffs.size();
-        for(long unsigned int i = 0; i < _ffs_clkdomains.size(); i++)
-        {
-            std::vector<std::vector<FF*>> cluster = clusteringFFs(i);
-            greedyBanking(cluster);
-        }
-        std::cout << "FFs size after greedy banking: " << _ffs.size() << std::endl;
-    } while (prev_ffs_size != _ffs.size());
-    
-    std::cout << "Start to force directed placement (second)" << std::endl;
-    forceDirectedPlacement();
 
-    // cal total area
-    double total_area = 0.0;
-    for(auto ff: _ffs)
-    {
-        total_area += ff->getArea();
-    }
-    std::cout << "Total area: " << total_area << std::endl;
+    std::cout << "Current cost: " << _currCost << std::endl;
+    
+    // std::cout << "Start clustering and banking" << std::endl;
+    // size_t prev_ffs_size;
+    // std::cout << "FFs size: " << _ffs.size() << std::endl;
+    // do
+    // {
+    //     constructFFsCLKDomain();
+    //     prev_ffs_size = _ffs.size();
+    //     for(long unsigned int i = 0; i < _ffs_clkdomains.size(); i++)
+    //     {
+    //         std::vector<std::vector<FF*>> cluster = clusteringFFs(i);
+    //         greedyBanking(cluster);
+    //     }
+    //     std::cout << "FFs size after greedy banking: " << _ffs.size() << std::endl;
+    // } while (prev_ffs_size != _ffs.size());
+    // 
+    // std::cout << "Start to force directed placement (second)" << std::endl;
+    // forceDirectedPlacement();
+    // // cal total area
+    // double total_area = 0.0;
+    // for(auto ff: _ffs)
+    // {
+    //     total_area += ff->getArea();
+    // }
+    // std::cout << "Total area: " << total_area << std::endl;
     
     // std::cout<<"Start to legalize"<<std::endl;
     // // legalize();
