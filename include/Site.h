@@ -47,10 +47,6 @@ class SiteMap
 
         bool place(Cell* cell);
         void removeCell(Cell* cell);
-        // move cell to (x, y)
-        bool moveCell(Cell* cell, int x, int y);
-        // move cell to cell's position
-        bool moveCell(Cell* cell);
 
         bool onSite(int x, int y);
     private:

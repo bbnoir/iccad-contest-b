@@ -168,17 +168,3 @@ void BinMap::removeCell(Cell* cell)
         cell->removeBin(bin);
     }
 }
-
-void BinMap::moveCell(Cell* cell, int x, int y)
-{
-    removeCell(cell);
-    cell->setX(x);
-    cell->setY(y);
-    addCell(cell);
-}
-
-void BinMap::moveCell(Cell* cell)
-{
-    removeCell(cell);
-    addCell(cell);
-}

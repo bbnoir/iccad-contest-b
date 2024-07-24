@@ -73,23 +73,36 @@ class Solver
         BinMap* _binMap;
         SiteMap* _siteMap;
         int uniqueNameCounter = 0;
+        
         // Modify Cell
+        
         bool placeCell(Cell* cell);
         bool placeCell(Cell* cell, int x, int y);
         void removeCell(Cell* cell);
         bool moveCell(Cell* cell, int x, int y);
+        
         // Modify FF
+        
         void addFF(FF* ff);
         void deleteFF(FF* ff);
         void bankFFs(FF* ff1, FF* ff2, LibCell* targetFF);
+        
         // Trivial
+        
         std::string makeUniqueName();
         void checkCLKDomain();
+        
         // Helper
+        
+        bool isOverlap(Cell* cell1, Cell* cell2);
+        bool isOverlap(int x1, int y1, Cell* cell1, Cell* cell2);
+        bool placeable(Cell* cell);
+        bool placeable(Cell* cell, int x, int y);
         void constructFFsCLKDomain();
         std::vector<int> regionQuery(std::vector<FF*> ffs, long unsigned int idx, int radius);
 
         // Main Algorithms
+        
         // 1. Debank all FFs
         void chooseBaseFF();
         void debankAll();
@@ -109,5 +122,4 @@ class Solver
         bool checkOverlap();
         bool checkFFInDie();
         bool checkFFOnSite();
-        bool isOverlap(Cell* cell1, Cell* cell2);
 };

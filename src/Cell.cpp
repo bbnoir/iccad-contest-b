@@ -177,3 +177,23 @@ void Cell::removeBin(Bin* bin)
         _bins.erase(it);
     }
 }
+
+
+/*
+Check overlap with other cells in the same bin
+*/
+bool Cell::checkOverlap()
+{
+    for(auto bin: _bins){
+        for(auto cell: bin->getCells()){
+            if(cell == this){
+                continue;
+            }
+            if((this->_x < cell->getX() + cell->getWidth()) && (this->_x + this->getWidth() > cell->getX()) &&
+               (this->_y < cell->getY() + cell->getHeight()) && (this->_y + this->getHeight() > cell->getY())){
+                return true;
+            }
+        }
+    }
+    return false;
+}

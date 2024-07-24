@@ -76,20 +76,12 @@ double Legalizer::placeRow(int ffIndex, int subRowIndex, bool trial){
     int bestX = -1;
     double bestCost = INFINITY;
     for(int i = startX;i <= endX - ff->getWidth();i+=siteWidth){
-        double cost = 0;
-        std::vector<Site*> candidateSites = _solver->_siteMap->getSites(i, rowY, i+ff->getWidth(), rowY+ff->getHeight());
-        for(long unsigned int j = 0;j < candidateSites.size();j++){
-            Site* site = candidateSites.at(j);
-            if(site->isOccupied()){
-                cost = INFINITY;
-                i += (ceil(ff->getWidth()/siteWidth)- 1)*siteWidth;
-                break;
-            }
+        if(!_solver->placeable(ff, i, rowY)){
+            i += (ceil(ff->getWidth()/siteWidth)- 1)*siteWidth;
+            continue;
         }
         // Calculate cost(displacement in Manhattan distance)
-        if(cost != INFINITY){
-            cost = (abs(ff->getX() - i) + abs(ff->getY() - rowY));
-        }
+        double cost = (abs(ff->getX() - i) + abs(ff->getY() - rowY));
         if(cost < bestCost){
             bestCost = cost;
             bestX = i;
@@ -135,12 +127,10 @@ void Legalizer::legalize(){
             }
         }
         if(best_subrow != -1){
-            placeRow(i, best_subrow, false);         
+            placeRow(i, best_subrow, false);      
             totalCost += cost_min;
-            // std::cout<<"i: "<<i<<", cost: "<<cost_min<<", total cost: "<<totalCost<<std::endl;
         }else{
             orphans.push_back(i);
-            // std::cout<<"i: "<<i<<" is orphan."<<std::endl;
         }
     }
 
@@ -156,7 +146,6 @@ void Legalizer::legalize(){
             }
         }
         totalCost += cost_min;
-        // std::cout<<"Orphan "<<orphans[i]<<", cost: "<<cost_min<<", total cost: "<<totalCost<<std::endl;
         if(best_subrow != -1)
             placeRow(orphans[i], best_subrow, false);
         else
@@ -165,6 +154,5 @@ void Legalizer::legalize(){
 
     std::cout << "Legalizing done." << std::endl;
     // std::cout << "Total cost: " << totalCost << std::endl;
-    // 2.59431e+09
     // std::cout << (orphans.size()/double(_ffs.size()))*100 << "% FFs are orphan." << std::endl;
 }

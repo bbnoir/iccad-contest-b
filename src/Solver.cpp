@@ -363,6 +363,62 @@ void Solver::init_placement()
 }
 
 /*
+check the cell is placeable on the site(on site and not overlap)
+Call before placing the cell if considering overlap
+*/
+bool Solver::placeable(Cell* cell)
+{
+    if(!_siteMap->onSite(cell->getX(), cell->getY()))
+    {
+        std::cerr << "Cell not placed on site: " << cell->getInstName() << std::endl;
+        return false;
+    }
+    // check the cell will not overlap with other cells in the bin
+    std::vector<Bin*> bins = _binMap->getBins(cell->getX(), cell->getY(), cell->getX()+cell->getWidth(), cell->getY()+cell->getHeight());
+    std::vector<Cell*> cells;
+    for(auto bin: bins)
+    {   
+        cells.insert(cells.end(), bin->getCells().begin(), bin->getCells().end());
+    }
+    for(auto c: cells)
+    {
+        if(isOverlap(cell, c))
+        {
+            return false;
+        }
+    }
+    return true;
+}
+
+/*
+check the cell is placeable on the site at (x,y) (on site and not overlap)
+Call before placing the cell if considering overlap
+*/
+bool Solver::placeable(Cell* cell, int x,int y)
+{
+    if(!_siteMap->onSite(x, y))
+    {
+        std::cerr << "Cell not placed on site: " << cell->getInstName() << std::endl;
+        return false;
+    }
+    // check the cell will not overlap with other cells in the bin
+    std::vector<Bin*> bins = _binMap->getBins(x, y, x+cell->getWidth(), y+cell->getHeight());
+    std::vector<Cell*> cells;
+    for(auto bin: bins)
+    {
+        cells.insert(cells.end(), bin->getCells().begin(), bin->getCells().end());
+    }
+    for(auto c: cells)
+    {
+        if(isOverlap(x, y, cell, c))
+        {
+            return false;
+        }
+    }
+    return true;
+}
+
+/*
 place the cell based on the cell's x and y
 */
 bool Solver::placeCell(Cell* cell)
@@ -743,13 +799,20 @@ bool Solver::checkOverlap()
     bool overlap = false;
     for(long unsigned int i = 0; i < cells.size(); i++)
     {
-        for(long unsigned int j = i+1; j < cells.size(); j++)
-        {
-            if(isOverlap(cells[i], cells[j]))
-            {
-                std::cerr << "Overlap: " << cells[i]->getInstName() << " and " << cells[j]->getInstName() << std::endl;
-                overlap = true;
-            }
+        // for(long unsigned int j = i+1; j < cells.size(); j++)
+        // {
+        //     if(isOverlap(cells[i], cells[j]))
+        //     {
+        //         std::cerr << "Overlap: " << cells[i]->getInstName() << " and " << cells[j]->getInstName() << std::endl;
+        //         std::cerr << "Cell1: " << cells[i]->getX() << " " << cells[i]->getY() << " " << cells[i]->getWidth() << " " << cells[i]->getHeight() << std::endl;
+        //         std::cerr << "Cell2: " << cells[j]->getX() << " " << cells[j]->getY() << " " << cells[j]->getWidth() << " " << cells[j]->getHeight() << std::endl;
+        //         overlap = true;
+        //     }
+        // }
+        
+        if(cells[i]->checkOverlap()){
+            std::cerr << "Overlap: " << cells[i]->getInstName() << std::endl;
+            overlap = true;
         }
     }
     return overlap;
@@ -764,6 +827,14 @@ bool Solver::isOverlap(Cell* cell1, Cell* cell2)
            cell1->getX() + cell1->getWidth() > cell2->getX() &&
            cell1->getY() < cell2->getY() + cell2->getHeight() &&
            cell1->getY() + cell1->getHeight() > cell2->getY();
+}
+
+bool Solver::isOverlap(int x1, int y1, Cell* cell1, Cell* cell2)
+{
+    return x1 < cell2->getX() + cell2->getWidth() &&
+           x1 + cell1->getWidth() > cell2->getX() &&
+           y1 < cell2->getY() + cell2->getHeight() &&
+           y1 + cell1->getHeight() > cell2->getY();
 }
 
 std::vector<int> Solver::regionQuery(std::vector<FF*> FFs, long unsigned int idx, int eps)

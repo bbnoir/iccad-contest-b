@@ -310,21 +310,6 @@ void SiteMap::removeCell(Cell* cell)
     return;
 }
 
-bool SiteMap::moveCell(Cell* cell, int x, int y)
-{
-    removeCell(cell);
-    cell->setX(x);
-    cell->setY(y);
-    return place(cell);
-}
-
-bool SiteMap::moveCell(Cell* cell)
-{
-    const int x = cell->getX();
-    const int y = cell->getY();
-    return moveCell(cell, x, y);
-}
-
 /*
 Check the point is on the left down corner of a site or not
 */
