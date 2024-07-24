@@ -343,6 +343,7 @@ void Solver::init_placement()
     _siteMap = new SiteMap(_placementRows);
 
     // place cells
+    // TODO: initial placement not necessary placed on the site
     for (auto ff : _ffs)
     {
         if(!placeCell(ff))
@@ -361,12 +362,18 @@ void Solver::init_placement()
     }
 }
 
+/*
+place the cell based on the cell's x and y
+*/
 bool Solver::placeCell(Cell* cell)
 {
     _binMap->addCell(cell);
     return _siteMap->place(cell);
 }
 
+/*
+place the cell based on the x and y
+*/
 bool Solver::placeCell(Cell* cell, int x, int y)
 {
     cell->setX(x);
@@ -375,12 +382,18 @@ bool Solver::placeCell(Cell* cell, int x, int y)
     return _siteMap->place(cell);
 }
 
+/*
+remove the cell from the binMap and siteMap
+*/
 void Solver::removeCell(Cell* cell)
 {
     _siteMap->removeCell(cell);
     _binMap->removeCell(cell);
 }
 
+/*
+move the cell to (x, y)
+*/
 bool Solver::moveCell(Cell* cell, int x, int y)
 {
     removeCell(cell);
@@ -389,12 +402,18 @@ bool Solver::moveCell(Cell* cell, int x, int y)
     return placeCell(cell);
 }
 
+/*
+add FF to _ffs and _ffsMap
+*/
 void Solver::addFF(FF* ff)
 {
     _ffs.push_back(ff);
     _ffsMap[ff->getInstName()] = ff;
 }
 
+/*
+delete FF from _ffs and _ffsMap(Complelely delete the FF)
+*/
 void Solver::deleteFF(FF* ff)
 {
     _ffs.erase(std::remove(_ffs.begin(), _ffs.end(), ff), _ffs.end());
@@ -613,8 +632,8 @@ void Solver::forceDirectedPlacement()
 void Solver::solve()
 {
     chooseBaseFF();
-    // TODO: placing FFs on the die before legalizing is unnecessary 
     init_placement();
+    // TODO: placing FFs on the die before legalizing is unnecessary 
     debankAll();
     
     std::cout<<"Start to force directed placement"<<std::endl;
@@ -639,135 +658,112 @@ void Solver::solve()
     forceDirectedPlacement();
     
     std::cout<<"Start to legalize"<<std::endl;
-    // legalize();
     _legalizer->legalize();
-    
-    // check for overlapping
-    _siteMap->checkOverlap();
-    // check FFs in Die
+}
+
+/*
+Check for FFs in Die, FFs on Site, and Overlap
+*/
+void Solver::check()
+{
+    std::cout << "============ Start checking ============" << std::endl;
+    std::cout << "Check FF in Die" << std::endl;
+    bool inDie = checkFFInDie();
+    if(!inDie)
+    {
+        std::cerr << "============== Error ==============" << std::endl;    
+        std::cerr << "FF not placed in Die" << std::endl;
+    }
+    std::cout << "Check FF on Site" << std::endl;
+    bool onSite = checkFFOnSite();
+    if(!onSite)
+    {
+        std::cerr << "============== Error ==============" << std::endl;    
+        std::cerr << "FF not placed on Site" << std::endl;
+    }
+    std::cout << "Check Overlap" << std::endl;
+    bool overlap = checkOverlap();
+    if(overlap)
+    {
+        std::cerr << "============== Error ==============" << std::endl;    
+        std::cerr << "Overlap" << std::endl;
+    }
+
+    if(inDie && onSite && !overlap)
+    {
+        std::cout << "============== Success ==============" << std::endl;
+    }
+}
+
+/*
+if any FF is not placed on site, return false
+*/
+bool Solver::checkFFOnSite()
+{
+    bool onSite = true;
+    for(auto ff: _ffs)
+    {
+        if(!_siteMap->onSite(ff->getX(), ff->getY()))
+        {
+            onSite = false;
+            std::cerr << "FF not placed on site: " << ff->getInstName() << std::endl;
+        }
+    }
+    return onSite;
+}
+
+/*
+if any FF is not placed or placed out of Die, return false
+*/
+bool Solver::checkFFInDie()
+{
+    bool inDie = true;
     for(auto ff: _ffs)
     {
         if(ff->getSites().size() == 0)
         {
+            inDie = false;
             std::cerr << "FF not placed: " << ff->getInstName() << std::endl;
         }else if(ff->getX()<DIE_LOW_LEFT_X || ff->getX()+ff->getWidth()>DIE_UP_RIGHT_X || ff->getY()<DIE_LOW_LEFT_Y || ff->getY()+ff->getHeight()>DIE_UP_RIGHT_Y){
+            inDie = false;
             std::cerr << "FF not placed in Die: " << ff->getInstName() << std::endl;
         }
     }
+    return inDie;
 }
 
-void Solver::legalize()
+/*
+if any cells(Combs and FFs) overlap, return true
+*/
+bool Solver::checkOverlap()
 {
-    std::vector<int> x_optimal;
-    std::vector<int> y_optimal;
-    for(long unsigned int i = 0; i < _ffs.size(); i++)
+    std::vector<Cell*> cells;
+    cells.insert(cells.end(), _combs.begin(), _combs.end());
+    cells.insert(cells.end(), _ffs.begin(), _ffs.end());
+    bool overlap = false;
+    for(long unsigned int i = 0; i < cells.size(); i++)
     {
-        x_optimal.push_back(_ffs[i]->getX());
-        y_optimal.push_back(_ffs[i]->getY());
-    }
-    std::vector<std::vector<Site*>> siteRows = _siteMap->getSiteRows();
-    std::vector<Cell*> orphans;
-    for(int i = siteRows.size()-1; i >= 0 ; i--)
-    {
-        auto row = siteRows[i];
-        int rowWidth = row[0]->getWidth();
-        int numSites = row.size();
-        int startX = row[0]->getX();
-        int rowY = row[0]->getY();
-        int endX = row[numSites-1]->getX() + rowWidth;
-        
-        // get all FFs in the row
-        std::vector<Cell*> FFs;
-        for(auto site: row)
+        for(long unsigned int j = i+1; j < cells.size(); j++)
         {
-            for(auto cell : site->getCell())
+            if(isOverlap(cells[i], cells[j]))
             {
-                // ff in this row and not repeated
-                if(cell->getCellType() == CellType::FF && std::find(FFs.begin(), FFs.end(), cell) == FFs.end())
-                {
-                    FFs.push_back(cell);
-                }
-            }
-        }
-        if(FFs.size() == 0)
-            continue;
-        // remove FFs from the row
-        for(auto cell : FFs)
-        {
-            removeCell(cell);
-        }
-        // sort cells by x
-        std::sort(FFs.begin(), FFs.end(), [](Cell* a, Cell* b) -> bool { return a->getX() < b->getX(); });
-        int curX = startX;
-        for(long unsigned int j=0;j<FFs.size();j++)
-        {
-            Cell* cell = FFs[j];
-            curX = std::max(curX, cell->getX());
-            // find availabe sites
-            do
-            {
-                std::vector<Site*> sites = _siteMap->getSites(curX, rowY, curX+cell->getWidth(), rowY+cell->getHeight());
-                if(sites.size() == 0)
-                {
-                    // no available site in this row
-                    curX = endX;
-                    break;
-                }
-                bool available = true;
-                for(long unsigned int k=0;k<sites.size();k++)
-                {
-                    if(sites[k]->isOccupied())
-                    {
-                        available = false;
-                        curX += rowWidth*(k+1);
-                        break;
-                    }
-                }
-                if(available)
-                {
-                    break;
-                }
-            } while (curX < endX);
-            // move cell if available and needed
-            if(curX < endX)
-            {
-                cell->setX(curX);
-                cell->setY(rowY);
-                placeCell(cell);
-            }else if(curX >= endX)
-            {
-                for(long unsigned int k=j;k<FFs.size();k++)
-                    orphans.push_back(FFs[k]);
-                break;
-            }
-            // leave the placing site
-            while(curX < cell->getX()+cell->getWidth())
-            {
-                curX += rowWidth;
+                std::cerr << "Overlap: " << cells[i]->getInstName() << " and " << cells[j]->getInstName() << std::endl;
+                overlap = true;
             }
         }
     }
-    // place the orphans
-    std::cout << "Orphans size: " << orphans.size() << std::endl;
-    for(long unsigned int i = 0; i < orphans.size(); i++)
-    {
-        Cell* cell = orphans[i];
-        int x = cell->getX();
-        int y = cell->getY();
-        Site* nearest_site = _siteMap->getNearestAvailableSite(x,y, cell);
-        cell->setX(nearest_site->getX());
-        cell->setY(nearest_site->getY());
-        placeCell(cell);
-        std::cout<<"i: "<<i<<std::endl;
-    }
-    // calculate the displacement in Manhattan distance
-    unsigned long long total_disp = 0;
-    for(long unsigned int i = 0; i < _ffs.size(); i++)
-    {
-        total_disp += abs(_ffs[i]->getX() - x_optimal[i]) + abs(_ffs[i]->getY() - y_optimal[i]);
-    }
-    std::cout << "Total displacement: " << total_disp << std::endl;
-    // 4323731820
+    return overlap;
+}
+
+/*
+if cell1 and cell2 overlap, return true
+*/
+bool Solver::isOverlap(Cell* cell1, Cell* cell2)
+{
+    return cell1->getX() < cell2->getX() + cell2->getWidth() &&
+           cell1->getX() + cell1->getWidth() > cell2->getX() &&
+           cell1->getY() < cell2->getY() + cell2->getHeight() &&
+           cell1->getY() + cell1->getHeight() > cell2->getY();
 }
 
 std::vector<int> Solver::regionQuery(std::vector<FF*> FFs, long unsigned int idx, int eps)

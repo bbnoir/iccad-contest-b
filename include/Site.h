@@ -44,7 +44,6 @@ class SiteMap
         std::vector<std::vector<Site*>> getSiteRows();
 
         Site* getNearestSite(int x, int y);
-        Site* getNearestAvailableSite(int x, int y, Cell* cell);
 
         bool place(Cell* cell);
         void removeCell(Cell* cell);
@@ -53,7 +52,7 @@ class SiteMap
         // move cell to cell's position
         bool moveCell(Cell* cell);
 
-        bool checkOverlap();
+        bool onSite(int x, int y);
     private:
         std::vector<PlacementRows> _placementRows;
         std::vector<std::vector<Site*>> _sites;

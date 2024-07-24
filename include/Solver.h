@@ -40,6 +40,7 @@ class Solver
         void parse_input(std::string filename);
         void init_placement();
         void solve();
+        void check();
         void dump(std::string filename);
 
         void display();
@@ -72,16 +73,14 @@ class Solver
         BinMap* _binMap;
         SiteMap* _siteMap;
         int uniqueNameCounter = 0;
-        // Legalizer
-        Legalizer* _legalizer;
         // Modify Cell
         bool placeCell(Cell* cell);
         bool placeCell(Cell* cell, int x, int y);
         void removeCell(Cell* cell);
         bool moveCell(Cell* cell, int x, int y);
         // Modify FF
-        void addFF(FF* ff); // add FF to _ffs and _ffsMap
-        void deleteFF(FF* ff); // delete FF from _ffs and _ffsMap
+        void addFF(FF* ff);
+        void deleteFF(FF* ff);
         void bankFFs(FF* ff1, FF* ff2, LibCell* targetFF);
         // Trivial
         std::string makeUniqueName();
@@ -89,6 +88,7 @@ class Solver
         // Helper
         void constructFFsCLKDomain();
         std::vector<int> regionQuery(std::vector<FF*> ffs, long unsigned int idx, int radius);
+
         // Main Algorithms
         // 1. Debank all FFs
         void chooseBaseFF();
@@ -103,5 +103,11 @@ class Solver
         void greedyBanking(std::vector<std::vector<FF*>> clusters);
         double cal_banking_gain(FF* ff1, FF* ff2, LibCell* targetFF);
         // 5. Legalization
-        void legalize();
+        Legalizer* _legalizer;
+
+        // Checker
+        bool checkOverlap();
+        bool checkFFInDie();
+        bool checkFFOnSite();
+        bool isOverlap(Cell* cell1, Cell* cell2);
 };
