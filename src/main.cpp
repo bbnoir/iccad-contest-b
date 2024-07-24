@@ -17,12 +17,11 @@ int main(int argc, char* argv[])
 
     solver->parse_input(input_file);
     solver->solve();
+    solver->check();
     solver->dump(output_file);
 
     Renderer* renderer = new Renderer(solver);
     renderer->render();
-
-    // solver->display();
 
     delete renderer;
     delete solver;

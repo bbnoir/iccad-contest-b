@@ -1,1 +1,1 @@
-./sanity cases/sampleCase out/sampleOut
+./sanity_20240719 cases/sampleCase out/sampleOut

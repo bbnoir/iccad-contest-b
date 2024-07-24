@@ -1,6 +1,7 @@
 #pragma once
 #include <string>
 #include <algorithm>
+#include "Bin.h"
 #include "Site.h"
 #include "Pin.h"
 
@@ -84,6 +85,8 @@ public:
 
     void removeSite(Site* site);
     void removeBin(Bin* bin);
+
+    bool checkOverlap();
 
 protected:
     LibCell* _lib_cell;
