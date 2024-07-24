@@ -343,7 +343,7 @@ void Solver::init_placement()
     _siteMap = new SiteMap(_placementRows);
 
     // place cells
-    // TODO: initial placement not necessary placed on the site
+    // TODO: initial placement may not be on site
     for (auto ff : _ffs)
     {
         if(!placeCell(ff))
@@ -417,6 +417,40 @@ bool Solver::placeable(Cell* cell, int x,int y)
     }
     return true;
 }
+
+/*
+check the cell is placeable on the site at (x,y) (on site and not overlap)
+Call before placing the cell if considering overlap
+move_distance is the distance the cell need to move to avoid overlap in current bins
+*/
+bool Solver::placeable(Cell* cell, int x, int y, int& move_distance)
+{
+    if(!_siteMap->onSite(x, y))
+    {
+        std::cerr << "Cell not placed on site: " << cell->getInstName() << std::endl;
+        return false;
+    }
+    // check the cell will not overlap with other cells in the bin
+    std::vector<Bin*> bins = _binMap->getBins(x, y, x+cell->getWidth(), y+cell->getHeight());
+    std::vector<Cell*> cells;
+    for(auto bin: bins)
+    {
+        cells.insert(cells.end(), bin->getCells().begin(), bin->getCells().end());
+    }
+    bool overlap = false;
+    int move = 0;
+    for(auto c: cells)
+    {
+        if(isOverlap(x, y, cell, c))
+        {
+            overlap = true;
+            move = std::max(move, c->getX()+c->getWidth()-x);
+        }
+    }
+    move_distance = move;
+    return !overlap;
+}
+
 
 /*
 place the cell based on the cell's x and y
@@ -689,7 +723,6 @@ void Solver::solve()
 {
     chooseBaseFF();
     init_placement();
-    // TODO: placing FFs on the die before legalizing is unnecessary 
     debankAll();
     
     std::cout<<"Start to force directed placement"<<std::endl;

@@ -98,6 +98,7 @@ class Solver
         bool isOverlap(int x1, int y1, Cell* cell1, Cell* cell2);
         bool placeable(Cell* cell);
         bool placeable(Cell* cell, int x, int y);
+        bool placeable(Cell* cell, int x, int y, int& move_distance);
         void constructFFsCLKDomain();
         std::vector<int> regionQuery(std::vector<FF*> ffs, long unsigned int idx, int radius);
 
