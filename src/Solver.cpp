@@ -343,22 +343,15 @@ void Solver::init_placement()
     _siteMap = new SiteMap(_placementRows);
 
     // place cells
-    // TODO: initial placement may not be on site
     for (auto ff : _ffs)
     {
-        if(!placeCell(ff))
-        {
-            std::cerr << "Overlapped initial placement" << std::endl;
-            exit(1);
-        }
+        // place on the nearest site for it may not be on site initially
+        Site* nearest_site = _siteMap->getNearestSite(ff->getX(), ff->getY());
+        placeCell(ff, nearest_site->getX(), nearest_site->getY());
     }
     for (auto comb : _combs)
     {
-        if(!placeCell(comb))
-        {
-            std::cerr << "Overlapped initial placement" << std::endl;
-            exit(1);
-        }
+        placeCell(comb);
     }
 }
 
@@ -455,21 +448,21 @@ bool Solver::placeable(Cell* cell, int x, int y, int& move_distance)
 /*
 place the cell based on the cell's x and y
 */
-bool Solver::placeCell(Cell* cell)
+void Solver::placeCell(Cell* cell)
 {
     _binMap->addCell(cell);
-    return _siteMap->place(cell);
+    _siteMap->place(cell);
 }
 
 /*
 place the cell based on the x and y
 */
-bool Solver::placeCell(Cell* cell, int x, int y)
+void Solver::placeCell(Cell* cell, int x, int y)
 {
     cell->setX(x);
     cell->setY(y);
     _binMap->addCell(cell);
-    return _siteMap->place(cell);
+    _siteMap->place(cell);
 }
 
 /*
@@ -484,12 +477,12 @@ void Solver::removeCell(Cell* cell)
 /*
 move the cell to (x, y)
 */
-bool Solver::moveCell(Cell* cell, int x, int y)
+void Solver::moveCell(Cell* cell, int x, int y)
 {
     removeCell(cell);
     cell->setX(x);
     cell->setY(y);
-    return placeCell(cell);
+    placeCell(cell);
 }
 
 /*
@@ -862,6 +855,9 @@ bool Solver::isOverlap(Cell* cell1, Cell* cell2)
            cell1->getY() + cell1->getHeight() > cell2->getY();
 }
 
+/*
+if cell1(x,y) and cell2 overlap, return true
+*/
 bool Solver::isOverlap(int x1, int y1, Cell* cell1, Cell* cell2)
 {
     return x1 < cell2->getX() + cell2->getWidth() &&

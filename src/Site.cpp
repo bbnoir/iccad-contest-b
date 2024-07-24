@@ -266,7 +266,7 @@ Site* SiteMap::getNearestSite(int x, int y)
     return nearestSite;
 }
 
-bool SiteMap::place(Cell* cell)
+void SiteMap::place(Cell* cell)
 {
     const int cellWidth = cell->getWidth();
     const int cellHeight = cell->getHeight();
@@ -281,16 +281,6 @@ bool SiteMap::place(Cell* cell)
         site->place(cell);
         cell->addSite(site);
     }
-    // return true if overlap
-    for (Site* site : sites)
-    {
-        if (site->isOccupied())
-        {
-            return true;
-        }
-    }
-
-    return false;
 }
 
 void SiteMap::removeCell(Cell* cell)

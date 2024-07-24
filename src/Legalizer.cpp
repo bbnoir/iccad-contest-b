@@ -162,6 +162,6 @@ void Legalizer::legalize(){
     }
 
     std::cout << "Legalizing done." << std::endl;
-    std::cout << "Total cost: " << totalCost << std::endl;
-    std::cout << (orphans.size()/double(_ffs.size()))*100 << "% FFs are orphan." << std::endl;
+    // std::cout << "Total cost: " << totalCost << std::endl;
+    // std::cout << (orphans.size()/double(_ffs.size()))*100 << "% FFs are orphan." << std::endl;
 }

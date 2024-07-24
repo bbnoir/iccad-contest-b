@@ -76,10 +76,10 @@ class Solver
         
         // Modify Cell
         
-        bool placeCell(Cell* cell);
-        bool placeCell(Cell* cell, int x, int y);
+        void placeCell(Cell* cell);
+        void placeCell(Cell* cell, int x, int y);
         void removeCell(Cell* cell);
-        bool moveCell(Cell* cell, int x, int y);
+        void moveCell(Cell* cell, int x, int y);
         
         // Modify FF
         

@@ -45,7 +45,7 @@ class SiteMap
 
         Site* getNearestSite(int x, int y);
 
-        bool place(Cell* cell);
+        void place(Cell* cell);
         void removeCell(Cell* cell);
 
         bool onSite(int x, int y);
