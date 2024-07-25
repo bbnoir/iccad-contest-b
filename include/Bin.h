@@ -41,8 +41,6 @@ class BinMap
 
         void addCell(Cell* cell);
         void removeCell(Cell* cell);
-        void moveCell(Cell* cell, int x, int y);
-        void moveCell(Cell* cell);
 
     private:
         int _dieLowerLeftX;

@@ -266,53 +266,7 @@ Site* SiteMap::getNearestSite(int x, int y)
     return nearestSite;
 }
 
-Site* SiteMap::getNearestAvailableSite(int x, int y, Cell* cell)
-{
-    // BFS from the start site
-    std::queue<std::pair<int,int>> q;
-    std::vector<std::vector<bool>> visited(_placementRows.size(), std::vector<bool>(_placementRows[0].numSites, false));
-    int cellWidth = cell->getWidth();
-    int cellHeight = cell->getHeight();
-    Site* startSite = getNearestSite(x, y);
-    int siteX_idx = _x2col[_y2row[startSite->getY()]][startSite->getX()];
-    int siteY_idx = _y2row[startSite->getY()];
-    q.push(std::make_pair(siteX_idx, siteY_idx));
-
-    while (!q.empty())
-    {
-        std::pair<int,int> cur = q.front();
-        q.pop();
-        if(visited[cur.second][cur.first])
-            continue;
-        visited[cur.second][cur.first] = true;
-        int curX_idx = cur.first;
-        int curY_idx = cur.second;
-        std::vector<Site*> sites = getSites(_sites[curY_idx][curX_idx]->getX(), _sites[curY_idx][curX_idx]->getY(), _sites[curY_idx][curX_idx]->getX() + cellWidth, _sites[curY_idx][curX_idx]->getY() + cellHeight);
-        if (isPlacable(sites))
-        {
-            return _sites[curY_idx][curX_idx];
-        }
-        if (curX_idx + 1 < _placementRows[curY_idx].numSites)
-        {
-            q.push(std::make_pair(curX_idx + 1, curY_idx));
-        }
-        if (curY_idx + 1 < int(_placementRows.size()))
-        {
-            q.push(std::make_pair(curX_idx, curY_idx + 1));
-        }
-        if (curX_idx > 0)
-        {
-            q.push(std::make_pair(curX_idx - 1, curY_idx));
-        }
-        if (curY_idx > 0)
-        {
-            q.push(std::make_pair(curX_idx, curY_idx - 1));
-        }
-    }
-    return nullptr;
-}
-
-bool SiteMap::place(Cell* cell)
+void SiteMap::place(Cell* cell)
 {
     const int cellWidth = cell->getWidth();
     const int cellHeight = cell->getHeight();
@@ -327,16 +281,6 @@ bool SiteMap::place(Cell* cell)
         site->place(cell);
         cell->addSite(site);
     }
-    // return true if overlap
-    for (Site* site : sites)
-    {
-        if (site->isOccupied())
-        {
-            return true;
-        }
-    }
-
-    return false;
 }
 
 void SiteMap::removeCell(Cell* cell)
@@ -356,35 +300,22 @@ void SiteMap::removeCell(Cell* cell)
     return;
 }
 
-bool SiteMap::moveCell(Cell* cell, int x, int y)
-{
-    removeCell(cell);
-    cell->setX(x);
-    cell->setY(y);
-    return place(cell);
-}
-
-bool SiteMap::moveCell(Cell* cell)
-{
-    const int x = cell->getX();
-    const int y = cell->getY();
-    return moveCell(cell, x, y);
-}
-
-bool SiteMap::checkOverlap()
-{
-    bool isOverlapping = false;
-    for (const auto& row : _sites)
+/*
+Check the point is on the left down corner of a site or not
+*/
+bool SiteMap::onSite(int x, int y)
+{   
+    if (x < DIE_LOW_LEFT_X || y < DIE_LOW_LEFT_Y || x > DIE_UP_RIGHT_X || y > DIE_UP_RIGHT_Y)
     {
-        for (Site* site : row)
-        {
-            if (site->isOverLapping())
-            {
-                isOverlapping = true;
-                // output overlapping sites
-                std::cerr << "Overlapping site at (" << site->getX() << ", " << site->getY() << ")" << std::endl;
-            }
-        }
+        return false;
     }
-    return isOverlapping;
+    if (_y2row.find(y) == _y2row.end())
+    {
+        return false;
+    }
+    if (_x2col[_y2row[y]].find(x) == _x2col[_y2row[y]].end())
+    {
+        return false;
+    }
+    return true;
 }
