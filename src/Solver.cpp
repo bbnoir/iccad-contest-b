@@ -251,30 +251,63 @@ void Solver::parse_input(std::string filename)
         }
     }
     // Set prev and next stage pins
+    // TODO: improve efficiency by using DP or Multi-threading
+    int count = 0;
+    const int numFFs = _ffs.size();
     for (auto ff : _ffs)
     {
+        int in_pin_count = 0;
+        int out_pin_count = 0;
         for (auto inPin : ff->getInputPins())
         {
+            // std::cout << "Finding prev stage pins for: " << inPin->getCell()->getInstName() << "/" << inPin->getName() << endl;
             queue<Pin*> q;
-            q.push(inPin->getFaninPin());
+            if (inPin->getFaninPin() != nullptr)
+            {
+                q.push(inPin->getFaninPin());
+            }
             while(!q.empty())
             {
-                Pin* curPin = q.front();
-                q.pop();
-                if(curPin->getType() == PinType::FF_Q)
+                in_pin_count++;
+                unordered_map<Pin*, bool> visited; // prevent revisiting the same pin
+                Pin* curPin = q.front(); q.pop();
+                if (curPin == nullptr)
+                {
+                    std::cout << "Error: There is a null pointer in set prev stage pins" << endl;
+                    exit(1);
+                }
+                const PinType pin_type = curPin->getType();
+                if(pin_type == PinType::FF_Q)
                 {
                     inPin->addPrevStagePin(curPin);
-                    continue;
                 }
-                if(curPin->getType() == PinType::INPUT)
+                else if(pin_type == PinType::INPUT)
                 {
                     // TODO: check if INPUT have slack
                     // inPin->addPrevStagePin(curPin);
                     continue;
                 }
-                for(auto prevInPin : curPin->getCell()->getInputPins())
+                else if (pin_type == PinType::GATE_OUT)
                 {
-                    q.push(prevInPin->getFaninPin());
+                    for(auto prevInPin : curPin->getCell()->getInputPins())
+                    {
+                        if (!visited[prevInPin])
+                        {
+                            visited[prevInPin] = true;
+                            Pin* faninPin = prevInPin->getFaninPin();
+                            if (faninPin != nullptr && !visited[faninPin])
+                            {
+                                visited[faninPin] = true;
+                                q.push(faninPin);
+                            }
+                        }
+                    }
+                }
+                else
+                {
+                    std::cout << "Error: Unexpected fanin pin type" << endl;
+                    std::cout << "\tCurPin: " << curPin->getCell()->getInstName() << "/" << curPin->getName() << endl;
+                    exit(1);
                 }
             }
         }
@@ -283,32 +316,59 @@ void Solver::parse_input(std::string filename)
             queue<Pin*> q;
             for (auto fanout : outPin->getFanoutPins())
             {
-                q.push(fanout);
+                if (fanout != nullptr)
+                {
+                    q.push(fanout);
+                }
             }
             while(!q.empty())
             {
-                Pin* curPin = q.front();
-                q.pop();
-                if(curPin->getType() == PinType::FF_D)
+                out_pin_count++;
+                unordered_map<Pin*, bool> visited; // prevent revisiting the same pin
+                Pin* curPin = q.front(); q.pop();
+                if (curPin == nullptr)
+                {
+                    std::cout << "Error: There is a null pointer in set next stage pins" << endl;
+                    exit(1);
+                }
+                PinType pin_type = curPin->getType();
+                if(pin_type == PinType::FF_D)
                 {
                     outPin->addNextStagePin(curPin);
-                    continue;
                 }
-                if(curPin->getType() == PinType::OUTPUT)
+                else if(pin_type == PinType::OUTPUT)
                 {
                     //TODO: check if OUTPUT have slack
                     // outPin->addNextStagePin(curPin);
                     continue;
                 }
-                for(auto nextOutPin : curPin->getCell()->getOutputPins())
+                else if (pin_type == PinType::GATE_IN)
                 {
-                    for(auto fanout : nextOutPin->getFanoutPins())
+                    for(auto nextOutPin : curPin->getCell()->getOutputPins())
                     {
-                        q.push(fanout);
+                        if (!visited[nextOutPin])
+                        {
+                            visited[nextOutPin] = true;
+                            for(auto fanout : nextOutPin->getFanoutPins())
+                            {
+                                if (fanout != nullptr && !visited[fanout])
+                                {
+                                    visited[fanout] = true;
+                                    q.push(fanout);
+                                }
+                            }
+                        }
                     }
+                }
+                else
+                {
+                    std::cout << "Error: Unexpected fanout pin type" << endl;
+                    std::cout << "\tCurPin: " << curPin->getCell()->getInstName() << "/" << curPin->getName() << endl;
+                    exit(1);
                 }
             }
         }
+        std::cout << "Count: " << ++count << " / " << numFFs << " In Pin Count: " << in_pin_count << " Out Pin Count: " << out_pin_count << "\n";
     }
     // show prev and next stage pins
     // for (auto ff : _ffs)
