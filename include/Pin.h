@@ -41,7 +41,9 @@ class Pin
         Pin* getFirstFanoutPin();
         std::vector<Pin*> getFanoutPins();
         std::vector<Pin*> getPrevStagePins();
+        size_t getPrevStagePinsSize();
         std::vector<Pin*> getNextStagePins();
+        size_t getNextStagePinsSize();
 
         void setSlack(double slack);
         void setCell(Cell* cell);

@@ -160,9 +160,19 @@ std::vector<Pin*> Pin::getPrevStagePins()
     return _prevStagePins;
 }
 
+size_t Pin::getPrevStagePinsSize()
+{
+    return _prevStagePins.size();
+}
+
 std::vector<Pin*> Pin::getNextStagePins()
 {
     return _nextStagePins;
+}
+
+size_t Pin::getNextStagePinsSize()
+{
+    return _nextStagePins.size();
 }
 
 void Pin::copyConnection(Pin* pin)
