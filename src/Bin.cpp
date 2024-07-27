@@ -1,8 +1,10 @@
 #include "Bin.h"
 #include "Cell.h"
+#include "FF.h"
 #include "param.h"
 #include <cmath>
 #include <iostream>
+#include <unordered_set>
 
 Bin::Bin()
 {
@@ -104,6 +106,8 @@ BinMap::BinMap(int dieLowerLeftX, int dieLowerLeftY, int dieUpperRightX, int die
         }
         _bins.emplace_back(row);
     }
+    _numBinsX = _bins[0].size();
+    _numBinsY = _bins.size();
 }
 
 std::vector<Bin*> BinMap::getBins()
@@ -117,6 +121,11 @@ std::vector<Bin*> BinMap::getBins()
         }
     }
     return bins;
+}
+
+std::vector<std::vector<Bin*>> BinMap::getBins2D()
+{
+    return _bins;
 }
 
 std::vector<Bin*> BinMap::getBins(int leftDownX, int leftDownY, int rightUpX, int rightUpY)
@@ -139,6 +148,71 @@ std::vector<Bin*> BinMap::getBins(int leftDownX, int leftDownY, int rightUpX, in
         }
     }
     return bins;
+}
+
+/*
+indexX, indexY: the index of the left down bin
+numBlocksX, numBlocksY: the number of blocks in x and y direction
+*/
+std::vector<Bin*> BinMap::getBinsBlocks(int indexX, int indexY, int numBlocksX, int numBlocksY)
+{
+    if (indexX < 0 || indexY < 0 || indexX + numBlocksX > _numBinsX || indexY + numBlocksY > _numBinsY)
+    {
+        std::cerr << "Error: getBinsBlocks out of range" << std::endl;
+        exit(1);
+    }
+    std::vector<Bin*> bins;
+    for (int i = indexY; i < indexY + numBlocksY; i++)
+    {
+        for (int j = indexX; j < indexX + numBlocksX; j++)
+        {
+            bins.emplace_back(_bins[i][j]);
+        }
+    }
+    return bins;
+}
+
+/*
+Get all FFs in the bins
+*/
+std::vector<FF*> BinMap::getFFsInBins(const std::vector<Bin*>& bins)
+{
+    std::unordered_set<FF*> ffs;
+    for (auto bin : bins)
+    {
+        for (auto cell : bin->getCells())
+        {
+            if (cell->getCellType() == CellType::FF)
+            {
+                ffs.insert(static_cast<FF*>(cell));
+            }
+        }
+    }
+    std::vector<FF*> res;
+    for (auto ff : ffs)
+    {
+        res.emplace_back(ff);
+    }
+    return res;
+}
+
+/*
+Get all FFs in the bins blocks
+*/
+std::vector<FF*> BinMap::getFFsInBinsBlocks(int indexX, int indexY, int numBlocksX, int numBlocksY)
+{
+    std::vector<Bin*> bins = getBinsBlocks(indexX, indexY, numBlocksX, numBlocksY);
+    return getFFsInBins(bins);
+}
+
+int BinMap::getNumBinsX()
+{
+    return _numBinsX;
+}
+
+int BinMap::getNumBinsY()
+{
+    return _numBinsY;
 }
 
 void BinMap::addCell(Cell* cell)

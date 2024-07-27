@@ -32,5 +32,6 @@ class Legalizer{
         ~Legalizer();
 
         void legalize();
+        void fineTune();
 
 };
