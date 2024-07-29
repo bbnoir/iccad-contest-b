@@ -119,6 +119,8 @@ class Solver
         double cal_banking_gain(FF* ff1, FF* ff2, LibCell* targetFF);
         // 5. Legalization
         Legalizer* _legalizer;
+        // 6. Fine-tuning
+        void fineTune();
 
         // Checker
         bool checkOverlap();

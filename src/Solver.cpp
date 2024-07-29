@@ -732,6 +732,136 @@ void Solver::forceDirectedPlacement()
     }
 }
 
+void Solver::fineTune()
+{
+    std::cout << "Fine tuning..." << std::endl;
+
+    int kernel_size = 5;
+    int stride_x = 1;
+    int stride_y = 1;
+    int stride_x_width = stride_x * BIN_WIDTH;
+    int stride_y_height = stride_y * BIN_HEIGHT;
+    int num_x = (_binMap->getNumBinsX() - kernel_size) / stride_x + 1;
+    int num_y = (_binMap->getNumBinsY() - kernel_size) / stride_y + 1;
+    std::vector<FF*> orphans;
+    for(int y = 0; y < num_y; y+=stride_y)
+    {
+        std::cout << "Fine tuning: " << y << "/" << num_y << std::endl;
+        for(int x = 0; x < num_x; x+=stride_x)
+        {
+            int cur_x = x * stride_x_width;
+            int cur_y = y * stride_y_height;
+            int upright_x = std::min(cur_x + kernel_size * BIN_WIDTH, DIE_UP_RIGHT_X);
+            int upright_y = std::min(cur_y + kernel_size * BIN_HEIGHT, DIE_UP_RIGHT_Y);
+
+            std::vector<Bin*> bins = _binMap->getBinsBlocks(x, y, kernel_size, kernel_size);
+            bool is_over_max_util = false;
+            for(long unsigned int i = 0; i < bins.size(); i++)
+            {
+                if(bins[i]->isOverMaxUtil())
+                {
+                    is_over_max_util = true;
+                    break;
+                }
+            }
+
+            // continue if the bins utilization rate is less than threshold
+            if(!is_over_max_util)
+                continue;
+
+            std::vector<FF*> ffs_local = _binMap->getFFsInBins(bins);
+            std::vector<Site*> sites = _siteMap->getSitesInBlock(cur_x, cur_y, upright_x, upright_y);
+            ffs_local.insert(ffs_local.end(), orphans.begin(), orphans.end());
+            orphans.clear();
+            // remove ffs in the block
+            for(long unsigned int i = 0; i < ffs_local.size(); i++)
+            {
+                removeCell(ffs_local[i]);
+            }
+            for(long unsigned int i = 0; i < ffs_local.size(); i++)
+            {
+                FF* ff = ffs_local[i];
+                double cost_min = INFINITY;
+                int best_site = -1;
+                for(long unsigned int j = 0; j < sites.size(); j++)
+                {
+                    if(!placeable(ff, sites[j]->getX(), sites[j]->getY()))
+                        continue;
+                    
+                    // TODO: cost is depend on the slack and bin utilization rate
+                    int original_x = ff->getX();
+                    int original_y = ff->getY();
+                    int trial_x = sites[j]->getX();
+                    int trial_y = sites[j]->getY();
+
+                    int distance = abs(ff->getX() - trial_x) + abs(ff->getY() - trial_y);
+                    int OverMaxUtilBins = 0;
+                    
+                    ff->setXY(trial_x, trial_y);
+                    OverMaxUtilBins = _binMap->addCell(ff, true);
+                    ff->setXY(original_x, original_y);                    
+                    
+                    double cost = (distance) + 1000000*(OverMaxUtilBins);
+
+                    if(cost < cost_min)
+                    {
+                        cost_min = cost;
+                        best_site = j;
+                    }
+                }
+                if(best_site != -1)
+                {
+                    placeCell(ff, sites[best_site]->getX(), sites[best_site]->getY());
+                }else{
+                    orphans.push_back(ff);
+                }
+            }
+        }
+    }
+    std::cout<<"Orphans: "<<orphans.size()<<std::endl;
+    // TODO: place orphans
+    for(long unsigned int i = 0; i < orphans.size(); i++)
+    {
+        FF* ff = orphans[i];
+        double cost_min = INFINITY;
+        int best_site = -1;
+        std::vector<Site*> sites = _siteMap->getSites();
+        for(long unsigned int j = 0; j < sites.size(); j++)
+        {
+            if(!placeable(ff, sites[j]->getX(), sites[j]->getY()))
+                continue;
+            
+            int original_x = ff->getX();
+            int original_y = ff->getY();
+            int trial_x = sites[j]->getX();
+            int trial_y = sites[j]->getY();
+
+            int distance = abs(ff->getX() - trial_x) + abs(ff->getY() - trial_y);
+            int OverMaxUtilBins = 0;
+            
+            ff->setXY(trial_x, trial_y);
+            OverMaxUtilBins = _binMap->addCell(ff, true);
+            ff->setXY(original_x, original_y);                    
+            
+            double cost = (distance+1) * (OverMaxUtilBins+1);
+
+            if(cost < cost_min)
+            {
+                cost_min = cost;
+                best_site = j;
+            }
+        }
+        if(best_site != -1)
+        {
+            placeCell(ff, sites[best_site]->getX(), sites[best_site]->getY());
+        }else{
+            std::cout << "There is no place for orphan " << i << std::endl;
+        }
+    } 
+
+    std::cout << "Fine tuning done." << std::endl;
+}
+
 void Solver::solve()
 {
     chooseBaseFF();
@@ -767,7 +897,9 @@ void Solver::solve()
     std::cout << "There are "<<_binMap->getNumOverMaxUtilBins()<<" over utilized bins after Legalization."<<std::endl; 
 
     std::cout<<"Start to fine tune"<<std::endl;
-    _legalizer->fineTune();
+    fineTune();
+
+    std::cout << "There are "<<_binMap->getNumOverMaxUtilBins()<<" over utilized bins after Fine Tuning."<<std::endl;
 }
 
 /*
@@ -775,7 +907,7 @@ Check for FFs in Die, FFs on Site, and Overlap
 */
 void Solver::check()
 {
-    std::cout << "============ Start checking ============" << std::endl;
+    std::cout << "============= Start checking =============" << std::endl;
     std::cout << "Check FF in Die" << std::endl;
     bool inDie = checkFFInDie();
     if(!inDie)
@@ -800,7 +932,7 @@ void Solver::check()
 
     if(inDie && onSite && !overlap)
     {
-        std::cout << "============== Success ==============" << std::endl;
+        std::cout << "================= Success ================" << std::endl;
     }
 }
 
@@ -810,12 +942,13 @@ Evaluate all kinds of cost
 void Solver::evaluate()
 {
     std::cout << "============ Start evaluating ============" << std::endl;
-    double totalCost = 0.0;
-    double totalArea = 0.0;
-    double totalPower = 0.0;
-    double totalNegSlack = 0.0;
-    int numOfOverUtilBins = _binMap->getNumOverMaxUtilBins();
-    std::cout << "Number of over utilized bins: " << numOfOverUtilBins << std::endl;
+    // double totalCost = 0.0;
+    // double totalArea = 0.0;
+    // double totalPower = 0.0;
+    // double totalNegSlack = 0.0;
+    // int numOfOverUtilBins = _binMap->getNumOverMaxUtilBins();
+    // std::cout << "Number of over utilized bins: " << numOfOverUtilBins << std::endl;
+    std::cout << "============= End evaluating =============" << std::endl;
 }
 
 /*
@@ -841,20 +974,17 @@ if any FF is not placed or placed out of Die, return false
 bool Solver::checkFFInDie()
 {
     bool inDie = true;
-    int count = 0;
     for(auto ff: _ffs)
     {
         if(ff->getSites().size() == 0)
         {
             inDie = false;
-            count++;
             // std::cerr << "FF not placed: " << ff->getInstName() << std::endl;
         }else if(ff->getX()<DIE_LOW_LEFT_X || ff->getX()+ff->getWidth()>DIE_UP_RIGHT_X || ff->getY()<DIE_LOW_LEFT_Y || ff->getY()+ff->getHeight()>DIE_UP_RIGHT_Y){
             inDie = false;
             std::cerr << "FF not placed in Die: " << ff->getInstName() << std::endl;
         }
     }
-    std::cout << "FF not placed: " << count << std::endl;
     return inDie;
 }
 
