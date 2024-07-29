@@ -1,5 +1,6 @@
 #include "Pin.h"
 #include <iostream>
+#include <algorithm>
 
 Pin::Pin(PinType type, int x, int y, std::string name, Cell* cell)
 {
@@ -228,10 +229,10 @@ void Pin::sortCriticalIndex()
 {
     if (_sortedCriticalIndex.size() > 0)
     {
-        std::sort(_sortedCriticalIndex.begin(), _sortedCriticalIndex.end(), [this](int i, int j) {
-            return _arrivalTimes.at(i) > _arrivalTimes.at(j);
+        std::make_heap(_sortedCriticalIndex.begin(), _sortedCriticalIndex.end(), [this](int i, int j) {
+            return _arrivalTimes.at(i) < _arrivalTimes.at(j);
         });
-        _initCriticalArrivalTime = _arrivalTimes.at(_sortedCriticalIndex.at(0));
+        _initCriticalArrivalTime = _arrivalTimes.at(_sortedCriticalIndex.front());
     }
 }
 
@@ -263,7 +264,7 @@ double Pin::updateSlack(Pin* movedPrevStagePin, int sourceX, int sourceY, int ta
         std::cout << "Error: only D pin can update slack" << std::endl;
         exit(1);
     }
-    const double old_arrival_time_diff = _initCriticalArrivalTime - _arrivalTimes.at(_sortedCriticalIndex.at(0));
+    const double old_arrival_time = _arrivalTimes.at(_sortedCriticalIndex.at(0));
     // update the arrival time and re-sort the critical index
     std::vector<int> indexList = getPathIndex(movedPrevStagePin);
     for (int index : indexList)
@@ -275,21 +276,18 @@ double Pin::updateSlack(Pin* movedPrevStagePin, int sourceX, int sourceY, int ta
         const double old_arrival_time = _arrivalTimes.at(index);
         const double new_arrival_time = old_arrival_time - abs(sourceX - secondLastPinX) - abs(sourceY - secondLastPinY) + abs(targetX - secondLastPinX) + abs(targetY - secondLastPinY);
         _arrivalTimes.at(index) = new_arrival_time;
-        // insert the new arrival time to the sorted list
+        // reheap the new arrival time to the sorted list
         int sortIndex = 0;
         while (_sortedCriticalIndex.at(sortIndex) != index)
         {
             sortIndex++;
         }
-        while (sortIndex > 0 && _arrivalTimes.at(_sortedCriticalIndex.at(sortIndex-1)) < new_arrival_time)
-        {
-            _sortedCriticalIndex.at(sortIndex) = _sortedCriticalIndex.at(sortIndex-1);
-            sortIndex--;
-        }
-        _sortedCriticalIndex.at(sortIndex) = index;
+        std::push_heap(_sortedCriticalIndex.begin(), _sortedCriticalIndex.begin()+sortIndex+1, [this](int i, int j) {
+            return _arrivalTimes.at(i) < _arrivalTimes.at(j);
+        });
     }
     // update slack
-    const double new_arrival_time_diff = _initCriticalArrivalTime - _arrivalTimes.at(_sortedCriticalIndex.at(0));
-    _slack += (new_arrival_time_diff - old_arrival_time_diff) * DISP_DELAY;
+    const double new_arrival_time = _arrivalTimes.at(_sortedCriticalIndex.at(0));
+    _slack += (old_arrival_time - new_arrival_time) * DISP_DELAY;
     return _slack;
 }
