@@ -178,11 +178,17 @@ void Legalizer::fineTune()
     int stride_y_height = stride_y * BIN_HEIGHT;
     int num_x = (_solver->_binMap->getNumBinsX() - kernel_size) / stride_x + 1;
     int num_y = (_solver->_binMap->getNumBinsY() - kernel_size) / stride_y + 1;
+    std::vector<FF*> orphans;
     for(int y = 0; y < num_y; y+=stride_y)
     {
+        std::cout << "Fine tuning: " << y << "/" << num_y << std::endl;
         for(int x = 0; x < num_x; x+=stride_x)
         {
-            // continue if the bins utilization rate is less than threshold
+            int cur_x = x * stride_x_width;
+            int cur_y = y * stride_y_height;
+            int upright_x = std::min(cur_x + kernel_size * BIN_WIDTH, DIE_UP_RIGHT_X);
+            int upright_y = std::min(cur_y + kernel_size * BIN_HEIGHT, DIE_UP_RIGHT_Y);
+
             std::vector<Bin*> bins = _solver->_binMap->getBinsBlocks(x, y, kernel_size, kernel_size);
             bool is_over_max_util = false;
             for(long unsigned int i = 0; i < bins.size(); i++)
@@ -193,15 +199,15 @@ void Legalizer::fineTune()
                     break;
                 }
             }
+
+            // continue if the bins utilization rate is less than threshold
             if(!is_over_max_util)
                 continue;
 
-            std::cout << "Fine tuning block (" << x << ", " << y << ")" << std::endl;
-            std::vector<FF*> ffs_local = _solver->_binMap->getFFsInBinsBlocks(x, y, kernel_size, kernel_size);
-            // TODO: get sites in the block
-            std::vector<Site*> sites = _solver->_siteMap->getSitesInBlock(x*stride_x_width, y*stride_y_height, (x+kernel_size)*stride_x_width, (y+kernel_size)*stride_y_height);
-            std::cout << "Number of FFs in the block: " << ffs_local.size() << std::endl;
-            std::cout << "Number of sites in the block: " << sites.size() << std::endl;
+            std::vector<FF*> ffs_local = _solver->_binMap->getFFsInBins(bins);
+            std::vector<Site*> sites = _solver->_siteMap->getSitesInBlock(cur_x, cur_y, upright_x, upright_y);
+            ffs_local.insert(ffs_local.end(), orphans.begin(), orphans.end());
+            orphans.clear();
             // remove ffs in the block
             for(long unsigned int i = 0; i < ffs_local.size(); i++)
             {
@@ -218,7 +224,15 @@ void Legalizer::fineTune()
                         continue;
                     
                     // TODO: cost is depend on the slack and bin utilization rate
-                    double cost = abs(ff->getX() - sites[j]->getX()) + abs(ff->getY() - sites[j]->getY());
+                    int original_x = ff->getX();
+                    int original_y = ff->getY();
+                    int trial_x = sites[j]->getX();
+                    int trial_y = sites[j]->getY();
+                    double cost = abs(ff->getX() - trial_x) + abs(ff->getY() - trial_y);
+                    
+                    ff->setXY(trial_x, trial_y);
+                    cost += _solver->_binMap->addCell(ff, true)*10000000;
+                    ff->setXY(original_x, original_y);                    
                     
                     if(cost < cost_min)
                     {
@@ -229,12 +243,48 @@ void Legalizer::fineTune()
                 if(best_site != -1)
                 {
                     _solver->placeCell(ff, sites[best_site]->getX(), sites[best_site]->getY());
-                    // std::cout << "FF " << ff->getInstName() << " is placed at (" << sites[best_site]->getX() << ", " << sites[best_site]->getY() << ")" << std::endl;
+                }else{
+                    orphans.push_back(ff);
                 }
             }
         }
     }
+    std::cout<<"Orphans: "<<orphans.size()<<std::endl;
     // TODO: place orphans
+    for(long unsigned int i = 0; i < orphans.size(); i++)
+    {
+        FF* ff = orphans[i];
+        double cost_min = INFINITY;
+        int best_site = -1;
+        std::vector<Site*> sites = _solver->_siteMap->getSites();
+        for(long unsigned int j = 0; j < sites.size(); j++)
+        {
+            if(!_solver->placeable(ff, sites[j]->getX(), sites[j]->getY()))
+                continue;
+            
+            int original_x = ff->getX();
+            int original_y = ff->getY();
+            int trial_x = sites[j]->getX();
+            int trial_y = sites[j]->getY();
+            double cost = abs(ff->getX() - trial_x) + abs(ff->getY() - trial_y);
+            
+            ff->setXY(trial_x, trial_y);
+            cost += _solver->_binMap->addCell(ff, true)*10000000;
+            ff->setXY(original_x, original_y);  
+
+            if(cost < cost_min)
+            {
+                cost_min = cost;
+                best_site = j;
+            }
+        }
+        if(best_site != -1)
+        {
+            _solver->placeCell(ff, sites[best_site]->getX(), sites[best_site]->getY());
+        }else{
+            std::cout << "There is no place for orphan " << i << std::endl;
+        }
+    } 
 
     std::cout << "Fine tuning done." << std::endl;
 }

@@ -18,8 +18,10 @@ class Bin
         bool isOverMaxUtil();
         const std::vector<Cell*>& getCells();
 
-        void addCell(Cell* cell);
-        void removeCell(Cell* cell);
+        double addCell(Cell* cell, bool trial = false);
+        double removeCell(Cell* cell, bool trial = false);
+
+        bool totallyContains(Cell* cell);
 
     private:
         int _x;
@@ -46,8 +48,10 @@ class BinMap
         int getNumBinsX();
         int getNumBinsY();
 
-        void addCell(Cell* cell);
-        void removeCell(Cell* cell);
+        int getNumOverMaxUtilBins();
+
+        double addCell(Cell* cell, bool trial = false);
+        double removeCell(Cell* cell, bool trial = false);
 
     private:
         int _dieLowerLeftX;

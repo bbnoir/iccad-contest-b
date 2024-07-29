@@ -46,28 +46,42 @@ const std::vector<Cell*>& Bin::getCells()
     return _cells;
 }
 
-void Bin::addCell(Cell* cell)
+double Bin::addCell(Cell* cell, bool trial)
 {
-    _cells.push_back(cell);
     // update utilization
     // calculate the overlap area
     int overlapArea = _calOverlapArea(cell);
-    _utilization += 100.*overlapArea / (BIN_WIDTH * BIN_HEIGHT);
+    double newUtil = _utilization + 100.*overlapArea / (BIN_WIDTH * BIN_HEIGHT);
+    if(!trial){
+        _cells.push_back(cell);
+        _utilization = newUtil;
+    }
+    return newUtil;
 }
 
-void Bin::removeCell(Cell* cell)
+double Bin::removeCell(Cell* cell, bool trial)
 {
-    if (std::find(_cells.begin(), _cells.end(), cell) != _cells.end())
-    {
-        _cells.erase(std::remove(_cells.begin(), _cells.end(), cell), _cells.end());
+    if(std::find(_cells.begin(), _cells.end(), cell) == _cells.end()){
+        return _utilization;
     }
     // update utilization
     // calculate the overlap area
     int overlapArea = _calOverlapArea(cell);
-    _utilization -= 100.*overlapArea / (BIN_WIDTH * BIN_HEIGHT);
-    if(_utilization < 1e-12){
-        _utilization = 0;
+    double newUtil = _utilization - 100.*overlapArea / (BIN_WIDTH * BIN_HEIGHT);
+    if(!trial){
+        if (std::find(_cells.begin(), _cells.end(), cell) != _cells.end())
+            _cells.erase(std::remove(_cells.begin(), _cells.end(), cell), _cells.end());
+        _utilization = newUtil;
+        if(_utilization < 1e-12){
+            _utilization = 0;
+        }
     }
+    return newUtil;
+}
+
+bool Bin::totallyContains(Cell* cell)
+{
+    return (cell->getX() >= _x && cell->getX() + cell->getWidth() <= _x + BIN_WIDTH) && (cell->getY() >= _y && cell->getY() + cell->getHeight() <= _y + BIN_HEIGHT);
 }
 
 int Bin::_calOverlapArea(Cell* cell)
@@ -182,7 +196,7 @@ std::vector<FF*> BinMap::getFFsInBins(const std::vector<Bin*>& bins)
     {
         for (auto cell : bin->getCells())
         {
-            if (cell->getCellType() == CellType::FF)
+            if (cell->getCellType() == CellType::FF && bin->totallyContains(cell))
             {
                 ffs.insert(static_cast<FF*>(cell));
             }
@@ -215,30 +229,55 @@ int BinMap::getNumBinsY()
     return _numBinsY;
 }
 
-void BinMap::addCell(Cell* cell)
+int BinMap::getNumOverMaxUtilBins()
 {
-    int leftDownX = cell->getX();
-    int leftDownY = cell->getY();
-    int rightUpX = cell->getX() + cell->getWidth();
-    int rightUpY = cell->getY() + cell->getHeight();
-    std::vector<Bin*> bins = getBins(leftDownX, leftDownY, rightUpX, rightUpY);
-    for (auto bin : bins)
+    int count = 0;
+    for (auto row : _bins)
     {
-        bin->addCell(cell);
-        cell->addBin(bin);
+        for (auto bin : row)
+        {
+            if (bin->isOverMaxUtil())
+            {
+                count++;
+            }
+        }
     }
+    return count;
 }
 
-void BinMap::removeCell(Cell* cell)
+double BinMap::addCell(Cell* cell, bool trial)
 {
     int leftDownX = cell->getX();
     int leftDownY = cell->getY();
     int rightUpX = cell->getX() + cell->getWidth();
     int rightUpY = cell->getY() + cell->getHeight();
     std::vector<Bin*> bins = getBins(leftDownX, leftDownY, rightUpX, rightUpY);
+    double causedCost = 0;
     for (auto bin : bins)
     {
-        bin->removeCell(cell);
-        cell->removeBin(bin);
+        double util = bin->getUtilization();
+        causedCost += ((bin->addCell(cell, trial) > BIN_MAX_UTIL) && (util <= BIN_MAX_UTIL))? 1 : 0;
+        if(!trial)
+            cell->addBin(bin);
+        
     }
+    return causedCost;
+}
+
+double BinMap::removeCell(Cell* cell, bool trial)
+{
+    int leftDownX = cell->getX();
+    int leftDownY = cell->getY();
+    int rightUpX = cell->getX() + cell->getWidth();
+    int rightUpY = cell->getY() + cell->getHeight();
+    std::vector<Bin*> bins = getBins(leftDownX, leftDownY, rightUpX, rightUpY);
+    double causedCost = 0;
+    for (auto bin : bins)
+    {
+        double util = bin->getUtilization();
+        causedCost += ((bin->removeCell(cell, trial) <= BIN_MAX_UTIL) && (util > BIN_MAX_UTIL))? -1 : 0;
+        if(!trial)
+            cell->removeBin(bin);
+    }
+    return causedCost;
 }

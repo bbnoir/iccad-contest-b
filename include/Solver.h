@@ -41,6 +41,7 @@ class Solver
         void init_placement();
         void solve();
         void check();
+        void evaluate();
         void dump(std::string filename);
 
         void display();

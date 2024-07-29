@@ -168,6 +168,9 @@ std::vector<Site*> SiteMap::getSites(int leftDownX, int leftDownY, int rightUpX,
     return sites;
 }
 
+/*
+Get all sites in the block(fully covered by the block)
+*/
 std::vector<Site*> SiteMap::getSitesInBlock(int leftDownX, int leftDownY, int rightUpX, int rightUpY)
 {
     if (leftDownX < DIE_LOW_LEFT_X || leftDownY < DIE_LOW_LEFT_Y || rightUpX > DIE_UP_RIGHT_X || rightUpY > DIE_UP_RIGHT_Y)

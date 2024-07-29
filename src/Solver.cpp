@@ -737,6 +737,8 @@ void Solver::solve()
     chooseBaseFF();
     init_placement();
     debankAll();
+
+    std::cout << "There are "<<_binMap->getNumOverMaxUtilBins()<<" over utilized bins initially."<<std::endl; 
     
     std::cout<<"Start to force directed placement"<<std::endl;
     forceDirectedPlacement();
@@ -761,6 +763,8 @@ void Solver::solve()
     
     std::cout<<"Start to legalize"<<std::endl;
     _legalizer->legalize();
+
+    std::cout << "There are "<<_binMap->getNumOverMaxUtilBins()<<" over utilized bins after Legalization."<<std::endl; 
 
     std::cout<<"Start to fine tune"<<std::endl;
     _legalizer->fineTune();
@@ -798,6 +802,20 @@ void Solver::check()
     {
         std::cout << "============== Success ==============" << std::endl;
     }
+}
+
+/*
+Evaluate all kinds of cost
+*/
+void Solver::evaluate()
+{
+    std::cout << "============ Start evaluating ============" << std::endl;
+    double totalCost = 0.0;
+    double totalArea = 0.0;
+    double totalPower = 0.0;
+    double totalNegSlack = 0.0;
+    int numOfOverUtilBins = _binMap->getNumOverMaxUtilBins();
+    std::cout << "Number of over utilized bins: " << numOfOverUtilBins << std::endl;
 }
 
 /*

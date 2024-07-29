@@ -140,6 +140,12 @@ void Cell::setY(int y)
     this->_y = y;
 }
 
+void Cell::setXY(int x, int y)
+{
+    this->_x = x;
+    this->_y = y;
+}
+
 void Cell::setInstName(std::string inst_name)
 {
     this->_inst_name = inst_name;
