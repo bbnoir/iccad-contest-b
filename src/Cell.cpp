@@ -192,3 +192,8 @@ bool Cell::checkOverlap()
     }
     return false;
 }
+
+double Cell::getQDelay()
+{
+    return _lib_cell->qDelay;
+}

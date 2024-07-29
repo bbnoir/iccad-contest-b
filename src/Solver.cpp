@@ -252,66 +252,71 @@ void Solver::parse_input(std::string filename)
     }
     // Set prev and next stage pins
     // TODO: check if is needed to set prev and next stage pins for INPUT and OUTPUT pins
-    // TODO: there is no multiple prev stage pins for FFs in testcase1
     for (auto ff : _ffs)
     {
-        for (auto outPin : ff->getOutputPins())
+        for (auto inPin : ff->getInputPins())
         {
-            queue<Pin*> q;
+            vector<Pin*> pinStack;
+            pinStack.push_back(inPin); // for path tracing
             unordered_map<Pin*, bool> visited; // prevent revisiting the same pin
-            for (auto fanout : outPin->getFanoutPins())
+            Pin* fanin = inPin->getFaninPin();
+            if (fanin != nullptr)
             {
-                if (fanout != nullptr)
-                {
-                    q.push(fanout);
-                }
+                pinStack.push_back(fanin);
             }
-            while(!q.empty())
+            while (!pinStack.empty())
             {
-                Pin* curPin = q.front(); q.pop();
-                if (curPin == nullptr)
+                Pin* curPin = pinStack.back();
+                if (curPin == nullptr || visited[curPin])
                 {
-                    std::cout << "Error: There is a null pointer in set next/prev stage pins" << endl;
-                    exit(1);
+                    pinStack.pop_back();
                 }
-                if (!visited[curPin])
+                else
                 {
                     visited[curPin] = true;
-                    if(curPin->getType()== PinType::FF_D)
+                    PinType curType = curPin->getType();
+                    if (curType == PinType::FF_Q)
                     {
-                        outPin->addNextStagePin(curPin);
-                        curPin->addPrevStagePin(outPin);
+                        inPin->addPrevStagePin(curPin, pinStack);
+                        curPin->addNextStagePin(inPin);
                     }
-                    else if(curPin->getType() == PinType::OUTPUT)
+                    else if (curType == PinType::GATE_OUT)
                     {
-                        // outPin->addNextStagePin(curPin);
-                        continue;
-                    }
-                    else if (curPin->getType() == PinType::GATE_IN)
-                    {
-                        for(auto nextOutPin : curPin->getCell()->getOutputPins())
+                        for (auto g_inpin : curPin->getCell()->getInputPins())
                         {
-                            if (!visited[nextOutPin])
+                            if (!visited[g_inpin])
                             {
-                                visited[nextOutPin] = true;
-                                for(auto fanout : nextOutPin->getFanoutPins())
-                                {
-                                    if (fanout != nullptr && !visited[fanout])
-                                    {
-                                        visited[fanout] = true;
-                                        q.push(fanout);
-                                    }
-                                }
+                                visited[curPin] = false; // revisit gate outpin
+                                pinStack.push_back(g_inpin);
+                                break;
                             }
                         }
                     }
+                    else if (curType == PinType::GATE_IN)
+                    {
+                        Pin* g_fanin = curPin->getFaninPin();
+                        pinStack.push_back(g_fanin);
+                    }
+                    else if (curType == PinType::INPUT)
+                    {
+                        // TODO: check if is needed to set prev and next stage pins for INPUT pins
+                        // inPin->addPrevStagePin(curPin, pinStack);
+                        break;
+                    }
+                    else if (curType == PinType::FF_D)
+                    {
+                        break;
+                    }
                     else
                     {
-                        std::cout << "Error: Unexpected fanout pin type" << endl;
+                        std::cout << "Error: Unexpected fanin pin type" << endl;
+                        std::cout << "Pin: " << curPin->getCell()->getInstName() << " " << curPin->getName() << endl;
                         exit(1);
                     }
                 }
             }
+            inPin->initArrivalTime();
+            inPin->sortCriticalIndex();
         }
     }
 
@@ -602,14 +607,66 @@ void Solver::removeCell(Cell* cell)
 }
 
 /*
-move the cell to (x, y)
+move the cell to (x, y), the current cost will be updated
 */
 void Solver::moveCell(Cell* cell, int x, int y)
 {
+    const int source_x = cell->getX();
+    const int source_y = cell->getY();
     removeCell(cell);
     cell->setX(x);
     cell->setY(y);
     placeCell(cell);
+
+    updateCostMoveFF(static_cast<FF*>(cell), source_x, source_y, x, y);
+}
+
+/*
+Update current cost after moving the ff
+*/
+void Solver::updateCostMoveFF(FF* movedFF, int sourceX, int sourceY, int targetX, int targetY)
+{
+    if (sourceX == targetX && sourceY == targetY)
+    {
+        return;
+    }
+    // std::cout << "Update cost for " << movedFF->getInstName() << " from (" << sourceX << ", " << sourceY << ") to (" << targetX << ", " << targetY << ")" << std::endl;
+    // calculate the differece of cost
+    double diff_cost = 0;
+    for (auto inPin : movedFF->getInputPins())
+    {
+        const int inpin_source_x = sourceX + inPin->getX();
+        const int inpin_source_y = sourceY + inPin->getY();
+        const int inpin_target_x = targetX + inPin->getX();
+        const int inpin_target_y = targetY + inPin->getY();
+        const int faninpin_x = inPin->getFaninPin()->getGlobalX();
+        const int faninpin_y = inPin->getFaninPin()->getGlobalY();
+        const int diff_dist = abs(inpin_target_x - faninpin_x) + abs(inpin_target_y - faninpin_y) - abs(inpin_source_x - faninpin_x) - abs(inpin_source_y - faninpin_y);
+        const double old_slack = inPin->getSlack();
+        const double new_slack = old_slack - DISP_DELAY * diff_dist;
+        // std::cout << "In Pin: " << inPin->getCell()->getInstName() << "/" << inPin->getName() << " old slack: " << old_slack << " new slack: " << new_slack << std::endl;
+        inPin->setSlack(new_slack);
+        diff_cost += calDiffCost(old_slack, new_slack);
+    }
+    for (auto outPin : movedFF->getOutputPins())
+    {
+        for (auto nextStagePin : outPin->getNextStagePins())
+        {
+            if (nextStagePin->getType() == PinType::FF_D)
+            {
+                const int outpin_source_x = sourceX + outPin->getX();
+                const int outpin_source_y = sourceY + outPin->getY();
+                const int outpin_target_x = targetX + outPin->getX();
+                const int outpin_target_y = targetY + outPin->getY();
+                const double next_old_slack = nextStagePin->getSlack();
+                const double next_new_slack = nextStagePin->updateSlack(outPin, outpin_source_x, outpin_source_y, outpin_target_x, outpin_target_y);
+                diff_cost += calDiffCost(next_old_slack, next_new_slack);
+                // std::cout << "Next Pin: " << nextStagePin->getCell()->getInstName() << "/" << nextStagePin->getName() << " at (" << nextStagePin->getGlobalX() << ", " << nextStagePin->getGlobalY() << ") old slack: " << next_old_slack << " new slack: " << next_new_slack << std::endl;
+            }
+        }
+    }
+    // std::cout << "Diff cost: " << diff_cost << std::endl << std::endl;
+    _currCost += diff_cost;
 }
 
 /*
@@ -761,6 +818,9 @@ void Solver::forceDirectedPlaceFF(FF* ff)
     moveCell(ff, nearest_site->getX(), nearest_site->getY());
 }
 
+/*
+Calculate the cost difference given the old and new slack, the return value should be "added" to the current cost
+*/
 double Solver::calDiffCost(double oldSlack, double newSlack)
 {
     double diff_neg_slack = 0; // difference of negative slack
@@ -840,26 +900,6 @@ void Solver::forceDirectedPlaceFFLock(const int ff_idx, std::vector<bool>& locke
     {
         lock_num++;
     }
-
-    // calculate the differece of cost
-    double diff_cost = 0;
-    for (auto inPin : ff->getInputPins())
-    {
-        const int inpin_source_x = source_x + inPin->getX();
-        const int inpin_source_y = source_y + inPin->getY();
-        const int inpin_target_x = target_x + inPin->getX();
-        const int inpin_target_y = target_y + inPin->getY();
-        const int faninpin_x = inPin->getFaninPin()->getGlobalX();
-        const int faninpin_y = inPin->getFaninPin()->getGlobalY();
-        const int diff_dist = abs(inpin_target_x - faninpin_x) + abs(inpin_target_y - faninpin_y) - abs(inpin_source_x - faninpin_x) - abs(inpin_source_y - faninpin_y);
-        const double old_slack = inPin->getSlack();
-        const double new_slack = old_slack - DISP_DELAY * diff_dist;
-        inPin->setSlack(new_slack);
-        diff_cost += calDiffCost(old_slack, new_slack);
-    }
-    // TODO: calculate the differece of cost for output pins
-    // TODO: fix issues on multiple output pins
-    _currCost += diff_cost;
 }
 
 void Solver::forceDirectedPlacement()
@@ -886,39 +926,43 @@ void Solver::forceDirectedPlacement()
 
 void Solver::solve()
 {
-    chooseBaseFF();
     init_placement();
     
     _initCost = calCost();
     _currCost = _initCost;
 
     // TODO: placing FFs on the die when global placement is unnecessary 
-    chooseBaseFF();
-    debankAll();
+    // chooseBaseFF();
+    // debankAll();
     
     std::cout<<"Start to force directed placement"<<std::endl;
     forceDirectedPlacement();
+
+    std::cout << "\n";
+    std::cout << "Initial cost: " << _initCost << std::endl;
+    std::cout << "Current cost: " << _currCost << std::endl;
+    std::cout << "\n";
     
-    std::cout << "Start clustering and banking" << std::endl;
-    size_t prev_ffs_size;
-    std::cout << "FFs size: " << _ffs.size() << std::endl;
-    do
-    {
-        constructFFsCLKDomain();
-        prev_ffs_size = _ffs.size();
-        for(long unsigned int i = 0; i < _ffs_clkdomains.size(); i++)
-        {
-            std::vector<std::vector<FF*>> cluster = clusteringFFs(i);
-            greedyBanking(cluster);
-        }
-        std::cout << "FFs size after greedy banking: " << _ffs.size() << std::endl;
-    } while (prev_ffs_size != _ffs.size());
+    // std::cout << "Start clustering and banking" << std::endl;
+    // size_t prev_ffs_size;
+    // std::cout << "FFs size: " << _ffs.size() << std::endl;
+    // do
+    // {
+    //     constructFFsCLKDomain();
+    //     prev_ffs_size = _ffs.size();
+    //     for(long unsigned int i = 0; i < _ffs_clkdomains.size(); i++)
+    //     {
+    //         std::vector<std::vector<FF*>> cluster = clusteringFFs(i);
+    //         greedyBanking(cluster);
+    //     }
+    //     std::cout << "FFs size after greedy banking: " << _ffs.size() << std::endl;
+    // } while (prev_ffs_size != _ffs.size());
     
-    std::cout << "Start to force directed placement (second)" << std::endl;
-    forceDirectedPlacement();
+    // std::cout << "Start to force directed placement (second)" << std::endl;
+    // forceDirectedPlacement();
     
-    std::cout<<"Start to legalize"<<std::endl;
-    _legalizer->legalize();
+    // std::cout<<"Start to legalize"<<std::endl;
+    // _legalizer->legalize();
 }
 
 /*

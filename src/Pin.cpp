@@ -1,4 +1,5 @@
 #include "Pin.h"
+#include <iostream>
 
 Pin::Pin(PinType type, int x, int y, std::string name, Cell* cell)
 {
@@ -121,9 +122,10 @@ void Pin::addFanoutPin(Pin* pin)
     _fanoutPins.push_back(pin);
 }
 
-void Pin::addPrevStagePin(Pin* pin)
+void Pin::addPrevStagePin(Pin* pin, std::vector<Pin*> path)
 {
     _prevStagePins.push_back(pin);
+    _pathToPrevStagePins.push_back(std::vector<Pin*>(path));
 }
 
 void Pin::addNextStagePin(Pin* pin)
@@ -165,6 +167,11 @@ size_t Pin::getPrevStagePinsSize()
     return _prevStagePins.size();
 }
 
+std::vector<Pin*> Pin::getPathToPrevStagePins(int idx)
+{
+    return _pathToPrevStagePins.at(idx);
+}
+
 std::vector<Pin*> Pin::getNextStagePins()
 {
     return _nextStagePins;
@@ -189,4 +196,100 @@ void Pin::transInfo(Pin* pin)
     _name = pin->getName();
     _isDpin = pin->isDpin();
     _type = pin->getType();
+}
+
+/*
+Initialize the arrival time of all paths from previous stage pins to this pin
+*/
+void Pin::initArrivalTime()
+{
+    const int numPaths = _prevStagePins.size();
+    for (int i = 0; i < numPaths; i++)
+    {
+        std::vector<Pin*> path = _pathToPrevStagePins.at(i);
+        double arrival_time = 0;
+        for (size_t j = 0; j+1 < path.size(); j+=2)
+        {
+            Pin* curPin = path.at(j);
+            Pin* prevPin = path.at(j+1);
+            arrival_time += abs(curPin->getGlobalX() - prevPin->getGlobalX()) + abs(curPin->getGlobalY() - prevPin->getGlobalY());
+        }
+        // don't add q pin delay since it may change
+        // arrival_time += path.back()->getCell()->getQDelay();
+        _arrivalTimes.push_back(arrival_time);
+        _sortedCriticalIndex.push_back(i);
+    }
+}
+
+/*
+Sort the index of paths by arrival time, critical path first
+*/
+void Pin::sortCriticalIndex()
+{
+    if (_sortedCriticalIndex.size() > 0)
+    {
+        std::sort(_sortedCriticalIndex.begin(), _sortedCriticalIndex.end(), [this](int i, int j) {
+            return _arrivalTimes.at(i) > _arrivalTimes.at(j);
+        });
+        _initCriticalArrivalTime = _arrivalTimes.at(_sortedCriticalIndex.at(0));
+    }
+}
+
+/*
+Get the index of the path from previous stage pin to this pin
+*/
+std::vector<int> Pin::getPathIndex(Pin* prevStagePin)
+{
+    // TODO: change to unordered_map if it's slow
+    std::vector<int> index;
+    for (size_t i = 0; i < _prevStagePins.size(); i++)
+    {
+        if (_prevStagePins.at(i) == prevStagePin)
+        {
+            index.push_back(i);
+        }
+    }
+    return index;
+}
+
+/*
+Update the slack of this pin after a previous stage pin is moved
+Return the new slack
+*/
+double Pin::updateSlack(Pin* movedPrevStagePin, int sourceX, int sourceY, int targetX, int targetY)
+{
+    if (this->getType() != PinType::FF_D)
+    {
+        std::cout << "Error: only D pin can update slack" << std::endl;
+        exit(1);
+    }
+    const double old_arrival_time_diff = _initCriticalArrivalTime - _arrivalTimes.at(_sortedCriticalIndex.at(0));
+    // update the arrival time and re-sort the critical index
+    std::vector<int> indexList = getPathIndex(movedPrevStagePin);
+    for (int index : indexList)
+    {
+        std::vector<Pin*> path = _pathToPrevStagePins.at(index);
+        Pin* secondLastPin = path.at(path.size()-2);
+        const int secondLastPinX = secondLastPin->getGlobalX();
+        const int secondLastPinY = secondLastPin->getGlobalY();
+        const double old_arrival_time = _arrivalTimes.at(index);
+        const double new_arrival_time = old_arrival_time - abs(sourceX - secondLastPinX) - abs(sourceY - secondLastPinY) + abs(targetX - secondLastPinX) + abs(targetY - secondLastPinY);
+        _arrivalTimes.at(index) = new_arrival_time;
+        // insert the new arrival time to the sorted list
+        int sortIndex = 0;
+        while (_sortedCriticalIndex.at(sortIndex) != index)
+        {
+            sortIndex++;
+        }
+        while (sortIndex > 0 && _arrivalTimes.at(_sortedCriticalIndex.at(sortIndex-1)) < new_arrival_time)
+        {
+            _sortedCriticalIndex.at(sortIndex) = _sortedCriticalIndex.at(sortIndex-1);
+            sortIndex--;
+        }
+        _sortedCriticalIndex.at(sortIndex) = index;
+    }
+    // update slack
+    const double new_arrival_time_diff = _initCriticalArrivalTime - _arrivalTimes.at(_sortedCriticalIndex.at(0));
+    _slack += (new_arrival_time_diff - old_arrival_time_diff) * DISP_DELAY;
+    return _slack;
 }

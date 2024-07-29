@@ -74,6 +74,7 @@ public:
     Pin* getPin(std::string pin_name);
     std::vector<Site*> getSites();
     std::vector<Bin*> getBins();
+    double getQDelay();
 
     void setX(int x);
     void setY(int y);
