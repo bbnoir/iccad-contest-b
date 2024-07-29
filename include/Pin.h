@@ -60,6 +60,7 @@ class Pin
         void sortCriticalIndex();
         std::vector<int> getPathIndex(Pin* prevStagePin);
         double updateSlack(Pin* movedPrevStagePin, int sourceX, int sourceY, int targetX, int targetY);
+        double updateSlack(double diffQDelay);
 
         void connect(Net* net);
         void copyConnection(Pin* pin);

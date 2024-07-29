@@ -351,6 +351,14 @@ void Solver::parse_input(std::string filename)
         double slack;
         in >> token >> instName >> port >> slack;
         _ffsMap[instName]->getPin(port)->setSlack(slack);
+        if (_ffsMap[instName]->getBit() > 1)
+        {
+            for (int j = 1; j < _ffsMap[instName]->getBit(); j++)
+            {
+                in >> token >> instName >> port >> slack;
+                _ffsMap[instName]->getPin(port)->setSlack(slack);
+            }
+        }
     }
     // Read power info
     for(long unsigned int i = 0; i < _ffsLibList.size(); i++)
@@ -621,52 +629,80 @@ void Solver::moveCell(Cell* cell, int x, int y)
     updateCostMoveFF(static_cast<FF*>(cell), source_x, source_y, x, y);
 }
 
-/*
-Update current cost after moving the ff
-*/
-void Solver::updateCostMoveFF(FF* movedFF, int sourceX, int sourceY, int targetX, int targetY)
+double Solver::updateCostMoveD(Pin* movedDPin, int sourceX, int sourceY, int targetX, int targetY)
 {
     if (sourceX == targetX && sourceY == targetY)
     {
-        return;
+        return 0;
+    }
+    const int faninpin_x = movedDPin->getFaninPin()->getGlobalX();
+    const int faninpin_y = movedDPin->getFaninPin()->getGlobalY();
+    const int diff_dist = abs(targetX - faninpin_x) + abs(targetY - faninpin_y) - abs(sourceX - faninpin_x) - abs(sourceY - faninpin_y);
+    const double old_slack = movedDPin->getSlack();
+    const double new_slack = old_slack - DISP_DELAY * diff_dist;
+    movedDPin->setSlack(new_slack);
+    double diff_cost = calDiffCost(old_slack, new_slack);
+    _currCost += diff_cost;
+    return diff_cost;
+}
+
+double Solver::updateCostMoveQ(Pin* movedQPin, int sourceX, int sourceY, int targetX, int targetY)
+{
+    if (sourceX == targetX && sourceY == targetY)
+    {
+        return 0;
+    }
+    double diff_cost = 0;
+    for (auto nextStagePin : movedQPin->getNextStagePins())
+    {
+        if (nextStagePin->getType() == PinType::FF_D)
+        {
+            const double next_old_slack = nextStagePin->getSlack();
+            const double next_new_slack = nextStagePin->updateSlack(movedQPin, sourceX, sourceY, targetX, targetY);
+            diff_cost += calDiffCost(next_old_slack, next_new_slack);
+        }
+    }
+    _currCost += diff_cost;
+    return diff_cost;
+}
+
+double Solver::updateCostChangeQDelay(Pin* changedQPin, double diffQDelay)
+{
+    double diff_cost = 0;
+    for (auto nextStagePin : changedQPin->getNextStagePins())
+    {
+        if (nextStagePin->getType() == PinType::FF_D)
+        {
+            const double next_old_slack = nextStagePin->getSlack();
+            const double next_new_slack = nextStagePin->updateSlack(diffQDelay);
+            diff_cost += calDiffCost(next_old_slack, next_new_slack);
+        }
+    }
+    _currCost += diff_cost;
+    return diff_cost;
+}
+
+/*
+Update current cost after moving the ff
+*/
+double Solver::updateCostMoveFF(FF* movedFF, int sourceX, int sourceY, int targetX, int targetY)
+{
+    if (sourceX == targetX && sourceY == targetY)
+    {
+        return 0;
     }
     // std::cout << "Update cost for " << movedFF->getInstName() << " from (" << sourceX << ", " << sourceY << ") to (" << targetX << ", " << targetY << ")" << std::endl;
-    // calculate the differece of cost
     double diff_cost = 0;
     for (auto inPin : movedFF->getInputPins())
     {
-        const int inpin_source_x = sourceX + inPin->getX();
-        const int inpin_source_y = sourceY + inPin->getY();
-        const int inpin_target_x = targetX + inPin->getX();
-        const int inpin_target_y = targetY + inPin->getY();
-        const int faninpin_x = inPin->getFaninPin()->getGlobalX();
-        const int faninpin_y = inPin->getFaninPin()->getGlobalY();
-        const int diff_dist = abs(inpin_target_x - faninpin_x) + abs(inpin_target_y - faninpin_y) - abs(inpin_source_x - faninpin_x) - abs(inpin_source_y - faninpin_y);
-        const double old_slack = inPin->getSlack();
-        const double new_slack = old_slack - DISP_DELAY * diff_dist;
-        // std::cout << "In Pin: " << inPin->getCell()->getInstName() << "/" << inPin->getName() << " old slack: " << old_slack << " new slack: " << new_slack << std::endl;
-        inPin->setSlack(new_slack);
-        diff_cost += calDiffCost(old_slack, new_slack);
+        diff_cost += updateCostMoveD(inPin, sourceX + inPin->getX(), sourceY + inPin->getY(), targetX + inPin->getX(), targetY + inPin->getY());
     }
     for (auto outPin : movedFF->getOutputPins())
     {
-        for (auto nextStagePin : outPin->getNextStagePins())
-        {
-            if (nextStagePin->getType() == PinType::FF_D)
-            {
-                const int outpin_source_x = sourceX + outPin->getX();
-                const int outpin_source_y = sourceY + outPin->getY();
-                const int outpin_target_x = targetX + outPin->getX();
-                const int outpin_target_y = targetY + outPin->getY();
-                const double next_old_slack = nextStagePin->getSlack();
-                const double next_new_slack = nextStagePin->updateSlack(outPin, outpin_source_x, outpin_source_y, outpin_target_x, outpin_target_y);
-                diff_cost += calDiffCost(next_old_slack, next_new_slack);
-                // std::cout << "Next Pin: " << nextStagePin->getCell()->getInstName() << "/" << nextStagePin->getName() << " at (" << nextStagePin->getGlobalX() << ", " << nextStagePin->getGlobalY() << ") old slack: " << next_old_slack << " new slack: " << next_new_slack << std::endl;
-            }
-        }
+        diff_cost += updateCostMoveQ(outPin, sourceX + outPin->getX(), sourceY + outPin->getY(), targetX + outPin->getX(), targetY + outPin->getY());
     }
     // std::cout << "Diff cost: " << diff_cost << std::endl << std::endl;
-    _currCost += diff_cost;
+    return diff_cost;
 }
 
 /*
@@ -760,15 +796,31 @@ void Solver::debankAll()
     {
         removeCell(ff);
     }
+    const double baseArea = _baseFF->width * _baseFF->height;
+    const double basePower = _baseFF->power;
     for (auto ff : _ffs)
     {
+        // update cost on area and power
+        const int n_bit = ff->getBit();
+        _currCost += BETA * (basePower * n_bit - ff->getPower()) + GAMMA * (baseArea * n_bit - ff->getArea());
+        // debank the FF and update slack
         std::vector<std::pair<Pin*, Pin*>> dqPairs = ff->getDQpairs();
         Pin* clkPin = ff->getClkPin();
         const int x = ff->getX();
         const int y = ff->getY();
+        const int d_x = x + _baseFF->inputPins[0]->getX();
+        const int d_y = y + _baseFF->inputPins[0]->getY();
+        const int q_x = x + _baseFF->outputPins[0]->getX();
+        const int q_y = y + _baseFF->outputPins[0]->getY();
+        const double diffQDelay = _baseFF->qDelay - ff->getQDelay();
         const int clkDomain = ff->getClkDomain();
+        // TODO: update the slack
         for (auto dq : dqPairs)
         {
+            Pin *d = dq.first, *q = dq.second;
+            updateCostMoveD(d, x + d->getX(), y + d->getY(), d_x, d_y);
+            updateCostMoveQ(q, x + q->getX(), y + q->getY(), q_x, q_y);
+            updateCostChangeQDelay(q, diffQDelay);
             FF* newFF = new FF(x, y, makeUniqueName(), _baseFF, dq, clkPin);
             newFF->setClkDomain(clkDomain);
             debankedFFs.push_back(newFF);
@@ -904,13 +956,13 @@ void Solver::forceDirectedPlaceFFLock(const int ff_idx, std::vector<bool>& locke
 
 void Solver::forceDirectedPlacement()
 {
-    std::cout << "Force directed placement" << std::endl;
+    // std::cout << "Force directed placement" << std::endl;
     bool converged = false;
     int max_iter = 1000;
     int iter = 0;
     const int numFFs = _ffs.size();
     const int lockThreshold = numFFs;
-    std::cout << "Lock threshold: " << lockThreshold << std::endl;
+    // std::cout << "Lock threshold: " << lockThreshold << std::endl;
     int lock_num = 0;
     std::vector<char> lock_cnt(numFFs, 0);
     std::vector<bool> locked(numFFs, false);
@@ -919,7 +971,7 @@ void Solver::forceDirectedPlacement()
         {
             forceDirectedPlaceFFLock(i, locked, lock_cnt, lock_num);
         }
-        std::cout << "Iteration: " << iter << ", Lock/Total: " << lock_num << "/" << numFFs << std::endl;
+        // std::cout << "Iteration: " << iter << ", Lock/Total: " << lock_num << "/" << numFFs << std::endl;
         converged = lock_num >= lockThreshold;
     }
 }
@@ -930,39 +982,38 @@ void Solver::solve()
     
     _initCost = calCost();
     _currCost = _initCost;
+    std::cout << "==> Initial cost: " << _initCost << std::endl;
 
     // TODO: placing FFs on the die when global placement is unnecessary 
-    // chooseBaseFF();
-    // debankAll();
+    chooseBaseFF();
+    debankAll();
+    std::cout << "==> Cost after debanking: " << _currCost << std::endl;
     
     std::cout<<"Start to force directed placement"<<std::endl;
     forceDirectedPlacement();
 
-    std::cout << "\n";
-    std::cout << "Initial cost: " << _initCost << std::endl;
-    std::cout << "Current cost: " << _currCost << std::endl;
-    std::cout << "\n";
+    std::cout << "==> Cost after force directed placement: " << _currCost << std::endl;
     
-    // std::cout << "Start clustering and banking" << std::endl;
-    // size_t prev_ffs_size;
-    // std::cout << "FFs size: " << _ffs.size() << std::endl;
-    // do
-    // {
-    //     constructFFsCLKDomain();
-    //     prev_ffs_size = _ffs.size();
-    //     for(long unsigned int i = 0; i < _ffs_clkdomains.size(); i++)
-    //     {
-    //         std::vector<std::vector<FF*>> cluster = clusteringFFs(i);
-    //         greedyBanking(cluster);
-    //     }
-    //     std::cout << "FFs size after greedy banking: " << _ffs.size() << std::endl;
-    // } while (prev_ffs_size != _ffs.size());
+    std::cout << "Start clustering and banking" << std::endl;
+    size_t prev_ffs_size;
+    std::cout << "FFs size: " << _ffs.size() << std::endl;
+    do
+    {
+        constructFFsCLKDomain();
+        prev_ffs_size = _ffs.size();
+        for(long unsigned int i = 0; i < _ffs_clkdomains.size(); i++)
+        {
+            std::vector<std::vector<FF*>> cluster = clusteringFFs(i);
+            greedyBanking(cluster);
+        }
+        std::cout << "FFs size after greedy banking: " << _ffs.size() << std::endl;
+    } while (prev_ffs_size != _ffs.size());
     
-    // std::cout << "Start to force directed placement (second)" << std::endl;
-    // forceDirectedPlacement();
+    std::cout << "Start to force directed placement (second)" << std::endl;
+    forceDirectedPlacement();
     
-    // std::cout<<"Start to legalize"<<std::endl;
-    // _legalizer->legalize();
+    std::cout<<"Start to legalize"<<std::endl;
+    _legalizer->legalize();
 }
 
 /*

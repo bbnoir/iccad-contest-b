@@ -291,3 +291,19 @@ double Pin::updateSlack(Pin* movedPrevStagePin, int sourceX, int sourceY, int ta
     _slack += (old_arrival_time - new_arrival_time) * DISP_DELAY;
     return _slack;
 }
+
+/*
+Update the slack of this pin after the Q delay of a previous stage pin is changed
+Return the new slack
+*/
+double Pin::updateSlack(double diffQDelay)
+{
+    if (this->getType() != PinType::FF_D)
+    {
+        std::cout << "Error: only D pin can update slack" << std::endl;
+        exit(1);
+    }
+    // update slack
+    _slack -= diffQDelay;
+    return _slack;
+}
