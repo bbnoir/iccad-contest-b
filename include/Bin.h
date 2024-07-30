@@ -23,13 +23,14 @@ class Bin
 
         bool totallyContains(Cell* cell);
 
+
+        int calOverlapArea(Cell* cell);
     private:
         int _x;
         int _y;
         double _utilization;
         std::vector<Cell*> _cells;
 
-        int _calOverlapArea(Cell* cell);
 };
 
 class BinMap
@@ -49,6 +50,7 @@ class BinMap
         int getNumBinsY();
 
         int getNumOverMaxUtilBins();
+        int getNumOverMaxUtilBinsByComb();
 
         double addCell(Cell* cell, bool trial = false);
         double removeCell(Cell* cell, bool trial = false);

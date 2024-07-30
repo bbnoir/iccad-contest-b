@@ -735,6 +735,7 @@ void Solver::forceDirectedPlacement()
 void Solver::fineTune()
 {
     std::cout << "Fine tuning..." << std::endl;
+    std::cout << "Bin Grid: " << _binMap->getNumBinsX() << "x" << _binMap->getNumBinsY() << std::endl;
 
     int kernel_size = 5;
     int stride_x = 1;
@@ -869,6 +870,7 @@ void Solver::solve()
     debankAll();
 
     std::cout << "There are "<<_binMap->getNumOverMaxUtilBins()<<" over utilized bins initially."<<std::endl; 
+    std::cout << _binMap->getNumOverMaxUtilBinsByComb() << " of them are over utilized by Combs." << std::endl;
     
     std::cout<<"Start to force directed placement"<<std::endl;
     forceDirectedPlacement();
