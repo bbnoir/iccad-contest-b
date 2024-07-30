@@ -1500,27 +1500,89 @@ double Solver::cal_banking_gain(FF* ff1, FF* ff2, LibCell* targetFF)
     const int target_y = nearest_site->getY();
     const int ff1_bit = ff1->getBit();
     const int ff2_bit = ff2->getBit();
+    // D pin
     for (int i = 0; i < ff1_bit+ff2_bit; i++)
     {
-        if (i < ff1_bit)
+        int op_idx = (i < ff1_bit) ? i : i - ff1_bit;
+        FF* workingFF = (i < targetFF->bit) ? ff1 : ff2;
+        Pin* inPin = workingFF->getInputPins()[op_idx];
+        Pin* mapInPin = targetFF->inputPins[op_idx];
+        Pin* faninPin = inPin->getFaninPin();
+        if (faninPin->getType() != PinType::INPUT && (faninPin->getCell() == ff1 || faninPin->getCell() == ff2))
         {
-            Pin* inPin = ff1->getInputPins()[i];
-            Pin* mapInPin = targetFF->inputPins[i];
-            gain += calCostMoveD(inPin, inPin->getGlobalX(), inPin->getGlobalY(), target_x + mapInPin->getX(), target_y + mapInPin->getY());
-            Pin* outPin = ff1->getOutputPins()[i];
-            Pin* mapOutPin = targetFF->outputPins[i];
-            gain += calCostMoveQ(outPin, outPin->getGlobalX(), outPin->getGlobalY(), target_x + mapOutPin->getX(), target_y + mapOutPin->getY());
-            gain += calCostChangeQDelay(outPin, targetFF->qDelay - ff1->getQDelay());
+            int fanin_ff_pin_idx = 0;
+            for (auto p : faninPin->getCell()->getOutputPins())
+            {
+                if (p == faninPin) break;
+                fanin_ff_pin_idx++;
+            }
+            const int faninpin_x = target_x + targetFF->outputPins[fanin_ff_pin_idx]->getX();
+            const int faninpin_y = target_y + targetFF->outputPins[fanin_ff_pin_idx]->getY();
+            const int diff_dist = abs(target_x+mapInPin->getX()-faninpin_x) + abs(target_y+mapInPin->getY()-faninpin_y) - abs(inPin->getGlobalX()-faninpin_x) - abs(inPin->getGlobalY()-faninpin_y);
+            const double old_slack = inPin->getSlack();
+            const double new_slack = old_slack - DISP_DELAY * diff_dist;
+            gain += calDiffCost(old_slack, new_slack);
         }
         else
         {
-            Pin* inPin = ff2->getInputPins()[i-ff1_bit];
-            Pin* mapInPin = targetFF->inputPins[i];
             gain += calCostMoveD(inPin, inPin->getGlobalX(), inPin->getGlobalY(), target_x + mapInPin->getX(), target_y + mapInPin->getY());
-            Pin* outPin = ff2->getOutputPins()[i-ff1_bit];
-            Pin* mapOutPin = targetFF->outputPins[i];
-            gain += calCostMoveQ(outPin, outPin->getGlobalX(), outPin->getGlobalY(), target_x + mapOutPin->getX(), target_y + mapOutPin->getY());
-            gain += calCostChangeQDelay(outPin, targetFF->qDelay - ff2->getQDelay());
+        }
+    }
+    // Q pin
+    for (int i = 0; i < ff1_bit+ff2_bit; i++)
+    {
+        int op_idx = (i < ff1_bit) ? i : i - ff1_bit;
+        FF* workingFF = (i < targetFF->bit) ? ff1 : ff2;
+        Pin* outPin = workingFF->getOutputPins()[op_idx];
+        Pin* mapOutPin = targetFF->outputPins[op_idx];
+        gain += calCostChangeQDelay(outPin, targetFF->qDelay - workingFF->getQDelay());
+        for (auto nextStagePin : outPin->getNextStagePins())
+        {
+            if (nextStagePin->getType() == PinType::FF_D)
+            {
+                if (nextStagePin->getCell() == ff1 || nextStagePin->getCell() == ff2)
+                {
+                    if (nextStagePin->getFaninPin()->getCell() == ff1 || nextStagePin->getFaninPin()->getCell() == ff2)
+                    {
+                        // already considered in the D pin
+                        break;
+                    }
+                    const double next_old_slack = nextStagePin->getSlack();
+                    std::vector<double> tempArrivalTimes = nextStagePin->getArrivalTimes();
+                    std::vector<int> tempSortedCriticalIndex = nextStagePin->getSortedCriticalIndex();
+                    const double old_arrival_time = tempArrivalTimes.at(tempSortedCriticalIndex.at(0));
+                    // update the arrival time and re-sort the critical index
+                    std::vector<int> indexList = nextStagePin->getPathIndex(outPin);
+                    for (int index : indexList)
+                    {
+                        std::vector<Pin*> path = nextStagePin->getPathToPrevStagePins(index);
+                        Pin* secondLastPin = path.at(path.size()-2);
+                        const int secondLastPinX = secondLastPin->getGlobalX();
+                        const int secondLastPinY = secondLastPin->getGlobalY();
+                        const double old_arrival_time = tempArrivalTimes.at(index);
+                        const double new_arrival_time = old_arrival_time - abs(outPin->getGlobalX() - secondLastPinX) - abs(outPin->getGlobalY() - secondLastPinY) + abs(target_x + mapOutPin->getX() - secondLastPinX) + abs(target_y + mapOutPin->getY() - secondLastPinY);
+                        tempArrivalTimes.at(index) = new_arrival_time;
+                        // reheap the new arrival time to the sorted list
+                        int sortIndex = 0;
+                        while (tempSortedCriticalIndex.at(sortIndex) != index)
+                        {
+                            sortIndex++;
+                        }
+                        std::push_heap(tempSortedCriticalIndex.begin(), tempSortedCriticalIndex.begin()+sortIndex+1, [&tempArrivalTimes](int i, int j) {
+                            return tempArrivalTimes.at(i) < tempArrivalTimes.at(j);
+                        });
+                    }
+                    const double new_arrival_time = tempArrivalTimes.at(tempSortedCriticalIndex.at(0));
+                    const double next_new_slack =  next_old_slack + (old_arrival_time - new_arrival_time) * DISP_DELAY;
+                    gain += calDiffCost(next_old_slack, next_new_slack);
+                }
+                else
+                {
+                    const double next_old_slack = nextStagePin->getSlack();
+                    const double next_new_slack = nextStagePin->calSlack(outPin, outPin->getGlobalX(), outPin->getGlobalY(), target_x + mapOutPin->getX(), target_y + mapOutPin->getY());
+                    gain += calDiffCost(next_old_slack, next_new_slack);
+                }
+            }
         }
     }
     return gain;

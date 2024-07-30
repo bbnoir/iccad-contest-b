@@ -354,3 +354,13 @@ double Pin::updateSlack(double diffQDelay)
 {
     return _slack = calSlack(diffQDelay);
 }
+
+std::vector<double> Pin::getArrivalTimes()
+{
+    return _arrivalTimes;
+}
+
+std::vector<int> Pin::getSortedCriticalIndex()
+{
+    return _sortedCriticalIndex;
+}
