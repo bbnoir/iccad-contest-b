@@ -820,7 +820,7 @@ void Solver::fineTune()
         }
     }
     std::cout<<"Orphans: "<<orphans.size()<<std::endl;
-    // TODO: place orphans
+    // TODO: optimize the placement of orphans
     for(long unsigned int i = 0; i < orphans.size(); i++)
     {
         FF* ff = orphans[i];
