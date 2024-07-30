@@ -65,7 +65,6 @@ public:
     int getWidth();
     int getHeight();
     int getArea();
-    double getPower();
     std::string getInstName();
     std::string getCellName();
     CellType getCellType();
@@ -75,6 +74,7 @@ public:
     Pin* getPin(std::string pin_name);
     std::vector<Site*> getSites();
     std::vector<Bin*> getBins();
+    double getQDelay();
 
     void setX(int x);
     void setY(int y);

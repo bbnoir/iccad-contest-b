@@ -91,6 +91,25 @@ double FF::getQDelay()
     return _lib_cell->qDelay;
 }
 
+double FF::getPower()
+{
+    return _lib_cell->power;
+}
+
+double FF::getTotalNegativeSlack()
+{
+    double totalNegativeSlack = 0.0;
+    for (Pin* pin : _inputPins)
+    {
+        double slack = pin->getSlack();
+        if (slack < 0)
+        {
+            totalNegativeSlack += slack;
+        }
+    }
+    return -totalNegativeSlack;
+}
+
 Pin* FF::getClkPin()
 {
     return _clkPin;

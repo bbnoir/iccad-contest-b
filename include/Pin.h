@@ -1,7 +1,9 @@
 #pragma once
 #include <string>
+#include <queue>
 #include "Cell.h"
 #include "Net.h"
+#include "param.h"
 
 class Net;
 class Cell;
@@ -39,6 +41,11 @@ class Pin
         Pin* getFaninPin();
         Pin* getFirstFanoutPin();
         std::vector<Pin*> getFanoutPins();
+        std::vector<Pin*> getPrevStagePins();
+        size_t getPrevStagePinsSize();
+        std::vector<Pin*> getPathToPrevStagePins(int idx);
+        std::vector<Pin*> getNextStagePins();
+        size_t getNextStagePinsSize();
 
         void setSlack(double slack);
         void setCell(Cell* cell);
@@ -47,6 +54,15 @@ class Pin
         void addOriginalName(std::string ori_name);
         void setFaninPin(Pin* pin);
         void addFanoutPin(Pin* pin);
+        void addPrevStagePin(Pin* pin, std::vector<Pin*> path);
+        void addNextStagePin(Pin* pin);
+        void initArrivalTime();
+        void sortCriticalIndex();
+        std::vector<int> getPathIndex(Pin* prevStagePin);
+        double calSlack(Pin* movedPrevStagePin, int sourceX, int sourceY, int targetX, int targetY);
+        double calSlack(double diffQDelay);
+        double updateSlack(Pin* movedPrevStagePin, int sourceX, int sourceY, int targetX, int targetY);
+        double updateSlack(double diffQDelay);
 
         void connect(Net* net);
         void copyConnection(Pin* pin);
@@ -62,10 +78,19 @@ class Pin
         // which cell this pin belongs to
         Cell* _cell;
         double _slack;
+        double _initCriticalArrivalTime;
         bool _isDpin;
         // which net this pin is connected to
         Net* _net;
         Pin* _faninPin;
         std::vector<Pin*> _fanoutPins;
+
+        // Previous stage pins
+        std::vector<Pin*> _prevStagePins;
+        std::vector<std::vector<Pin*>> _pathToPrevStagePins;
+        std::vector<double> _arrivalTimes;
+        std::vector<int> _sortedCriticalIndex;
+        // Next stage pins
+        std::vector<Pin*> _nextStagePins;
 
 };

@@ -74,6 +74,20 @@ class Solver
         BinMap* _binMap;
         SiteMap* _siteMap;
         int uniqueNameCounter = 0;
+
+        // Cost Calculation
+
+        double _initCost;
+        double _currCost;
+        double calDiffCost(double oldSlack, double newSlack);
+        double calCostMoveD(Pin* movedDPin, int sourceX, int sourceY, int targetX, int targetY);
+        double calCostMoveQ(Pin* movedQPin, int sourceX, int sourceY, int targetX, int targetY);
+        double calCostChangeQDelay(Pin* changedQPin, double diffQDelay);
+        double updateCostMoveD(Pin* movedDPin, int sourceX, int sourceY, int targetX, int targetY);
+        double updateCostMoveQ(Pin* movedQPin, int sourceX, int sourceY, int targetX, int targetY);
+        double updateCostChangeQDelay(Pin* changedQPin, double diffQDelay);
+        double updateCostMoveFF(FF* movedFF, int sourceX, int sourceY, int targetX, int targetY);
+        double updateCostBankFF(FF* bankedFF);
         
         // Modify Cell
         
@@ -102,7 +116,7 @@ class Solver
         bool placeable(Cell* cell, int x, int y, int& move_distance);
         void constructFFsCLKDomain();
         std::vector<int> regionQuery(std::vector<FF*> ffs, long unsigned int idx, int radius);
-
+        double calCost();
         // Main Algorithms
         
         // 1. Debank all FFs

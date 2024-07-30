@@ -33,7 +33,6 @@ Solver::Solver()
 Solver::~Solver()
 {
     delete _legalizer;
-
     for(auto ff : _ffs)
     {
         delete ff;
@@ -242,13 +241,82 @@ void Solver::parse_input(std::string filename)
             if(pin->getType() == PinType::FF_D || pin->getType() == PinType::GATE_IN || pin->getType() == PinType::FF_CLK)
             {
                 pin->setFaninPin(pins[0]);
-            }else if(pin->getType() == PinType::FF_Q || pin->getType() == PinType::GATE_OUT)
+            }else if(pin->getType() == PinType::FF_Q || pin->getType() == PinType::GATE_OUT || pin->getType() == PinType::INPUT)
             {
                 for(long unsigned int j = 1; j < pins.size(); j++)
                 {
                     pin->addFanoutPin(pins[j]);
                 }
             }
+        }
+    }
+    // Set prev and next stage pins
+    // TODO: check if is needed to set prev and next stage pins for INPUT and OUTPUT pins
+    for (auto ff : _ffs)
+    {
+        for (auto inPin : ff->getInputPins())
+        {
+            vector<Pin*> pinStack;
+            pinStack.push_back(inPin); // for path tracing
+            unordered_map<Pin*, bool> visited; // prevent revisiting the same pin
+            Pin* fanin = inPin->getFaninPin();
+            if (fanin != nullptr)
+            {
+                pinStack.push_back(fanin);
+            }
+            while (!pinStack.empty())
+            {
+                Pin* curPin = pinStack.back();
+                if (curPin == nullptr || visited[curPin])
+                {
+                    pinStack.pop_back();
+                }
+                else
+                {
+                    visited[curPin] = true;
+                    PinType curType = curPin->getType();
+                    if (curType == PinType::FF_Q)
+                    {
+                        inPin->addPrevStagePin(curPin, pinStack);
+                        curPin->addNextStagePin(inPin);
+                    }
+                    else if (curType == PinType::GATE_OUT)
+                    {
+                        for (auto g_inpin : curPin->getCell()->getInputPins())
+                        {
+                            if (!visited[g_inpin])
+                            {
+                                visited[curPin] = false; // revisit gate outpin
+                                pinStack.push_back(g_inpin);
+                                break;
+                            }
+                        }
+                    }
+                    else if (curType == PinType::GATE_IN)
+                    {
+                        Pin* g_fanin = curPin->getFaninPin();
+                        pinStack.push_back(g_fanin);
+                    }
+                    else if (curType == PinType::INPUT)
+                    {
+                        // TODO: check if is needed to set prev and next stage pins for INPUT pins
+                        // inPin->addPrevStagePin(curPin, pinStack);
+                        break;
+                    }
+                    else if (curType == PinType::FF_D)
+                    {
+                        break;
+                    }
+                    else
+                    {
+                        std::cout << "Error: Unexpected fanin pin type" << endl;
+                        std::cout << "Pin: " << curPin->getCell()->getInstName() << " " << curPin->getName() << endl;
+                        exit(1);
+                    }
+                }
+            }
+            inPin->initArrivalTime();
+            inPin->sortCriticalIndex();
         }
     }
 
@@ -283,6 +351,14 @@ void Solver::parse_input(std::string filename)
         double slack;
         in >> token >> instName >> port >> slack;
         _ffsMap[instName]->getPin(port)->setSlack(slack);
+        if (_ffsMap[instName]->getBit() > 1)
+        {
+            for (int j = 1; j < _ffsMap[instName]->getBit(); j++)
+            {
+                in >> token >> instName >> port >> slack;
+                _ffsMap[instName]->getPin(port)->setSlack(slack);
+            }
+        }
     }
     // Read power info
     for(long unsigned int i = 0; i < _ffsLibList.size(); i++)
@@ -302,6 +378,70 @@ void Solver::parse_input(std::string filename)
 
     cout << "File parsed successfully" << endl;
     in.close();
+}
+
+double Solver::calCost()
+{
+    double tns = 0.0;
+    double power = 0.0;
+    double area = 0.0;
+    int numOfBinsViolated = _binMap->getNumOverMaxUtilBins();
+    for(auto ff : _ffs)
+    {
+        tns += ff->getTotalNegativeSlack();
+        power += ff->getPower();
+        area += ff->getArea();
+    }
+    std::cout<<"Alpha: "<<ALPHA<<" ";
+    std::cout<<"Beta: "<<BETA<<" ";
+    std::cout<<"Gamma: "<<GAMMA<<" ";
+    std::cout<<"Lambda: "<<LAMBDA<<std::endl;
+    std::cout<<"TNS: "<<tns<<std::endl;
+    std::cout<<"Power: "<<power<<std::endl;
+    std::cout<<"Area: "<<area<<std::endl;
+    std::cout<<"Num of bins violated: "<<numOfBinsViolated<<std::endl;
+    double cost = ALPHA * tns + BETA * power + GAMMA * area + LAMBDA * numOfBinsViolated;
+    std::cout<<"Cost: "<<cost<<std::endl;
+    return cost;
+
+    // std::vector<Cell*> cells;
+    // for(auto input:_inputPins){
+    //     std::vector<Pin*> fanout = input->getFanoutPins();
+    //     for(auto pin:fanout){
+    //         cells.push_back(pin->getCell());
+    //     }
+    // }
+    // std::vector<Cell*> next;
+    // for(auto cell:cells){
+    //     if(cell->getCellType() == CellType::FF){
+    //         std::vector<Pin*> outputPins = cell->getOutputPins();
+    //         for(auto output:outputPins){
+    //             std::vector<Pin*> fanout = output->getFanoutPins();
+    //             for(auto pin:fanout){
+    //                 next.push_back(pin->getCell());
+    //             }
+    //         }
+    //     }
+    // }
+    // for(auto cell:next){
+    //     if(cell->getCellType() == CellType::FF){
+    //         Pin* d = cell->getInputPins()[0];
+    //         Pin* fanIn = d->getFaninPin();
+    //         double wl = abs(d->getGlobalX() - fanIn->getGlobalX()) + abs(d->getGlobalY() - fanIn->getGlobalY());
+    //         FF* last = static_cast<FF*>(fanIn->getCell());
+    //         std::cout<<"FF0: "<<last->getInstName()<<std::endl;
+    //         std::cout<<"Slack: "<<last->getPin("D")->getSlack()<<std::endl;
+    //         std::cout<<"QDelay: "<<last->getQDelay()<<std::endl;
+    //         std::cout<<"Q Position: "<<last->getPin("Q")->getGlobalX()<<" "<<last->getPin("Q")->getGlobalY()<<std::endl;
+    //         std::cout<<"FFN: "<<cell->getInstName()<<std::endl;
+    //         std::cout<<"D Position: "<<d->getGlobalX()<<" "<<d->getGlobalY()<<std::endl;
+    //         std::cout<<"Init Slack: "<<d->getSlack()<<std::endl;
+    //         std::cout<<"WL: "<<wl<<std::endl;
+    //         std::cout<<"Calculated Slack: "<<last->getPin("D")->getSlack() + last->getQDelay() + DISP_DELAY*wl<<std::endl;
+    //         std::cout<<"--------------------------------"<<std::endl;}
+    // }
+
+    // return 0.0;
 }
 
 void Solver::checkCLKDomain()
@@ -495,7 +635,7 @@ void Solver::removeCell(Cell* cell)
 }
 
 /*
-move the cell to (x, y)
+move the cell to (x, y), the current cost will be updated
 */
 void Solver::moveCell(Cell* cell, int x, int y)
 {
@@ -503,6 +643,130 @@ void Solver::moveCell(Cell* cell, int x, int y)
     cell->setX(x);
     cell->setY(y);
     placeCell(cell);
+}
+
+double Solver::calCostMoveD(Pin* movedDPin, int sourceX, int sourceY, int targetX, int targetY)
+{
+    if (sourceX == targetX && sourceY == targetY)
+    {
+        return 0;
+    }
+    const int faninpin_x = movedDPin->getFaninPin()->getGlobalX();
+    const int faninpin_y = movedDPin->getFaninPin()->getGlobalY();
+    const int diff_dist = abs(targetX - faninpin_x) + abs(targetY - faninpin_y) - abs(sourceX - faninpin_x) - abs(sourceY - faninpin_y);
+    const double old_slack = movedDPin->getSlack();
+    const double new_slack = old_slack - DISP_DELAY * diff_dist;
+    return calDiffCost(old_slack, new_slack);
+}
+
+double Solver::calCostMoveQ(Pin* movedQPin, int sourceX, int sourceY, int targetX, int targetY)
+{
+    if (sourceX == targetX && sourceY == targetY)
+    {
+        return 0;
+    }
+    double diff_cost = 0;
+    for (auto nextStagePin : movedQPin->getNextStagePins())
+    {
+        if (nextStagePin->getType() == PinType::FF_D)
+        {
+            const double next_old_slack = nextStagePin->getSlack();
+            const double next_new_slack = nextStagePin->calSlack(movedQPin, sourceX, sourceY, targetX, targetY);
+            diff_cost += calDiffCost(next_old_slack, next_new_slack);
+        }
+    }
+    return diff_cost;
+}
+
+double Solver::updateCostMoveD(Pin* movedDPin, int sourceX, int sourceY, int targetX, int targetY)
+{
+    if (sourceX == targetX && sourceY == targetY)
+    {
+        return 0;
+    }
+    const int faninpin_x = movedDPin->getFaninPin()->getGlobalX();
+    const int faninpin_y = movedDPin->getFaninPin()->getGlobalY();
+    const int diff_dist = abs(targetX - faninpin_x) + abs(targetY - faninpin_y) - abs(sourceX - faninpin_x) - abs(sourceY - faninpin_y);
+    const double old_slack = movedDPin->getSlack();
+    const double new_slack = old_slack - DISP_DELAY * diff_dist;
+    movedDPin->setSlack(new_slack);
+    double diff_cost = calDiffCost(old_slack, new_slack);
+    _currCost += diff_cost;
+    return diff_cost;
+}
+
+double Solver::updateCostMoveQ(Pin* movedQPin, int sourceX, int sourceY, int targetX, int targetY)
+{
+    if (sourceX == targetX && sourceY == targetY)
+    {
+        return 0;
+    }
+    double diff_cost = 0;
+    for (auto nextStagePin : movedQPin->getNextStagePins())
+    {
+        if (nextStagePin->getType() == PinType::FF_D)
+        {
+            const double next_old_slack = nextStagePin->getSlack();
+            const double next_new_slack = nextStagePin->updateSlack(movedQPin, sourceX, sourceY, targetX, targetY);
+            diff_cost += calDiffCost(next_old_slack, next_new_slack);
+        }
+    }
+    _currCost += diff_cost;
+    return diff_cost;
+}
+
+double Solver::calCostChangeQDelay(Pin* changedQPin, double diffQDelay)
+{
+    double diff_cost = 0;
+    for (auto nextStagePin : changedQPin->getNextStagePins())
+    {
+        if (nextStagePin->getType() == PinType::FF_D)
+        {
+            const double next_old_slack = nextStagePin->getSlack();
+            const double next_new_slack = nextStagePin->calSlack(diffQDelay);
+            diff_cost += calDiffCost(next_old_slack, next_new_slack);
+        }
+    }
+    return diff_cost;
+}
+
+double Solver::updateCostChangeQDelay(Pin* changedQPin, double diffQDelay)
+{
+    double diff_cost = 0;
+    for (auto nextStagePin : changedQPin->getNextStagePins())
+    {
+        if (nextStagePin->getType() == PinType::FF_D)
+        {
+            const double next_old_slack = nextStagePin->getSlack();
+            const double next_new_slack = nextStagePin->updateSlack(diffQDelay);
+            diff_cost += calDiffCost(next_old_slack, next_new_slack);
+        }
+    }
+    _currCost += diff_cost;
+    return diff_cost;
+}
+
+/*
+Update current cost after moving the ff
+*/
+double Solver::updateCostMoveFF(FF* movedFF, int sourceX, int sourceY, int targetX, int targetY)
+{
+    if (sourceX == targetX && sourceY == targetY)
+    {
+        return 0;
+    }
+    // std::cout << "Update cost for " << movedFF->getInstName() << " from (" << sourceX << ", " << sourceY << ") to (" << targetX << ", " << targetY << ")" << std::endl;
+    double diff_cost = 0;
+    for (auto inPin : movedFF->getInputPins())
+    {
+        diff_cost += updateCostMoveD(inPin, sourceX + inPin->getX(), sourceY + inPin->getY(), targetX + inPin->getX(), targetY + inPin->getY());
+    }
+    for (auto outPin : movedFF->getOutputPins())
+    {
+        diff_cost += updateCostMoveQ(outPin, sourceX + outPin->getX(), sourceY + outPin->getY(), targetX + outPin->getX(), targetY + outPin->getY());
+    }
+    // std::cout << "Diff cost: " << diff_cost << std::endl << std::endl;
+    return diff_cost;
 }
 
 /*
@@ -596,15 +860,31 @@ void Solver::debankAll()
     {
         removeCell(ff);
     }
+    const double baseArea = _baseFF->width * _baseFF->height;
+    const double basePower = _baseFF->power;
     for (auto ff : _ffs)
     {
+        // update cost on area and power
+        const int n_bit = ff->getBit();
+        _currCost += BETA * (basePower * n_bit - ff->getPower()) + GAMMA * (baseArea * n_bit - ff->getArea());
+        // debank the FF and update slack
         std::vector<std::pair<Pin*, Pin*>> dqPairs = ff->getDQpairs();
         Pin* clkPin = ff->getClkPin();
         const int x = ff->getX();
         const int y = ff->getY();
+        const int d_x = x + _baseFF->inputPins[0]->getX();
+        const int d_y = y + _baseFF->inputPins[0]->getY();
+        const int q_x = x + _baseFF->outputPins[0]->getX();
+        const int q_y = y + _baseFF->outputPins[0]->getY();
+        const double diffQDelay = _baseFF->qDelay - ff->getQDelay();
         const int clkDomain = ff->getClkDomain();
+        // TODO: update the slack
         for (auto dq : dqPairs)
         {
+            Pin *d = dq.first, *q = dq.second;
+            updateCostMoveD(d, x + d->getX(), y + d->getY(), d_x, d_y);
+            updateCostMoveQ(q, x + q->getX(), y + q->getY(), q_x, q_y);
+            updateCostChangeQDelay(q, diffQDelay);
             FF* newFF = new FF(x, y, makeUniqueName(), _baseFF, dq, clkPin);
             newFF->setClkDomain(clkDomain);
             debankedFFs.push_back(newFF);
@@ -654,6 +934,27 @@ void Solver::forceDirectedPlaceFF(FF* ff)
     moveCell(ff, nearest_site->getX(), nearest_site->getY());
 }
 
+/*
+Calculate the cost difference given the old and new slack, the return value should be "added" to the current cost
+*/
+double Solver::calDiffCost(double oldSlack, double newSlack)
+{
+    double diff_neg_slack = 0; // difference of negative slack
+    if (oldSlack <= 0 && newSlack <= 0)
+    {
+        diff_neg_slack = oldSlack - newSlack;
+    }
+    else if (oldSlack <= 0)
+    {
+        diff_neg_slack = oldSlack;
+    }
+    else if (newSlack <= 0)
+    {
+        diff_neg_slack = -newSlack;
+    }
+    return ALPHA * diff_neg_slack;
+}
+
 void Solver::forceDirectedPlaceFFLock(const int ff_idx, std::vector<bool>& locked, std::vector<char>& lock_cnt, int& lock_num)
 {
     if (locked[ff_idx])
@@ -694,8 +995,16 @@ void Solver::forceDirectedPlaceFFLock(const int ff_idx, std::vector<bool>& locke
     int x_avg = x_sum / num_pins;
     int y_avg = y_sum / num_pins;
     Site* nearest_site = _siteMap->getNearestSite(x_avg, y_avg);
-    double dist = sqrt(pow(nearest_site->getX() - ff->getX(), 2) + pow(nearest_site->getY() - ff->getY(), 2));
-    moveCell(ff, nearest_site->getX(), nearest_site->getY());
+    const int source_x = ff->getX();
+    const int source_y = ff->getY();
+    const int target_x = nearest_site->getX();
+    const int target_y = nearest_site->getY();
+    // TODO: maybe change to manhattan distance
+    double dist = sqrt(pow(source_x - target_x, 2) + pow(source_y - target_y, 2));
+    moveCell(ff, target_x, target_y);
+    updateCostMoveFF(ff, source_x, source_y, target_x, target_y);
+
+    // check if the ff should be locked
     if (dist < 1e-2)
     {
         lock_cnt[ff_idx]++;
@@ -712,13 +1021,13 @@ void Solver::forceDirectedPlaceFFLock(const int ff_idx, std::vector<bool>& locke
 
 void Solver::forceDirectedPlacement()
 {
-    std::cout << "Force directed placement" << std::endl;
+    // std::cout << "Force directed placement" << std::endl;
     bool converged = false;
     int max_iter = 1000;
     int iter = 0;
     const int numFFs = _ffs.size();
     const int lockThreshold = numFFs;
-    std::cout << "Lock threshold: " << lockThreshold << std::endl;
+    // std::cout << "Lock threshold: " << lockThreshold << std::endl;
     int lock_num = 0;
     std::vector<char> lock_cnt(numFFs, 0);
     std::vector<bool> locked(numFFs, false);
@@ -727,7 +1036,7 @@ void Solver::forceDirectedPlacement()
         {
             forceDirectedPlaceFFLock(i, locked, lock_cnt, lock_num);
         }
-        std::cout << "Iteration: " << iter << ", Lock/Total: " << lock_num << "/" << numFFs << std::endl;
+        // std::cout << "Iteration: " << iter << ", Lock/Total: " << lock_num << "/" << numFFs << std::endl;
         converged = lock_num >= lockThreshold;
     }
 }
@@ -865,8 +1174,14 @@ void Solver::fineTune()
 
 void Solver::solve()
 {
-    chooseBaseFF();
     init_placement();
+    
+    _initCost = calCost();
+    _currCost = _initCost;
+    std::cout << "==> Initial cost: " << _initCost << std::endl;
+
+    // TODO: placing FFs on the die when global placement is unnecessary 
+    chooseBaseFF();
     debankAll();
 
     std::cout << "There are "<<_binMap->getNumOverMaxUtilBins()<<" over utilized bins initially."<<std::endl; 
@@ -874,6 +1189,8 @@ void Solver::solve()
     
     std::cout<<"Start to force directed placement"<<std::endl;
     forceDirectedPlacement();
+
+    std::cout << "==> Cost after force directed placement: " << _currCost << std::endl;
     
     std::cout << "Start clustering and banking" << std::endl;
     size_t prev_ffs_size;
@@ -889,9 +1206,13 @@ void Solver::solve()
         }
         std::cout << "FFs size after greedy banking: " << _ffs.size() << std::endl;
     } while (prev_ffs_size != _ffs.size());
+
+    std::cout << "==> Cost after clustering and banking: " << _currCost << std::endl;
     
     std::cout << "Start to force directed placement (second)" << std::endl;
     forceDirectedPlacement();
+
+    std::cout << "==> Cost after force directed placement (second): " << _currCost << std::endl;
     
     std::cout<<"Start to legalize"<<std::endl;
     _legalizer->legalize();
@@ -1123,15 +1444,87 @@ double Solver::cal_banking_gain(FF* ff1, FF* ff2, LibCell* targetFF)
         return -INT_MAX;
     }
     double gain = 0.0;
-    // calculate the cost of the original FFs
-    double cost1 = ALPHA * ff1->getQDelay() + BETA * ff1->getPower() + GAMMA * ff1->getArea();
-    double cost2 = ALPHA * ff2->getQDelay() + BETA * ff2->getPower() + GAMMA * ff2->getArea();
-    // calculate the cost of the target FF
-    double targetCost = ALPHA * targetFF->qDelay + BETA * targetFF->power + GAMMA * targetFF->width * targetFF->height;
-    // TODO: consider the wirelength and slack
-    
-    // calculate the gain
-    gain = cost1 + cost2 - targetCost;
+    gain += BETA * (ff1->getPower() + ff2->getPower() - targetFF->power);
+    gain += GAMMA * (ff1->getArea() + ff2->getArea() - targetFF->width * targetFF->height);
+
+    double x_sum = 0.0;
+    double y_sum = 0.0;
+    int num_pins = 0;
+    for (auto inPin : ff1->getInputPins())
+    {
+        Pin* fanin = inPin->getFaninPin();
+        if (fanin->getCell() != ff2)
+        {
+            x_sum += fanin->getGlobalX();
+            y_sum += fanin->getGlobalY();
+            num_pins++;
+        }
+    }
+    for (auto inPin : ff2->getInputPins())
+    {
+        Pin* fanin = inPin->getFaninPin();
+        if (fanin->getCell() != ff1)
+        {
+            x_sum += fanin->getGlobalX();
+            y_sum += fanin->getGlobalY();
+            num_pins++;
+        }
+    }
+    for (auto outPin : ff1->getOutputPins())
+    {
+        for (auto fanout : outPin->getFanoutPins())
+        {
+            if (fanout->getCell() != ff2)
+            {
+                x_sum += fanout->getGlobalX();
+                y_sum += fanout->getGlobalY();
+                num_pins++;
+            }
+        }
+    }
+    for (auto outPin : ff2->getOutputPins())
+    {
+        for (auto fanout : outPin->getFanoutPins())
+        {
+            if (fanout->getCell() != ff1)
+            {
+                x_sum += fanout->getGlobalX();
+                y_sum += fanout->getGlobalY();
+                num_pins++;
+            }
+        }
+    }
+    int x_avg = x_sum / num_pins;
+    int y_avg = y_sum / num_pins;
+    // adjust it to fit the placement rows
+    Site* nearest_site = _siteMap->getNearestSite(x_avg, y_avg);
+    const int target_x = nearest_site->getX();
+    const int target_y = nearest_site->getY();
+    const int ff1_bit = ff1->getBit();
+    const int ff2_bit = ff2->getBit();
+    for (int i = 0; i < ff1_bit+ff2_bit; i++)
+    {
+        if (i < ff1_bit)
+        {
+            Pin* inPin = ff1->getInputPins()[i];
+            Pin* mapInPin = targetFF->inputPins[i];
+            gain += calCostMoveD(inPin, inPin->getGlobalX(), inPin->getGlobalY(), target_x + mapInPin->getX(), target_y + mapInPin->getY());
+            Pin* outPin = ff1->getOutputPins()[i];
+            Pin* mapOutPin = targetFF->outputPins[i];
+            gain += calCostMoveQ(outPin, outPin->getGlobalX(), outPin->getGlobalY(), target_x + mapOutPin->getX(), target_y + mapOutPin->getY());
+            gain += calCostChangeQDelay(outPin, targetFF->qDelay - ff1->getQDelay());
+        }
+        else
+        {
+            Pin* inPin = ff2->getInputPins()[i-ff1_bit];
+            Pin* mapInPin = targetFF->inputPins[i];
+            gain += calCostMoveD(inPin, inPin->getGlobalX(), inPin->getGlobalY(), target_x + mapInPin->getX(), target_y + mapInPin->getY());
+            Pin* outPin = ff2->getOutputPins()[i-ff1_bit];
+            Pin* mapOutPin = targetFF->outputPins[i];
+            gain += calCostMoveQ(outPin, outPin->getGlobalX(), outPin->getGlobalY(), target_x + mapOutPin->getX(), target_y + mapOutPin->getY());
+            gain += calCostChangeQDelay(outPin, targetFF->qDelay - ff2->getQDelay());
+        }
+    }
     return gain;
 }
 
@@ -1254,7 +1647,6 @@ void Solver::display()
     for(auto comb : _combs)
     {
         cout << "Name: " << comb->getInstName() << ", Lib: " << comb->getCellName() << ", X: " << comb->getX() << ", Y: " << comb->getY() << ", Width: " << comb->getWidth() << ", Height: " << comb->getHeight() << endl;
-        cout << "Power: " << comb->getPower() << endl;
         for(auto pin : comb->getPins())
         {
             cout << "Pin Name: " << pin->getName() << ", X: " << pin->getX() << ", Y: " << pin->getY() << endl;

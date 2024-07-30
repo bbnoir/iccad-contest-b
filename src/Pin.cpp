@@ -1,4 +1,6 @@
 #include "Pin.h"
+#include <iostream>
+#include <algorithm>
 
 Pin::Pin(PinType type, int x, int y, std::string name, Cell* cell)
 {
@@ -121,6 +123,17 @@ void Pin::addFanoutPin(Pin* pin)
     _fanoutPins.push_back(pin);
 }
 
+void Pin::addPrevStagePin(Pin* pin, std::vector<Pin*> path)
+{
+    _prevStagePins.push_back(pin);
+    _pathToPrevStagePins.push_back(std::vector<Pin*>(path));
+}
+
+void Pin::addNextStagePin(Pin* pin)
+{
+    _nextStagePins.push_back(pin);
+}
+
 void Pin::connect(Net* net)
 {
     _net = net;
@@ -145,6 +158,31 @@ std::vector<Pin*> Pin::getFanoutPins()
     return _fanoutPins;
 }
 
+std::vector<Pin*> Pin::getPrevStagePins()
+{
+    return _prevStagePins;
+}
+
+size_t Pin::getPrevStagePinsSize()
+{
+    return _prevStagePins.size();
+}
+
+std::vector<Pin*> Pin::getPathToPrevStagePins(int idx)
+{
+    return _pathToPrevStagePins.at(idx);
+}
+
+std::vector<Pin*> Pin::getNextStagePins()
+{
+    return _nextStagePins;
+}
+
+size_t Pin::getNextStagePinsSize()
+{
+    return _nextStagePins.size();
+}
+
 void Pin::copyConnection(Pin* pin)
 {
     _net = pin->getNet();
@@ -159,4 +197,160 @@ void Pin::transInfo(Pin* pin)
     _name = pin->getName();
     _isDpin = pin->isDpin();
     _type = pin->getType();
+}
+
+/*
+Initialize the arrival time of all paths from previous stage pins to this pin
+*/
+void Pin::initArrivalTime()
+{
+    const int numPaths = _prevStagePins.size();
+    for (int i = 0; i < numPaths; i++)
+    {
+        std::vector<Pin*> path = _pathToPrevStagePins.at(i);
+        double arrival_time = 0;
+        for (size_t j = 0; j+1 < path.size(); j+=2)
+        {
+            Pin* curPin = path.at(j);
+            Pin* prevPin = path.at(j+1);
+            arrival_time += abs(curPin->getGlobalX() - prevPin->getGlobalX()) + abs(curPin->getGlobalY() - prevPin->getGlobalY());
+        }
+        // don't add q pin delay since it may change
+        // arrival_time += path.back()->getCell()->getQDelay();
+        _arrivalTimes.push_back(arrival_time);
+        _sortedCriticalIndex.push_back(i);
+    }
+}
+
+/*
+Sort the index of paths by arrival time, critical path first
+*/
+void Pin::sortCriticalIndex()
+{
+    if (_sortedCriticalIndex.size() > 0)
+    {
+        std::make_heap(_sortedCriticalIndex.begin(), _sortedCriticalIndex.end(), [this](int i, int j) {
+            return _arrivalTimes.at(i) < _arrivalTimes.at(j);
+        });
+        _initCriticalArrivalTime = _arrivalTimes.at(_sortedCriticalIndex.front());
+    }
+}
+
+/*
+Get the index of the path from previous stage pin to this pin
+*/
+std::vector<int> Pin::getPathIndex(Pin* prevStagePin)
+{
+    // TODO: change to unordered_map if it's slow
+    std::vector<int> index;
+    for (size_t i = 0; i < _prevStagePins.size(); i++)
+    {
+        if (_prevStagePins.at(i) == prevStagePin)
+        {
+            index.push_back(i);
+        }
+    }
+    return index;
+}
+
+/*
+Calculate the slack of this pin after a previous stage pin is moved, no update
+Return the calculated slack
+*/
+double Pin::calSlack(Pin* movedPrevStagePin, int sourceX, int sourceY, int targetX, int targetY)
+{
+    if (this->getType() != PinType::FF_D)
+    {
+        std::cout << "Error: only D pin can update slack" << std::endl;
+        exit(1);
+    }
+    std::vector<double> tempArrivalTimes = _arrivalTimes;
+    std::vector<int> tempSortedCriticalIndex = _sortedCriticalIndex;
+    const double old_arrival_time = tempArrivalTimes.at(tempSortedCriticalIndex.at(0));
+    // update the arrival time and re-sort the critical index
+    std::vector<int> indexList = getPathIndex(movedPrevStagePin);
+    for (int index : indexList)
+    {
+        std::vector<Pin*> path = _pathToPrevStagePins.at(index);
+        Pin* secondLastPin = path.at(path.size()-2);
+        const int secondLastPinX = secondLastPin->getGlobalX();
+        const int secondLastPinY = secondLastPin->getGlobalY();
+        const double old_arrival_time = tempArrivalTimes.at(index);
+        const double new_arrival_time = old_arrival_time - abs(sourceX - secondLastPinX) - abs(sourceY - secondLastPinY) + abs(targetX - secondLastPinX) + abs(targetY - secondLastPinY);
+        tempArrivalTimes.at(index) = new_arrival_time;
+        // reheap the new arrival time to the sorted list
+        int sortIndex = 0;
+        while (tempSortedCriticalIndex.at(sortIndex) != index)
+        {
+            sortIndex++;
+        }
+        std::push_heap(tempSortedCriticalIndex.begin(), tempSortedCriticalIndex.begin()+sortIndex+1, [&tempArrivalTimes](int i, int j) {
+            return tempArrivalTimes.at(i) < tempArrivalTimes.at(j);
+        });
+    }
+    // update slack
+    const double new_arrival_time = tempArrivalTimes.at(tempSortedCriticalIndex.at(0));
+    return _slack + (old_arrival_time - new_arrival_time) * DISP_DELAY;
+}
+
+/*
+Update the slack of this pin after a previous stage pin is moved
+Return the new slack
+*/
+double Pin::updateSlack(Pin* movedPrevStagePin, int sourceX, int sourceY, int targetX, int targetY)
+{
+    if (this->getType() != PinType::FF_D)
+    {
+        std::cout << "Error: only D pin can update slack" << std::endl;
+        exit(1);
+    }
+    const double old_arrival_time = _arrivalTimes.at(_sortedCriticalIndex.at(0));
+    // update the arrival time and re-sort the critical index
+    std::vector<int> indexList = getPathIndex(movedPrevStagePin);
+    for (int index : indexList)
+    {
+        std::vector<Pin*> path = _pathToPrevStagePins.at(index);
+        Pin* secondLastPin = path.at(path.size()-2);
+        const int secondLastPinX = secondLastPin->getGlobalX();
+        const int secondLastPinY = secondLastPin->getGlobalY();
+        const double old_arrival_time = _arrivalTimes.at(index);
+        const double new_arrival_time = old_arrival_time - abs(sourceX - secondLastPinX) - abs(sourceY - secondLastPinY) + abs(targetX - secondLastPinX) + abs(targetY - secondLastPinY);
+        _arrivalTimes.at(index) = new_arrival_time;
+        // reheap the new arrival time to the sorted list
+        int sortIndex = 0;
+        while (_sortedCriticalIndex.at(sortIndex) != index)
+        {
+            sortIndex++;
+        }
+        std::push_heap(_sortedCriticalIndex.begin(), _sortedCriticalIndex.begin()+sortIndex+1, [this](int i, int j) {
+            return _arrivalTimes.at(i) < _arrivalTimes.at(j);
+        });
+    }
+    // update slack
+    const double new_arrival_time = _arrivalTimes.at(_sortedCriticalIndex.at(0));
+    _slack += (old_arrival_time - new_arrival_time) * DISP_DELAY;
+    return _slack;
+}
+
+/*
+Calculate the slack of this pin after the Q delay of a previous stage pin is changed, no update
+Return the calculated slack
+*/
+double Pin::calSlack(double diffQDelay)
+{
+    if (this->getType() != PinType::FF_D)
+    {
+        std::cout << "Error: only D pin can update slack" << std::endl;
+        exit(1);
+    }
+    return _slack - diffQDelay;
+}
+
+/*
+Update the slack of this pin after the Q delay of a previous stage pin is changed
+Return the new slack
+*/
+double Pin::updateSlack(double diffQDelay)
+{
+    return _slack = calSlack(diffQDelay);
 }
