@@ -27,6 +27,7 @@ void Legalizer::removeAllFFs(){
 
 void Legalizer::generateSubRows(){
     // Row are separated by Combs
+    _subRows.clear();
     std::vector<std::vector<Site*>> siteRow = _solver->_siteMap->getSiteRows();
     std::vector<Site*> subRow;
     for(long unsigned int i = 0;i < siteRow.size();i++){
@@ -48,9 +49,9 @@ void Legalizer::generateSubRows(){
     }
 }
 
-std::vector<int> Legalizer::getNearSubRows(int ffIndex, int min_distance, int max_distance){
+std::vector<int> Legalizer::getNearSubRows(FF* ff, int min_distance, int max_distance)
+{
     std::vector<int> nearSubRows;
-    FF* ff = _ffs.at(ffIndex);
     int centerX = ff->getX() + ff->getWidth()/2;
     int centerY = ff->getY() + ff->getHeight()/2;
     for(long unsigned int i = 0;i < _subRows.size();i++){
@@ -64,8 +65,8 @@ std::vector<int> Legalizer::getNearSubRows(int ffIndex, int min_distance, int ma
     return nearSubRows;
 }
 
-double Legalizer::placeRow(int ffIndex, int subRowIndex, bool trial){
-    FF* ff = _ffs.at(ffIndex);
+
+double Legalizer::placeRow(FF* ff, int subRowIndex, bool trial){
     SubRow subRow = _subRows[subRowIndex];
     int startX = subRow._sites.at(0)->getX();
     int endX = subRow._sites.at(subRow._sites.size() - 1)->getX();
@@ -119,16 +120,16 @@ void Legalizer::legalize(){
     for(long unsigned int i = 0;i < _ffs.size();i++){
         double cost_min = INFINITY;
         int best_subrow = -1;
-        std::vector<int> nearSubRows = getNearSubRows(i, -1, searchDistance);
+        std::vector<int> nearSubRows = getNearSubRows(_ffs[i], -1, searchDistance);
         for(long unsigned int j = 0;j < nearSubRows.size();j++){
-            double cost = placeRow(i, nearSubRows[j], true);
+            double cost = placeRow(_ffs[i], nearSubRows[j], true);
             if(cost < cost_min){
                 cost_min = cost;
                 best_subrow = nearSubRows[j];
             }
         }
         if(best_subrow != -1){
-            placeRow(i, best_subrow, false);      
+            placeRow(_ffs[i], best_subrow, false);      
             totalCost += cost_min;
         }else{
             orphans.push_back(i);
@@ -142,9 +143,9 @@ void Legalizer::legalize(){
         int min_distance = searchDistance;
         int max_distance = 2*searchDistance;
         while(best_subrow == -1){
-            std::vector<int> nearSubRows = getNearSubRows(orphans[i], min_distance, max_distance);
+            std::vector<int> nearSubRows = getNearSubRows(_ffs[orphans[i]], min_distance, max_distance);
             for(long unsigned int j = 0;j < nearSubRows.size();j++){
-                double cost = placeRow(orphans[i], nearSubRows[j], true);
+                double cost = placeRow(_ffs[orphans[i]], nearSubRows[j], true);
                 if(cost < cost_min){
                     cost_min = cost;
                     best_subrow = nearSubRows[j];
@@ -156,12 +157,38 @@ void Legalizer::legalize(){
         }
         totalCost += cost_min;
         if(best_subrow != -1)
-            placeRow(orphans[i], best_subrow, false);
+            placeRow(_ffs[orphans[i]], best_subrow, false);
         else
             std::cout<<"There is no place for orphan "<<orphans[i]<<std::endl;
     }
 
     std::cout << "Legalizing done." << std::endl;
-    // std::cout << "Total cost: " << totalCost << std::endl;
-    // std::cout << (orphans.size()/double(_ffs.size()))*100 << "% FFs are orphan." << std::endl;
+    std::cout << "Total cost: " << totalCost << std::endl;
+    std::cout << (orphans.size()/double(_ffs.size()))*100 << "% FFs are orphan." << std::endl;
+}
+
+void Legalizer::placeOrphan(FF* ff)
+{
+    double cost_min = INFINITY;
+    int best_subrow = -1;
+    int searchDistance = (DIE_UP_RIGHT_Y-DIE_LOW_LEFT_Y)/10;
+    int min_distance = -1;
+    int max_distance = searchDistance;
+    while(best_subrow == -1){
+        std::vector<int> nearSubRows = getNearSubRows(ff, min_distance, max_distance);
+        for(long unsigned int j = 0;j < nearSubRows.size();j++){
+            double cost = placeRow(ff, nearSubRows[j], true);
+            if(cost < cost_min){
+                cost_min = cost;
+                best_subrow = nearSubRows[j];
+            }
+        }
+        // Increase search distance
+        min_distance = max_distance;
+        max_distance += searchDistance;
+    }
+    if(best_subrow != -1)
+        placeRow(ff, best_subrow, false);
+    else
+        std::cout<<"There is no place for orphan"<<std::endl;
 }

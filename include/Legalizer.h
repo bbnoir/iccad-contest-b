@@ -25,12 +25,12 @@ class Legalizer{
         
         void removeAllFFs();
         void generateSubRows();
-        std::vector<int> getNearSubRows(int ffIndex, int min_distance, int max_distance);
-        double placeRow(int ffIndex, int subRowIndex, bool trial = false);
+        std::vector<int> getNearSubRows(FF* ff, int min_distance, int max_distance);
+        double placeRow(FF* ff, int subRowIndex, bool trial = false);
     public:
         Legalizer(Solver* solver);
         ~Legalizer();
 
         void legalize();
-
+        void placeOrphan(FF* ff);
 };

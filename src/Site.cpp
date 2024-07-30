@@ -168,6 +168,32 @@ std::vector<Site*> SiteMap::getSites(int leftDownX, int leftDownY, int rightUpX,
     return sites;
 }
 
+/*
+Get all sites in the block(fully covered by the block)
+*/
+std::vector<Site*> SiteMap::getSitesInBlock(int leftDownX, int leftDownY, int rightUpX, int rightUpY)
+{
+    if (leftDownX < DIE_LOW_LEFT_X || leftDownY < DIE_LOW_LEFT_Y || rightUpX > DIE_UP_RIGHT_X || rightUpY > DIE_UP_RIGHT_Y)
+    {
+        std::cerr << "Error: SiteMap::getSitesInBlock() - out of die boundary" << std::endl;
+        exit(1);
+    }
+    std::vector<Site*> sites;
+    const int startRow = getFirstLargerRow(leftDownY);
+    const int endRow = getFirstLargerRow(rightUpY);
+    for (int row = startRow; row < endRow; row++)
+    {
+        const int startCol = getFirstLargerColInRow(row, leftDownX);
+        const int endCol = getFirstLargerColInRow(row, rightUpX);
+        for (int col = startCol; col < endCol; col++)
+        {
+            sites.push_back(_sites[row][col]);
+        }
+    }
+    return sites;
+}
+
+
 std::vector<std::vector<Site*>> SiteMap::getSiteRows()
 {
     return _sites;

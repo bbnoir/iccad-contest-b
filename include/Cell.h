@@ -78,6 +78,7 @@ public:
 
     void setX(int x);
     void setY(int y);
+    void setXY(int x, int y);
     void setInstName(std::string inst_name);
     void addSite(Site* site);
     void addBin(Bin* bin);

@@ -1,8 +1,10 @@
 #include "Bin.h"
 #include "Cell.h"
+#include "FF.h"
 #include "param.h"
 #include <cmath>
 #include <iostream>
+#include <unordered_set>
 
 Bin::Bin()
 {
@@ -44,28 +46,42 @@ const std::vector<Cell*>& Bin::getCells()
     return _cells;
 }
 
-void Bin::addCell(Cell* cell)
+double Bin::addCell(Cell* cell, bool trial)
 {
-    _cells.push_back(cell);
     // update utilization
     // calculate the overlap area
     int overlapArea = _calOverlapArea(cell);
-    _utilization += 100.*overlapArea / (BIN_WIDTH * BIN_HEIGHT);
+    double newUtil = _utilization + 100.*overlapArea / (BIN_WIDTH * BIN_HEIGHT);
+    if(!trial){
+        _cells.push_back(cell);
+        _utilization = newUtil;
+    }
+    return newUtil;
 }
 
-void Bin::removeCell(Cell* cell)
+double Bin::removeCell(Cell* cell, bool trial)
 {
-    if (std::find(_cells.begin(), _cells.end(), cell) != _cells.end())
-    {
-        _cells.erase(std::remove(_cells.begin(), _cells.end(), cell), _cells.end());
+    if(std::find(_cells.begin(), _cells.end(), cell) == _cells.end()){
+        return _utilization;
     }
     // update utilization
     // calculate the overlap area
     int overlapArea = _calOverlapArea(cell);
-    _utilization -= 100.*overlapArea / (BIN_WIDTH * BIN_HEIGHT);
-    if(_utilization < 1e-12){
-        _utilization = 0;
+    double newUtil = _utilization - 100.*overlapArea / (BIN_WIDTH * BIN_HEIGHT);
+    if(!trial){
+        if (std::find(_cells.begin(), _cells.end(), cell) != _cells.end())
+            _cells.erase(std::remove(_cells.begin(), _cells.end(), cell), _cells.end());
+        _utilization = newUtil;
+        if(_utilization < 1e-12){
+            _utilization = 0;
+        }
     }
+    return newUtil;
+}
+
+bool Bin::totallyContains(Cell* cell)
+{
+    return (cell->getX() >= _x && cell->getX() + cell->getWidth() <= _x + BIN_WIDTH) && (cell->getY() >= _y && cell->getY() + cell->getHeight() <= _y + BIN_HEIGHT);
 }
 
 int Bin::_calOverlapArea(Cell* cell)
@@ -104,6 +120,8 @@ BinMap::BinMap(int dieLowerLeftX, int dieLowerLeftY, int dieUpperRightX, int die
         }
         _bins.emplace_back(row);
     }
+    _numBinsX = _bins[0].size();
+    _numBinsY = _bins.size();
 }
 
 std::vector<Bin*> BinMap::getBins()
@@ -117,6 +135,11 @@ std::vector<Bin*> BinMap::getBins()
         }
     }
     return bins;
+}
+
+std::vector<std::vector<Bin*>> BinMap::getBins2D()
+{
+    return _bins;
 }
 
 std::vector<Bin*> BinMap::getBins(int leftDownX, int leftDownY, int rightUpX, int rightUpY)
@@ -157,30 +180,120 @@ int BinMap::getNumOfViolatedBins()
     return numViolatedBins;
 }
 
-void BinMap::addCell(Cell* cell)
+/*
+indexX, indexY: the index of the left down bin
+numBlocksX, numBlocksY: the number of blocks in x and y direction
+*/
+std::vector<Bin*> BinMap::getBinsBlocks(int indexX, int indexY, int numBlocksX, int numBlocksY)
 {
-    int leftDownX = cell->getX();
-    int leftDownY = cell->getY();
-    int rightUpX = cell->getX() + cell->getWidth();
-    int rightUpY = cell->getY() + cell->getHeight();
-    std::vector<Bin*> bins = getBins(leftDownX, leftDownY, rightUpX, rightUpY);
-    for (auto bin : bins)
+    if (indexX < 0 || indexY < 0 || indexX + numBlocksX > _numBinsX || indexY + numBlocksY > _numBinsY)
     {
-        bin->addCell(cell);
-        cell->addBin(bin);
+        std::cerr << "Error: getBinsBlocks out of range" << std::endl;
+        exit(1);
     }
+    std::vector<Bin*> bins;
+    for (int i = indexY; i < indexY + numBlocksY; i++)
+    {
+        for (int j = indexX; j < indexX + numBlocksX; j++)
+        {
+            bins.emplace_back(_bins[i][j]);
+        }
+    }
+    return bins;
 }
 
-void BinMap::removeCell(Cell* cell)
+/*
+Get all FFs in the bins
+*/
+std::vector<FF*> BinMap::getFFsInBins(const std::vector<Bin*>& bins)
+{
+    std::unordered_set<FF*> ffs;
+    for (auto bin : bins)
+    {
+        for (auto cell : bin->getCells())
+        {
+            if (cell->getCellType() == CellType::FF && bin->totallyContains(cell))
+            {
+                ffs.insert(static_cast<FF*>(cell));
+            }
+        }
+    }
+    std::vector<FF*> res;
+    for (auto ff : ffs)
+    {
+        res.emplace_back(ff);
+    }
+    return res;
+}
+
+/*
+Get all FFs in the bins blocks
+*/
+std::vector<FF*> BinMap::getFFsInBinsBlocks(int indexX, int indexY, int numBlocksX, int numBlocksY)
+{
+    std::vector<Bin*> bins = getBinsBlocks(indexX, indexY, numBlocksX, numBlocksY);
+    return getFFsInBins(bins);
+}
+
+int BinMap::getNumBinsX()
+{
+    return _numBinsX;
+}
+
+int BinMap::getNumBinsY()
+{
+    return _numBinsY;
+}
+
+int BinMap::getNumOverMaxUtilBins()
+{
+    int count = 0;
+    for (auto row : _bins)
+    {
+        for (auto bin : row)
+        {
+            if (bin->isOverMaxUtil())
+            {
+                count++;
+            }
+        }
+    }
+    return count;
+}
+
+double BinMap::addCell(Cell* cell, bool trial)
 {
     int leftDownX = cell->getX();
     int leftDownY = cell->getY();
     int rightUpX = cell->getX() + cell->getWidth();
     int rightUpY = cell->getY() + cell->getHeight();
     std::vector<Bin*> bins = getBins(leftDownX, leftDownY, rightUpX, rightUpY);
+    double causedCost = 0;
     for (auto bin : bins)
     {
-        bin->removeCell(cell);
-        cell->removeBin(bin);
+        double util = bin->getUtilization();
+        causedCost += ((bin->addCell(cell, trial) > BIN_MAX_UTIL) && (util <= BIN_MAX_UTIL))? 1 : 0;
+        if(!trial)
+            cell->addBin(bin);
+        
     }
+    return causedCost;
+}
+
+double BinMap::removeCell(Cell* cell, bool trial)
+{
+    int leftDownX = cell->getX();
+    int leftDownY = cell->getY();
+    int rightUpX = cell->getX() + cell->getWidth();
+    int rightUpY = cell->getY() + cell->getHeight();
+    std::vector<Bin*> bins = getBins(leftDownX, leftDownY, rightUpX, rightUpY);
+    double causedCost = 0;
+    for (auto bin : bins)
+    {
+        double util = bin->getUtilization();
+        causedCost += ((bin->removeCell(cell, trial) <= BIN_MAX_UTIL) && (util > BIN_MAX_UTIL))? -1 : 0;
+        if(!trial)
+            cell->removeBin(bin);
+    }
+    return causedCost;
 }
