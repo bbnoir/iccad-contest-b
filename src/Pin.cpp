@@ -254,6 +254,46 @@ std::vector<int> Pin::getPathIndex(Pin* prevStagePin)
 }
 
 /*
+Calculate the slack of this pin after a previous stage pin is moved, no update
+Return the calculated slack
+*/
+double Pin::calSlack(Pin* movedPrevStagePin, int sourceX, int sourceY, int targetX, int targetY)
+{
+    if (this->getType() != PinType::FF_D)
+    {
+        std::cout << "Error: only D pin can update slack" << std::endl;
+        exit(1);
+    }
+    std::vector<double> tempArrivalTimes = _arrivalTimes;
+    std::vector<int> tempSortedCriticalIndex = _sortedCriticalIndex;
+    const double old_arrival_time = tempArrivalTimes.at(tempSortedCriticalIndex.at(0));
+    // update the arrival time and re-sort the critical index
+    std::vector<int> indexList = getPathIndex(movedPrevStagePin);
+    for (int index : indexList)
+    {
+        std::vector<Pin*> path = _pathToPrevStagePins.at(index);
+        Pin* secondLastPin = path.at(path.size()-2);
+        const int secondLastPinX = secondLastPin->getGlobalX();
+        const int secondLastPinY = secondLastPin->getGlobalY();
+        const double old_arrival_time = tempArrivalTimes.at(index);
+        const double new_arrival_time = old_arrival_time - abs(sourceX - secondLastPinX) - abs(sourceY - secondLastPinY) + abs(targetX - secondLastPinX) + abs(targetY - secondLastPinY);
+        tempArrivalTimes.at(index) = new_arrival_time;
+        // reheap the new arrival time to the sorted list
+        int sortIndex = 0;
+        while (tempSortedCriticalIndex.at(sortIndex) != index)
+        {
+            sortIndex++;
+        }
+        std::push_heap(tempSortedCriticalIndex.begin(), tempSortedCriticalIndex.begin()+sortIndex+1, [&tempArrivalTimes](int i, int j) {
+            return tempArrivalTimes.at(i) < tempArrivalTimes.at(j);
+        });
+    }
+    // update slack
+    const double new_arrival_time = tempArrivalTimes.at(tempSortedCriticalIndex.at(0));
+    return _slack + (old_arrival_time - new_arrival_time) * DISP_DELAY;
+}
+
+/*
 Update the slack of this pin after a previous stage pin is moved
 Return the new slack
 */
@@ -293,17 +333,24 @@ double Pin::updateSlack(Pin* movedPrevStagePin, int sourceX, int sourceY, int ta
 }
 
 /*
-Update the slack of this pin after the Q delay of a previous stage pin is changed
-Return the new slack
+Calculate the slack of this pin after the Q delay of a previous stage pin is changed, no update
+Return the calculated slack
 */
-double Pin::updateSlack(double diffQDelay)
+double Pin::calSlack(double diffQDelay)
 {
     if (this->getType() != PinType::FF_D)
     {
         std::cout << "Error: only D pin can update slack" << std::endl;
         exit(1);
     }
-    // update slack
-    _slack -= diffQDelay;
-    return _slack;
+    return _slack - diffQDelay;
+}
+
+/*
+Update the slack of this pin after the Q delay of a previous stage pin is changed
+Return the new slack
+*/
+double Pin::updateSlack(double diffQDelay)
+{
+    return _slack = calSlack(diffQDelay);
 }

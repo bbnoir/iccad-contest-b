@@ -59,6 +59,8 @@ class Pin
         void initArrivalTime();
         void sortCriticalIndex();
         std::vector<int> getPathIndex(Pin* prevStagePin);
+        double calSlack(Pin* movedPrevStagePin, int sourceX, int sourceY, int targetX, int targetY);
+        double calSlack(double diffQDelay);
         double updateSlack(Pin* movedPrevStagePin, int sourceX, int sourceY, int targetX, int targetY);
         double updateSlack(double diffQDelay);
 
