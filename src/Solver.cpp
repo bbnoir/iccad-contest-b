@@ -385,7 +385,7 @@ double Solver::calCost()
     double tns = 0.0;
     double power = 0.0;
     double area = 0.0;
-    int numOfBinsViolated = _binMap->getNumOfViolatedBins();
+    int numOfBinsViolated = _binMap->getNumOverMaxUtilBins();
     for(auto ff : _ffs)
     {
         tns += ff->getTotalNegativeSlack();
