@@ -392,56 +392,17 @@ double Solver::calCost()
         power += ff->getPower();
         area += ff->getArea();
     }
-    std::cout<<"Alpha: "<<ALPHA<<" ";
-    std::cout<<"Beta: "<<BETA<<" ";
-    std::cout<<"Gamma: "<<GAMMA<<" ";
-    std::cout<<"Lambda: "<<LAMBDA<<std::endl;
-    std::cout<<"TNS: "<<tns<<std::endl;
-    std::cout<<"Power: "<<power<<std::endl;
-    std::cout<<"Area: "<<area<<std::endl;
-    std::cout<<"Num of bins violated: "<<numOfBinsViolated<<std::endl;
+    // std::cout<<"Alpha: "<<ALPHA<<" ";
+    // std::cout<<"Beta: "<<BETA<<" ";
+    // std::cout<<"Gamma: "<<GAMMA<<" ";
+    // std::cout<<"Lambda: "<<LAMBDA<<std::endl;
+    // std::cout<<"TNS: "<<tns<<std::endl;
+    // std::cout<<"Power: "<<power<<std::endl;
+    // std::cout<<"Area: "<<area<<std::endl;
+    // std::cout<<"Num of bins violated: "<<numOfBinsViolated<<std::endl;
     double cost = ALPHA * tns + BETA * power + GAMMA * area + LAMBDA * numOfBinsViolated;
-    std::cout<<"Cost: "<<cost<<std::endl;
+    // std::cout<<"Cost: "<<cost<<std::endl;
     return cost;
-
-    // std::vector<Cell*> cells;
-    // for(auto input:_inputPins){
-    //     std::vector<Pin*> fanout = input->getFanoutPins();
-    //     for(auto pin:fanout){
-    //         cells.push_back(pin->getCell());
-    //     }
-    // }
-    // std::vector<Cell*> next;
-    // for(auto cell:cells){
-    //     if(cell->getCellType() == CellType::FF){
-    //         std::vector<Pin*> outputPins = cell->getOutputPins();
-    //         for(auto output:outputPins){
-    //             std::vector<Pin*> fanout = output->getFanoutPins();
-    //             for(auto pin:fanout){
-    //                 next.push_back(pin->getCell());
-    //             }
-    //         }
-    //     }
-    // }
-    // for(auto cell:next){
-    //     if(cell->getCellType() == CellType::FF){
-    //         Pin* d = cell->getInputPins()[0];
-    //         Pin* fanIn = d->getFaninPin();
-    //         double wl = abs(d->getGlobalX() - fanIn->getGlobalX()) + abs(d->getGlobalY() - fanIn->getGlobalY());
-    //         FF* last = static_cast<FF*>(fanIn->getCell());
-    //         std::cout<<"FF0: "<<last->getInstName()<<std::endl;
-    //         std::cout<<"Slack: "<<last->getPin("D")->getSlack()<<std::endl;
-    //         std::cout<<"QDelay: "<<last->getQDelay()<<std::endl;
-    //         std::cout<<"Q Position: "<<last->getPin("Q")->getGlobalX()<<" "<<last->getPin("Q")->getGlobalY()<<std::endl;
-    //         std::cout<<"FFN: "<<cell->getInstName()<<std::endl;
-    //         std::cout<<"D Position: "<<d->getGlobalX()<<" "<<d->getGlobalY()<<std::endl;
-    //         std::cout<<"Init Slack: "<<d->getSlack()<<std::endl;
-    //         std::cout<<"WL: "<<wl<<std::endl;
-    //         std::cout<<"Calculated Slack: "<<last->getPin("D")->getSlack() + last->getQDelay() + DISP_DELAY*wl<<std::endl;
-    //         std::cout<<"--------------------------------"<<std::endl;}
-    // }
-
-    // return 0.0;
 }
 
 void Solver::checkCLKDomain()
@@ -1300,6 +1261,7 @@ void Solver::solve()
     // TODO: placing FFs on the die when global placement is unnecessary 
     chooseBaseFF();
     debankAll();
+    std::cout << "==> Cost after debanking: " << _currCost << std::endl;
 
     std::cout << "There are "<<_binMap->getNumOverMaxUtilBins()<<" over utilized bins initially."<<std::endl; 
     
