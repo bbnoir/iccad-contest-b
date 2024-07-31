@@ -223,7 +223,10 @@ void Pin::initArrivalTime()
             arrival_time += abs(curPin->getGlobalX() - prevPin->getGlobalX()) + abs(curPin->getGlobalY() - prevPin->getGlobalY());
         }
         arrival_time *= DISP_DELAY;
-        arrival_time += path.back()->getCell()->getQDelay();
+        if (path.back()->getType() == PinType::FF_Q)
+        {
+            arrival_time += path.back()->getCell()->getQDelay();
+        }
         _arrivalTimes.push_back(arrival_time);
         _sortedCriticalIndex.push_back(i);
     }
@@ -262,7 +265,10 @@ void Pin::resetArrivalTime()
             arrival_time += abs(curPin->getGlobalX() - prevPin->getGlobalX()) + abs(curPin->getGlobalY() - prevPin->getGlobalY());
         }
         arrival_time *= DISP_DELAY;
-        arrival_time += path.back()->getCell()->getQDelay();
+        if (path.back()->getType() == PinType::FF_Q)
+        {
+            arrival_time += path.back()->getCell()->getQDelay();
+        }
         _arrivalTimes.push_back(arrival_time);
         _sortedCriticalIndex.push_back(i);
     }
@@ -464,7 +470,7 @@ void Pin::resetSlack()
 {
     if (_arrivalTimes.size() == 0)
     {
-        // TODO: check if there is empty path pin
+        // TODO: there is empty path pin
         _slack = (_initSlack == 0) ? 0 : _initSlack;
     }
     else

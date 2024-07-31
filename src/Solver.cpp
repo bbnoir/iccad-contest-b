@@ -356,9 +356,8 @@ void Solver::parse_input(std::string filename)
                     }
                     else if (curType == PinType::INPUT)
                     {
-                        // TODO: check if is needed to set prev and next stage pins for INPUT pins
-                        // inPin->addPrevStagePin(curPin, pinStack);
-                        break;
+                        inPin->addPrevStagePin(curPin, pinStack);
+                        curPin->addNextStagePin(inPin);
                     }
                     else if (curType == PinType::FF_D)
                     {
