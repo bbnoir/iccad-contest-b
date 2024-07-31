@@ -1,0 +1,1 @@
+./bin/RUN cases/testcase1_balanced.txt out/testcase1_balanced_out.txt

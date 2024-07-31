@@ -941,9 +941,14 @@ std::string Solver::makeUniqueName()
     return newName;
 }
 
-void Solver::chooseBaseFF()
+void Solver::debankAll()
 {
-    // TODO: change the way to choose the base FF
+    std::vector<FF*> debankedFFs;
+    for (auto ff : _ffs)
+    {
+        removeCell(ff);
+    }
+
     std::vector<LibCell*> oneBitFFs;
     for (auto ff : _ffsLibList)
     {
@@ -952,54 +957,60 @@ void Solver::chooseBaseFF()
             oneBitFFs.push_back(ff);
         }
     }
-    // choose the FF with the smallest cost
-    double minCost = ALPHA * oneBitFFs[0]->qDelay + BETA * oneBitFFs[0]->power + GAMMA * oneBitFFs[0]->width * oneBitFFs[0]->height;
-    _baseFF = oneBitFFs[0];
-    for (auto ff : oneBitFFs)
-    {
-        double cost = ALPHA * ff->qDelay + BETA * ff->power + GAMMA * ff->width * ff->height;
-        if(cost < minCost)
-        {
-            minCost = cost;
-            _baseFF = ff;
-        }
-    }
-    std::cout << "Base FF: " << _baseFF->cell_name << std::endl;
-}
 
-void Solver::debankAll()
-{
-    std::vector<FF*> debankedFFs;
+    
     for (auto ff : _ffs)
     {
-        removeCell(ff);
-    }
-    const double baseArea = _baseFF->width * _baseFF->height;
-    const double basePower = _baseFF->power;
-    for (auto ff : _ffs)
-    {
-        // update cost on area and power
-        const int n_bit = ff->getBit();
-        _currCost += BETA * (basePower * n_bit - ff->getPower()) + GAMMA * (baseArea * n_bit - ff->getArea());
-        // debank the FF and update slack
+        // Choose a 1 bit FF that fits the best
+        double minCost = 0;
+        LibCell* bestFF = ff->getLibCell();
+        
         std::vector<std::pair<Pin*, Pin*>> dqPairs = ff->getDQpairs();
         Pin* clkPin = ff->getClkPin();
         const int x = ff->getX();
         const int y = ff->getY();
-        const int d_x = x + _baseFF->inputPins[0]->getX();
-        const int d_y = y + _baseFF->inputPins[0]->getY();
-        const int q_x = x + _baseFF->outputPins[0]->getX();
-        const int q_y = y + _baseFF->outputPins[0]->getY();
-        const double diffQDelay = _baseFF->qDelay - ff->getQDelay();
         const int clkDomain = ff->getClkDomain();
-        // TODO: update the slack
+
+        for(auto oneBitFF: oneBitFFs)
+        {
+            // calculate the cost difference if the FF is replaced by the 1 bit FF at the same position
+            const int d_x = x + oneBitFF->inputPins[0]->getX();
+            const int d_y = y + oneBitFF->inputPins[0]->getY();
+            const int q_x = x + oneBitFF->outputPins[0]->getX();
+            const int q_y = y + oneBitFF->outputPins[0]->getY();
+            const double diffQDelay = oneBitFF->qDelay - ff->getQDelay();
+                
+            double areaDiff = GAMMA*(oneBitFF->width * oneBitFF->height - ff->getArea());
+            double powerDiff = BETA*(oneBitFF->power - ff->getPower());
+            double slackDiff = 0;
+            for (auto dq : dqPairs)
+            {
+                Pin *d = dq.first, *q = dq.second;
+                slackDiff += calCostMoveD(d, x + d->getX(), y + d->getY(), d_x, d_y);
+                slackDiff += calCostMoveQ(q, x + q->getX(), y + q->getY(), q_x, q_y);
+                slackDiff += calCostChangeQDelay(q, diffQDelay);
+            }
+            double costDiff = areaDiff + powerDiff + slackDiff;
+            if (costDiff < minCost)
+            {
+                minCost = costDiff;
+                bestFF = oneBitFF;
+            }
+        }
+
+        const int d_x = x + bestFF->inputPins[0]->getX();
+        const int d_y = y + bestFF->inputPins[0]->getY();
+        const int q_x = x + bestFF->outputPins[0]->getX();
+        const int q_y = y + bestFF->outputPins[0]->getY();
+        const double diffQDelay = bestFF->qDelay - ff->getQDelay();
+
         for (auto dq : dqPairs)
         {
             Pin *d = dq.first, *q = dq.second;
             updateCostMoveD(d, x + d->getX(), y + d->getY(), d_x, d_y);
             updateCostMoveQ(q, x + q->getX(), y + q->getY(), q_x, q_y);
             updateCostChangeQDelay(q, diffQDelay);
-            FF* newFF = new FF(x, y, makeUniqueName(), _baseFF, dq, clkPin);
+            FF* newFF = new FF(x, y, makeUniqueName(), bestFF, dq, clkPin);
             newFF->setClkDomain(clkDomain);
             debankedFFs.push_back(newFF);
         }
@@ -1208,7 +1219,6 @@ void Solver::fineTune()
                     if(!placeable(ff, sites[j]->getX(), sites[j]->getY()))
                         continue;
                     
-                    // TODO: cost is depend on the slack and bin utilization rate
                     int original_x = ff->getX();
                     int original_y = ff->getY();
                     int trial_x = sites[j]->getX();
@@ -1251,8 +1261,6 @@ void Solver::solve()
     _currCost = _initCost;
     std::cout << "==> Initial cost: " << _initCost << std::endl;
 
-    // TODO: placing FFs on the die when global placement is unnecessary 
-    chooseBaseFF();
     debankAll();
     std::cout << "==> Cost after debanking: " << _currCost << std::endl;
     resetSlack();
@@ -1345,21 +1353,6 @@ void Solver::check()
     {
         std::cout << "================= Success ================" << std::endl;
     }
-}
-
-/*
-Evaluate all kinds of cost
-*/
-void Solver::evaluate()
-{
-    std::cout << "============ Start evaluating ============" << std::endl;
-    // double totalCost = 0.0;
-    // double totalArea = 0.0;
-    // double totalPower = 0.0;
-    // double totalNegSlack = 0.0;
-    // int numOfOverUtilBins = _binMap->getNumOverMaxUtilBins();
-    // std::cout << "Number of over utilized bins: " << numOfOverUtilBins << std::endl;
-    std::cout << "============= End evaluating =============" << std::endl;
 }
 
 /*

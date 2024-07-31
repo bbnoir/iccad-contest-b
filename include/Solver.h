@@ -41,7 +41,6 @@ class Solver
         void init_placement();
         void solve();
         void check();
-        void evaluate();
         void dump(std::string filename);
 
         void display();
@@ -55,7 +54,6 @@ class Solver
         std::vector<LibCell*> _ffsLibList;
         std::unordered_map<std::string, LibCell*, CIHash, CIEqual> _combsLibMap;
         std::unordered_map<std::string, LibCell*, CIHash, CIEqual> _ffsLibMap;
-        LibCell* _baseFF;
         // I/O
         std::vector<Pin*> _inputPins;
         std::vector<Pin*> _outputPins;
@@ -122,7 +120,6 @@ class Solver
         // Main Algorithms
         
         // 1. Debank all FFs
-        void chooseBaseFF();
         void debankAll();
         // 2. Force-directed placement
         void forceDirectedPlaceFF(FF* ff);
