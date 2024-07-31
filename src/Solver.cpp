@@ -250,6 +250,63 @@ void Solver::parse_input(std::string filename)
             }
         }
     }
+
+    // Read bin info
+    in >> token >> BIN_WIDTH;
+    in >> token >> BIN_HEIGHT;
+    in >> token >> BIN_MAX_UTIL;
+    // Read placement rows
+    while(!in.eof())
+    {
+        int startX, startY, siteWidth, siteHeight, numSites;
+        in >> token;
+        if(token != "PlacementRows")
+            break;
+        in >> startX >> startY >> siteWidth >> siteHeight >> numSites;
+        _placementRows.push_back({startX, startY, siteWidth, siteHeight, numSites});
+    }
+    // Read timing info
+    in >> DISP_DELAY;
+    for(long unsigned int i = 0; i < _ffsLibList.size(); i++)
+    {
+        string cellName;
+        double delay;
+        in >> token >> cellName >> delay;
+        _ffsLibMap[cellName]->qDelay = delay;
+    }
+    // slack
+    for(long unsigned int i = 0; i < _ffs.size(); i++)
+    {
+        string instName;
+        string port;
+        double slack;
+        in >> token >> instName >> port >> slack;
+        _ffsMap[instName]->getPin(port)->setInitSlack(slack);
+        if (_ffsMap[instName]->getBit() > 1)
+        {
+            for (int j = 1; j < _ffsMap[instName]->getBit(); j++)
+            {
+                in >> token >> instName >> port >> slack;
+                _ffsMap[instName]->getPin(port)->setInitSlack(slack);
+            }
+        }
+    }
+    // Read power info
+    for(long unsigned int i = 0; i < _ffsLibList.size(); i++)
+    {
+        string cellName;
+        double power;
+        in >> token >> cellName >> power;
+        if(_ffsLibMap.find(cellName) != _ffsLibMap.end())
+        {
+            _ffsLibMap[cellName]->power = power;
+        }else if(_combsLibMap.find(cellName) != _combsLibMap.end())
+        {
+            _combsLibMap[cellName]->power = power;
+        }
+    }
+    // set power to instances
+
     // Set prev and next stage pins
     // TODO: check if is needed to set prev and next stage pins for INPUT and OUTPUT pins
     for (auto ff : _ffs)
@@ -319,62 +376,6 @@ void Solver::parse_input(std::string filename)
             inPin->initCriticalIndex();
         }
     }
-
-    // Read bin info
-    in >> token >> BIN_WIDTH;
-    in >> token >> BIN_HEIGHT;
-    in >> token >> BIN_MAX_UTIL;
-    // Read placement rows
-    while(!in.eof())
-    {
-        int startX, startY, siteWidth, siteHeight, numSites;
-        in >> token;
-        if(token != "PlacementRows")
-            break;
-        in >> startX >> startY >> siteWidth >> siteHeight >> numSites;
-        _placementRows.push_back({startX, startY, siteWidth, siteHeight, numSites});
-    }
-    // Read timing info
-    in >> DISP_DELAY;
-    for(long unsigned int i = 0; i < _ffsLibList.size(); i++)
-    {
-        string cellName;
-        double delay;
-        in >> token >> cellName >> delay;
-        _ffsLibMap[cellName]->qDelay = delay;
-    }
-    // slack
-    for(long unsigned int i = 0; i < _ffs.size(); i++)
-    {
-        string instName;
-        string port;
-        double slack;
-        in >> token >> instName >> port >> slack;
-        _ffsMap[instName]->getPin(port)->setSlack(slack);
-        if (_ffsMap[instName]->getBit() > 1)
-        {
-            for (int j = 1; j < _ffsMap[instName]->getBit(); j++)
-            {
-                in >> token >> instName >> port >> slack;
-                _ffsMap[instName]->getPin(port)->setSlack(slack);
-            }
-        }
-    }
-    // Read power info
-    for(long unsigned int i = 0; i < _ffsLibList.size(); i++)
-    {
-        string cellName;
-        double power;
-        in >> token >> cellName >> power;
-        if(_ffsLibMap.find(cellName) != _ffsLibMap.end())
-        {
-            _ffsLibMap[cellName]->power = power;
-        }else if(_combsLibMap.find(cellName) != _combsLibMap.end())
-        {
-            _combsLibMap[cellName]->power = power;
-        }
-    }
-    // set power to instances
 
     cout << "File parsed successfully" << endl;
     in.close();
@@ -846,6 +847,17 @@ double Solver::updateCostBankFF(FF* ff1, FF* ff2, LibCell* targetFF, int targetX
         }
     }
     return diff_cost;
+}
+
+void Solver::resetSlack()
+{
+    for (auto ff : _ffs)
+    {
+        for (auto inPin : ff->getInputPins())
+        {
+            inPin->resetSlack();
+        }
+    }
 }
 
 /*

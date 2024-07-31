@@ -91,6 +91,13 @@ void Pin::setSlack(double slack)
     _isDpin = true;
 }
 
+void Pin::setInitSlack(double initSlack)
+{
+    _slack = initSlack;
+    _isDpin = true;
+    _initSlack = initSlack;
+}
+
 void Pin::setCell(Cell* cell)
 {
     _cell = cell;
@@ -233,6 +240,44 @@ void Pin::initCriticalIndex()
             return _arrivalTimes.at(i) < _arrivalTimes.at(j);
         });
         _initCriticalArrivalTime = _arrivalTimes.at(_sortedCriticalIndex.front());
+    }
+}
+
+/*
+Reset the arrival time of all paths from previous stage pins to this pin
+*/
+void Pin::resetArrivalTime()
+{
+    _arrivalTimes.clear();
+    _sortedCriticalIndex.clear();
+    const int numPaths = _prevStagePins.size();
+    for (int i = 0; i < numPaths; i++)
+    {
+        std::vector<Pin*> path = _pathToPrevStagePins.at(i);
+        double arrival_time = 0;
+        for (size_t j = 0; j+1 < path.size(); j+=2)
+        {
+            Pin* curPin = path.at(j);
+            Pin* prevPin = path.at(j+1);
+            arrival_time += abs(curPin->getGlobalX() - prevPin->getGlobalX()) + abs(curPin->getGlobalY() - prevPin->getGlobalY());
+        }
+        arrival_time *= DISP_DELAY;
+        arrival_time += path.back()->getCell()->getQDelay();
+        _arrivalTimes.push_back(arrival_time);
+        _sortedCriticalIndex.push_back(i);
+    }
+}
+
+/*
+Re-sort the index of paths by arrival time, critical path first
+*/
+void Pin::resetCriticalIndex()
+{
+    if (_sortedCriticalIndex.size() > 0)
+    {
+        std::make_heap(_sortedCriticalIndex.begin(), _sortedCriticalIndex.end(), [this](int i, int j) {
+            return _arrivalTimes.at(i) < _arrivalTimes.at(j);
+        });
     }
 }
 
@@ -413,4 +458,19 @@ std::vector<int> Pin::getSortedCriticalIndex()
 std::vector<int>& Pin::getSortedCriticalIndexRef()
 {
     return _sortedCriticalIndex;
+}
+
+void Pin::resetSlack()
+{
+    if (_arrivalTimes.size() == 0)
+    {
+        // TODO: check if there is empty path pin
+        _slack = (_initSlack == 0) ? 0 : _initSlack;
+    }
+    else
+    {
+        this->resetArrivalTime();
+        this->resetCriticalIndex();
+        _slack = _initSlack + (_initCriticalArrivalTime - _arrivalTimes.at(_sortedCriticalIndex.at(0)));
+    }
 }

@@ -52,6 +52,7 @@ class Pin
         std::vector<int>& getSortedCriticalIndexRef();
 
         void setSlack(double slack);
+        void setInitSlack(double initSlack);
         void setCell(Cell* cell);
         void setOriginalName();
         void setOriginalName(std::string ori_name);
@@ -62,11 +63,14 @@ class Pin
         void addNextStagePin(Pin* pin);
         void initArrivalTime();
         void initCriticalIndex();
+        void resetArrivalTime();
+        void resetCriticalIndex();
         std::vector<int> getPathIndex(Pin* prevStagePin);
         double calSlack(Pin* movedPrevStagePin, int sourceX, int sourceY, int targetX, int targetY);
         double calSlackQ(Pin* changeQPin, double diffQDelay);
         double updateSlack(Pin* movedPrevStagePin, int sourceX, int sourceY, int targetX, int targetY);
         double updateSlackQ(Pin* changeQPin, double diffQDelay);
+        void resetSlack();
 
         void connect(Net* net);
         void copyConnection(Pin* pin);
@@ -82,7 +86,6 @@ class Pin
         // which cell this pin belongs to
         Cell* _cell;
         double _slack;
-        double _initCriticalArrivalTime;
         bool _isDpin;
         // which net this pin is connected to
         Net* _net;
@@ -91,10 +94,13 @@ class Pin
 
         // Previous stage pins
         std::vector<Pin*> _prevStagePins;
-        std::vector<std::vector<Pin*>> _pathToPrevStagePins;
-        std::vector<double> _arrivalTimes;
-        std::vector<int> _sortedCriticalIndex;
         // Next stage pins
         std::vector<Pin*> _nextStagePins;
 
+        // for slack calculation
+        double _initSlack;
+        double _initCriticalArrivalTime;
+        std::vector<std::vector<Pin*>> _pathToPrevStagePins;
+        std::vector<double> _arrivalTimes;
+        std::vector<int> _sortedCriticalIndex;
 };
