@@ -285,7 +285,7 @@ double BinMap::addCell(Cell* cell, bool trial)
     for (auto bin : bins)
     {
         double util = bin->getUtilization();
-        causedCost += ((bin->addCell(cell, trial) > BIN_MAX_UTIL) && (util <= BIN_MAX_UTIL))? 1 : 0;
+        causedCost += ((bin->addCell(cell, trial) > BIN_MAX_UTIL) && (util <= BIN_MAX_UTIL))? GAMMA : 0;
         if(!trial)
             cell->addBin(bin);
         
@@ -304,7 +304,7 @@ double BinMap::removeCell(Cell* cell, bool trial)
     for (auto bin : bins)
     {
         double util = bin->getUtilization();
-        causedCost += ((bin->removeCell(cell, trial) <= BIN_MAX_UTIL) && (util > BIN_MAX_UTIL))? -1 : 0;
+        causedCost += ((bin->removeCell(cell, trial) <= BIN_MAX_UTIL) && (util > BIN_MAX_UTIL))? -GAMMA : 0;
         if(!trial)
             cell->removeBin(bin);
     }

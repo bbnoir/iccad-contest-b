@@ -749,6 +749,29 @@ double Solver::updateCostChangeQDelay(Pin* changedQPin, double diffQDelay)
 /*
 Update current cost after moving the ff
 */
+double Solver::calCostMoveFF(FF* movedFF, int sourceX, int sourceY, int targetX, int targetY)
+{
+    if (sourceX == targetX && sourceY == targetY)
+    {
+        return 0;
+    }
+    // std::cout << "Update cost for " << movedFF->getInstName() << " from (" << sourceX << ", " << sourceY << ") to (" << targetX << ", " << targetY << ")" << std::endl;
+    double diff_cost = 0;
+    for (auto inPin : movedFF->getInputPins())
+    {
+        diff_cost += calCostMoveD(inPin, sourceX + inPin->getX(), sourceY + inPin->getY(), targetX + inPin->getX(), targetY + inPin->getY());
+    }
+    for (auto outPin : movedFF->getOutputPins())
+    {
+        diff_cost += calCostMoveQ(outPin, sourceX + outPin->getX(), sourceY + outPin->getY(), targetX + outPin->getX(), targetY + outPin->getY());
+    }
+    // std::cout << "Diff cost: " << diff_cost << std::endl << std::endl;
+    return diff_cost;
+}
+
+/*
+Update current cost after moving the ff
+*/
 double Solver::updateCostMoveFF(FF* movedFF, int sourceX, int sourceY, int targetX, int targetY)
 {
     if (sourceX == targetX && sourceY == targetY)
@@ -1047,17 +1070,19 @@ void Solver::fineTune()
     std::cout << "Bin Grid: " << _binMap->getNumBinsX() << "x" << _binMap->getNumBinsY() << std::endl;
 
     int kernel_size = 5;
-    int stride_x = 1;
-    int stride_y = 1;
+    int stride_x = 2;
+    int stride_y = 2;
     int stride_x_width = stride_x * BIN_WIDTH;
     int stride_y_height = stride_y * BIN_HEIGHT;
     int num_x = (_binMap->getNumBinsX() - kernel_size) / stride_x + 1;
     int num_y = (_binMap->getNumBinsY() - kernel_size) / stride_y + 1;
-    std::vector<FF*> orphans;
-    for(int y = 0; y < num_y; y+=stride_y)
+
+    double cost_difference = 0;
+
+    for(int y = 0; y < num_y; y++)
     {
         std::cout << "Fine tuning: " << y << "/" << num_y << std::endl;
-        for(int x = 0; x < num_x; x+=stride_x)
+        for(int x = 0; x < num_x; x++)
         {
             int cur_x = x * stride_x_width;
             int cur_y = y * stride_y_height;
@@ -1081,17 +1106,11 @@ void Solver::fineTune()
 
             std::vector<FF*> ffs_local = _binMap->getFFsInBins(bins);
             std::vector<Site*> sites = _siteMap->getSitesInBlock(cur_x, cur_y, upright_x, upright_y);
-            ffs_local.insert(ffs_local.end(), orphans.begin(), orphans.end());
-            orphans.clear();
-            // remove ffs in the block
-            for(long unsigned int i = 0; i < ffs_local.size(); i++)
-            {
-                removeCell(ffs_local[i]);
-            }
+            
             for(long unsigned int i = 0; i < ffs_local.size(); i++)
             {
                 FF* ff = ffs_local[i];
-                double cost_min = INFINITY;
+                double cost_min = 0;
                 int best_site = -1;
                 for(long unsigned int j = 0; j < sites.size(); j++)
                 {
@@ -1103,15 +1122,17 @@ void Solver::fineTune()
                     int original_y = ff->getY();
                     int trial_x = sites[j]->getX();
                     int trial_y = sites[j]->getY();
-
-                    int distance = abs(ff->getX() - trial_x) + abs(ff->getY() - trial_y);
-                    int OverMaxUtilBins = 0;
                     
+                    // Bins cost difference when add and remove the cell
+                    double removeCost = _binMap->removeCell(ff, true);
+                    double addCost = 0;
                     ff->setXY(trial_x, trial_y);
-                    OverMaxUtilBins = _binMap->addCell(ff, true);
-                    ff->setXY(original_x, original_y);                    
-                    
-                    double cost = (distance) + 1000000*(OverMaxUtilBins);
+                    addCost = _binMap->addCell(ff, true);
+                    ff->setXY(original_x, original_y);        
+
+                    double slackCost = calCostMoveFF(ff, original_x, original_y, trial_x, trial_y);
+
+                    double cost = slackCost + removeCost + addCost;
 
                     if(cost < cost_min)
                     {
@@ -1121,55 +1142,13 @@ void Solver::fineTune()
                 }
                 if(best_site != -1)
                 {
-                    placeCell(ff, sites[best_site]->getX(), sites[best_site]->getY());
-                }else{
-                    orphans.push_back(ff);
+                    cost_difference += cost_min;
+                    moveCell(ff, sites[best_site]->getX(), sites[best_site]->getY());
                 }
             }
         }
     }
-    std::cout<<"Orphans: "<<orphans.size()<<std::endl;
-    // TODO: optimize the placement of orphans
-    for(long unsigned int i = 0; i < orphans.size(); i++)
-    {
-        FF* ff = orphans[i];
-        double cost_min = INFINITY;
-        int best_site = -1;
-        std::vector<Site*> sites = _siteMap->getSites();
-        for(long unsigned int j = 0; j < sites.size(); j++)
-        {
-            if(!placeable(ff, sites[j]->getX(), sites[j]->getY()))
-                continue;
-            
-            int original_x = ff->getX();
-            int original_y = ff->getY();
-            int trial_x = sites[j]->getX();
-            int trial_y = sites[j]->getY();
-
-            int distance = abs(ff->getX() - trial_x) + abs(ff->getY() - trial_y);
-            int OverMaxUtilBins = 0;
-            
-            ff->setXY(trial_x, trial_y);
-            OverMaxUtilBins = _binMap->addCell(ff, true);
-            ff->setXY(original_x, original_y);                    
-            
-            double cost = (distance+1) * (OverMaxUtilBins+1);
-
-            if(cost < cost_min)
-            {
-                cost_min = cost;
-                best_site = j;
-            }
-        }
-        if(best_site != -1)
-        {
-            placeCell(ff, sites[best_site]->getX(), sites[best_site]->getY());
-        }else{
-            std::cout << "There is no place for orphan " << i << std::endl;
-        }
-    } 
-
-    std::cout << "Fine tuning done." << std::endl;
+    std::cout << "Cost difference: " << cost_difference << std::endl;
 }
 
 void Solver::solve()

@@ -83,6 +83,7 @@ class Solver
         double calCostMoveD(Pin* movedDPin, int sourceX, int sourceY, int targetX, int targetY);
         double calCostMoveQ(Pin* movedQPin, int sourceX, int sourceY, int targetX, int targetY);
         double calCostChangeQDelay(Pin* changedQPin, double diffQDelay);
+        double calCostMoveFF(FF* movedFF, int sourceX, int sourceY, int targetX, int targetY);
         double updateCostMoveD(Pin* movedDPin, int sourceX, int sourceY, int targetX, int targetY);
         double updateCostMoveQ(Pin* movedQPin, int sourceX, int sourceY, int targetX, int targetY);
         double updateCostChangeQDelay(Pin* changedQPin, double diffQDelay);
