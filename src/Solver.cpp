@@ -769,6 +769,115 @@ double Solver::updateCostMoveFF(FF* movedFF, int sourceX, int sourceY, int targe
     return diff_cost;
 }
 
+double Solver::updateCostBankFF(FF* ff1, FF* ff2, LibCell* targetFF, int targetX, int targetY)
+{
+    double diff_cost = 0;
+    diff_cost += (targetFF->power - ff1->getPower() - ff2->getPower()) * BETA;
+    diff_cost += (targetFF->width * targetFF->height - ff1->getArea() - ff2->getArea()) * GAMMA;
+    _currCost += diff_cost;
+    const int ff1_bit = ff1->getBit();
+    const int ff2_bit = ff2->getBit();
+    // D pin
+    for (int i = 0; i < ff1_bit+ff2_bit; i++)
+    {
+        int op_idx = (i < ff1_bit) ? i : i - ff1_bit;
+        FF* workingFF = (i < targetFF->bit) ? ff1 : ff2;
+        Pin* inPin = workingFF->getInputPins()[op_idx];
+        Pin* mapInPin = targetFF->inputPins[op_idx];
+        Pin* faninPin = inPin->getFaninPin();
+        if (faninPin->getType() != PinType::INPUT && (faninPin->getCell() == ff1 || faninPin->getCell() == ff2))
+        {
+            int fanin_ff_pin_idx = 0;
+            for (auto p : faninPin->getCell()->getOutputPins())
+            {
+                if (p == faninPin) break;
+                fanin_ff_pin_idx++;
+            }
+            if (faninPin->getCell() == ff2)
+            {
+                fanin_ff_pin_idx += ff1_bit;
+            }
+            const int old_fanin_x = faninPin->getGlobalX();
+            const int old_fanin_y = faninPin->getGlobalY();
+            const int new_fanin_x = targetX + targetFF->outputPins[fanin_ff_pin_idx]->getX();
+            const int new_fanin_y = targetY + targetFF->outputPins[fanin_ff_pin_idx]->getY();
+            const int diff_dist = abs(targetX+mapInPin->getX()-new_fanin_x) + abs(targetY+mapInPin->getY()-new_fanin_y) - abs(inPin->getGlobalX()-old_fanin_x) - abs(inPin->getGlobalY()-old_fanin_y);
+            const double old_slack = inPin->getSlack();
+            const double new_slack = old_slack - DISP_DELAY * diff_dist;
+            inPin->setSlack(new_slack);
+            const double d_cost = calDiffCost(old_slack, new_slack);
+            _currCost += d_cost;
+            diff_cost += d_cost;
+        }
+        else
+        {
+            diff_cost += updateCostMoveD(inPin, inPin->getGlobalX(), inPin->getGlobalY(), targetX + mapInPin->getX(), targetY + mapInPin->getY());
+        }
+    }
+    // Q pin
+    for (int i = 0; i < ff1_bit+ff2_bit; i++)
+    {
+        int op_idx = (i < ff1_bit) ? i : i - ff1_bit;
+        FF* workingFF = (i < targetFF->bit) ? ff1 : ff2;
+        Pin* outPin = workingFF->getOutputPins()[op_idx];
+        Pin* mapOutPin = targetFF->outputPins[op_idx];
+        diff_cost += updateCostChangeQDelay(outPin, targetFF->qDelay - workingFF->getQDelay());
+        for (auto nextStagePin : outPin->getNextStagePins())
+        {
+            if (nextStagePin->getType() == PinType::FF_D)
+            {
+                if (nextStagePin->getCell() == ff1 || nextStagePin->getCell() == ff2)
+                {
+                    if (nextStagePin->getFaninPin()->getCell() == ff1 || nextStagePin->getFaninPin()->getCell() == ff2)
+                    {
+                        // already considered in the D pin
+                        break;
+                    }
+                    const double next_old_slack = nextStagePin->getSlack();
+                    std::vector<double> arrivalTimes = nextStagePin->getArrivalTimesRef();
+                    std::vector<int> sortedCriticalIndex = nextStagePin->getSortedCriticalIndexRef();
+                    const double old_arrival_time = arrivalTimes.at(sortedCriticalIndex.at(0));
+                    // update the arrival time and re-sort the critical index
+                    std::vector<int> indexList = nextStagePin->getPathIndex(outPin);
+                    for (int index : indexList)
+                    {
+                        std::vector<Pin*> path = nextStagePin->getPathToPrevStagePins(index);
+                        Pin* secondLastPin = path.at(path.size()-2);
+                        const int secondLastPinX = secondLastPin->getGlobalX();
+                        const int secondLastPinY = secondLastPin->getGlobalY();
+                        const double old_arrival_time = arrivalTimes.at(index);
+                        const double new_arrival_time = old_arrival_time - abs(outPin->getGlobalX() - secondLastPinX) - abs(outPin->getGlobalY() - secondLastPinY) + abs(targetX + mapOutPin->getX() - secondLastPinX) + abs(targetY + mapOutPin->getY() - secondLastPinY);
+                        arrivalTimes.at(index) = new_arrival_time;
+                        // reheap the new arrival time to the sorted list
+                        int sortIndex = 0;
+                        while (sortedCriticalIndex.at(sortIndex) != index)
+                        {
+                            sortIndex++;
+                        }
+                        std::push_heap(sortedCriticalIndex.begin(), sortedCriticalIndex.begin()+sortIndex+1, [&arrivalTimes](int i, int j) {
+                            return arrivalTimes.at(i) < arrivalTimes.at(j);
+                        });
+                    }
+                    const double new_arrival_time = arrivalTimes.at(sortedCriticalIndex.at(0));
+                    const double next_new_slack =  next_old_slack + (old_arrival_time - new_arrival_time) * DISP_DELAY;
+                    const double d_cost = calDiffCost(next_old_slack, next_new_slack);
+                    _currCost += d_cost;
+                    diff_cost += d_cost;
+                }
+                else
+                {
+                    const double next_old_slack = nextStagePin->getSlack();
+                    const double next_new_slack = nextStagePin->updateSlack(outPin, outPin->getGlobalX(), outPin->getGlobalY(), targetX + mapOutPin->getX(), targetY + mapOutPin->getY());
+                    const double d_cost = calDiffCost(next_old_slack, next_new_slack);
+                    _currCost += d_cost;
+                    diff_cost += d_cost;
+                }
+            }
+        }
+    }
+    return diff_cost;
+}
+
 /*
 add FF to _ffs and _ffsMap
 */
@@ -808,15 +917,15 @@ void Solver::bankFFs(FF* ff1, FF* ff2, LibCell* targetFF)
     std::vector<Pin*> clkPins;
     clkPins.push_back(ff1->getClkPin());
     clkPins.push_back(ff2->getClkPin());
-    // create a new FF
-    int x = ff1->getX(), y = ff1->getY();
-    FF* newFF = new FF(x, y, makeUniqueName(), targetFF, dqPairs, clkPins);
-    newFF->setClkDomain(ff1->getClkDomain());
-    addFF(newFF);
-    // place the new FF
-    placeCell(newFF);
-    forceDirectedPlaceFF(newFF);
-    // delete the old FFs
+    // place the banked FF
+    int target_x, target_y;
+    findForceDirectedPlacementBankingFFs(ff1, ff2, target_x, target_y);
+    updateCostBankFF(ff1, ff2, targetFF, target_x, target_y);
+    FF* bankedFF = new FF(target_x, target_x, makeUniqueName(), targetFF, dqPairs, clkPins);
+    bankedFF->setClkDomain(ff1->getClkDomain());
+    addFF(bankedFF);
+    placeCell(bankedFF);
+    // free up old ffs
     deleteFF(ff1);
     deleteFF(ff2);
 }
@@ -1435,16 +1544,8 @@ std::vector<std::vector<FF*>> Solver::clusteringFFs(long unsigned int clkdomain_
     return clusters;
 }
 
-double Solver::cal_banking_gain(FF* ff1, FF* ff2, LibCell* targetFF)
+void Solver::findForceDirectedPlacementBankingFFs(FF* ff1, FF* ff2, int& result_x, int& result_y)
 {
-    if(ff1->getBit()+ff2->getBit()!=targetFF->bit){
-        std::cout << "Invalid target FF" << std::endl;
-        return -INT_MAX;
-    }
-    double gain = 0.0;
-    gain += BETA * (ff1->getPower() + ff2->getPower() - targetFF->power);
-    gain += GAMMA * (ff1->getArea() + ff2->getArea() - targetFF->width * targetFF->height);
-
     double x_sum = 0.0;
     double y_sum = 0.0;
     int num_pins = 0;
@@ -1494,10 +1595,23 @@ double Solver::cal_banking_gain(FF* ff1, FF* ff2, LibCell* targetFF)
     }
     int x_avg = x_sum / num_pins;
     int y_avg = y_sum / num_pins;
-    // adjust it to fit the placement rows
     Site* nearest_site = _siteMap->getNearestSite(x_avg, y_avg);
-    const int target_x = nearest_site->getX();
-    const int target_y = nearest_site->getY();
+    result_x = nearest_site->getX();
+    result_y = nearest_site->getY();
+}
+
+double Solver::cal_banking_gain(FF* ff1, FF* ff2, LibCell* targetFF)
+{
+    if(ff1->getBit()+ff2->getBit()!=targetFF->bit){
+        std::cout << "Invalid target FF" << std::endl;
+        return -INT_MAX;
+    }
+    double gain = 0.0;
+    gain += BETA * (ff1->getPower() + ff2->getPower() - targetFF->power);
+    gain += GAMMA * (ff1->getArea() + ff2->getArea() - targetFF->width * targetFF->height);
+
+    int target_x, target_y;
+    findForceDirectedPlacementBankingFFs(ff1, ff2, target_x, target_y);
     const int ff1_bit = ff1->getBit();
     const int ff2_bit = ff2->getBit();
     // D pin
@@ -1516,16 +1630,22 @@ double Solver::cal_banking_gain(FF* ff1, FF* ff2, LibCell* targetFF)
                 if (p == faninPin) break;
                 fanin_ff_pin_idx++;
             }
-            const int faninpin_x = target_x + targetFF->outputPins[fanin_ff_pin_idx]->getX();
-            const int faninpin_y = target_y + targetFF->outputPins[fanin_ff_pin_idx]->getY();
-            const int diff_dist = abs(target_x+mapInPin->getX()-faninpin_x) + abs(target_y+mapInPin->getY()-faninpin_y) - abs(inPin->getGlobalX()-faninpin_x) - abs(inPin->getGlobalY()-faninpin_y);
+            if (faninPin->getCell() == ff2)
+            {
+                fanin_ff_pin_idx += ff1_bit;
+            }
+            const int old_fanin_x = faninPin->getGlobalX();
+            const int old_fanin_y = faninPin->getGlobalY();
+            const int new_fanin_x = target_x + targetFF->outputPins[fanin_ff_pin_idx]->getX();
+            const int new_fanin_y = target_y + targetFF->outputPins[fanin_ff_pin_idx]->getY();
+            const int diff_dist = abs(target_x+mapInPin->getX()-new_fanin_x) + abs(target_y+mapInPin->getY()-new_fanin_y) - abs(inPin->getGlobalX()-old_fanin_x) - abs(inPin->getGlobalY()-old_fanin_y);
             const double old_slack = inPin->getSlack();
             const double new_slack = old_slack - DISP_DELAY * diff_dist;
-            gain += calDiffCost(old_slack, new_slack);
+            gain -= calDiffCost(old_slack, new_slack);
         }
         else
         {
-            gain += calCostMoveD(inPin, inPin->getGlobalX(), inPin->getGlobalY(), target_x + mapInPin->getX(), target_y + mapInPin->getY());
+            gain -= calCostMoveD(inPin, inPin->getGlobalX(), inPin->getGlobalY(), target_x + mapInPin->getX(), target_y + mapInPin->getY());
         }
     }
     // Q pin
@@ -1574,13 +1694,13 @@ double Solver::cal_banking_gain(FF* ff1, FF* ff2, LibCell* targetFF)
                     }
                     const double new_arrival_time = tempArrivalTimes.at(tempSortedCriticalIndex.at(0));
                     const double next_new_slack =  next_old_slack + (old_arrival_time - new_arrival_time) * DISP_DELAY;
-                    gain += calDiffCost(next_old_slack, next_new_slack);
+                    gain -= calDiffCost(next_old_slack, next_new_slack);
                 }
                 else
                 {
                     const double next_old_slack = nextStagePin->getSlack();
                     const double next_new_slack = nextStagePin->calSlack(outPin, outPin->getGlobalX(), outPin->getGlobalY(), target_x + mapOutPin->getX(), target_y + mapOutPin->getY());
-                    gain += calDiffCost(next_old_slack, next_new_slack);
+                    gain -= calDiffCost(next_old_slack, next_new_slack);
                 }
             }
         }

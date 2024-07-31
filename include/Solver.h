@@ -87,7 +87,7 @@ class Solver
         double updateCostMoveQ(Pin* movedQPin, int sourceX, int sourceY, int targetX, int targetY);
         double updateCostChangeQDelay(Pin* changedQPin, double diffQDelay);
         double updateCostMoveFF(FF* movedFF, int sourceX, int sourceY, int targetX, int targetY);
-        double updateCostBankFF(FF* bankedFF);
+        double updateCostBankFF(FF* ff1, FF* ff2, LibCell* targetFF, int targetX, int targetY);
         
         // Modify Cell
         
@@ -126,6 +126,7 @@ class Solver
         void forceDirectedPlaceFF(FF* ff);
         void forceDirectedPlaceFFLock(const int ff_idx, std::vector<bool>& locked, std::vector<char>& lock_cnt, int& lock_num);
         void forceDirectedPlacement();
+        void findForceDirectedPlacementBankingFFs(FF* ff1, FF* ff2, int& result_x, int& result_y);
         // 3. Clustering in each clock domain
         std::vector<std::vector<FF*>> clusteringFFs(long unsigned int clkdomain_idx);
         // 4. Greedy banking

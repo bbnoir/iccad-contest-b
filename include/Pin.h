@@ -47,7 +47,9 @@ class Pin
         std::vector<Pin*> getNextStagePins();
         size_t getNextStagePinsSize();
         std::vector<double> getArrivalTimes();
+        std::vector<double>& getArrivalTimesRef();
         std::vector<int> getSortedCriticalIndex();
+        std::vector<int>& getSortedCriticalIndexRef();
 
         void setSlack(double slack);
         void setCell(Cell* cell);
