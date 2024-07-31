@@ -75,6 +75,7 @@ public:
     std::vector<Site*> getSites();
     std::vector<Bin*> getBins();
     double getQDelay();
+    LibCell* getLibCell();
 
     void setX(int x);
     void setY(int y);

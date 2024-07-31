@@ -125,6 +125,11 @@ std::vector<Bin*> Cell::getBins()
     return _bins;
 }
 
+LibCell* Cell::getLibCell()
+{
+    return _lib_cell;
+}
+
 void Cell::setX(int x)
 {
     this->_x = x;
