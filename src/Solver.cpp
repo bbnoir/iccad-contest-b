@@ -392,14 +392,14 @@ double Solver::calCost()
         power += ff->getPower();
         area += ff->getArea();
     }
-    // std::cout<<"Alpha: "<<ALPHA<<" ";
-    // std::cout<<"Beta: "<<BETA<<" ";
-    // std::cout<<"Gamma: "<<GAMMA<<" ";
-    // std::cout<<"Lambda: "<<LAMBDA<<std::endl;
-    // std::cout<<"TNS: "<<tns<<std::endl;
-    // std::cout<<"Power: "<<power<<std::endl;
-    // std::cout<<"Area: "<<area<<std::endl;
-    // std::cout<<"Num of bins violated: "<<numOfBinsViolated<<std::endl;
+    std::cout<<"Alpha: "<<ALPHA<<" ";
+    std::cout<<"Beta: "<<BETA<<" ";
+    std::cout<<"Gamma: "<<GAMMA<<" ";
+    std::cout<<"Lambda: "<<LAMBDA<<std::endl;
+    std::cout<<"TNS: "<<tns<<std::endl;
+    std::cout<<"Power: "<<power<<std::endl;
+    std::cout<<"Area: "<<area<<std::endl;
+    std::cout<<"Num of bins violated: "<<numOfBinsViolated<<std::endl;
     double cost = ALPHA * tns + BETA * power + GAMMA * area + LAMBDA * numOfBinsViolated;
     // std::cout<<"Cost: "<<cost<<std::endl;
     return cost;
@@ -1161,8 +1161,8 @@ void Solver::fineTune()
     std::cout << "Bin Grid: " << _binMap->getNumBinsX() << "x" << _binMap->getNumBinsY() << std::endl;
 
     int kernel_size = 5;
-    int stride_x = 2;
-    int stride_y = 2;
+    int stride_x = 1;
+    int stride_y = 1;
     int stride_x_width = stride_x * BIN_WIDTH;
     int stride_y_height = stride_y * BIN_HEIGHT;
     int num_x = (_binMap->getNumBinsX() - kernel_size) / stride_x + 1;
