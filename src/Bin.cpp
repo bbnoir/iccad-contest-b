@@ -50,7 +50,7 @@ double Bin::addCell(Cell* cell, bool trial)
 {
     // update utilization
     // calculate the overlap area
-    int overlapArea = _calOverlapArea(cell);
+    int overlapArea = calOverlapArea(cell);
     double newUtil = _utilization + 100.*overlapArea / (BIN_WIDTH * BIN_HEIGHT);
     if(!trial){
         _cells.push_back(cell);
@@ -66,7 +66,7 @@ double Bin::removeCell(Cell* cell, bool trial)
     }
     // update utilization
     // calculate the overlap area
-    int overlapArea = _calOverlapArea(cell);
+    int overlapArea = calOverlapArea(cell);
     double newUtil = _utilization - 100.*overlapArea / (BIN_WIDTH * BIN_HEIGHT);
     if(!trial){
         if (std::find(_cells.begin(), _cells.end(), cell) != _cells.end())
@@ -84,7 +84,7 @@ bool Bin::totallyContains(Cell* cell)
     return (cell->getX() >= _x && cell->getX() + cell->getWidth() <= _x + BIN_WIDTH) && (cell->getY() >= _y && cell->getY() + cell->getHeight() <= _y + BIN_HEIGHT);
 }
 
-int Bin::_calOverlapArea(Cell* cell)
+int Bin::calOverlapArea(Cell* cell)
 {
     int x1 = _x;
     int y1 = _y;
@@ -229,6 +229,9 @@ int BinMap::getNumBinsY()
     return _numBinsY;
 }
 
+/*
+Get the number of bins whose utilization is over the max utilization
+*/
 int BinMap::getNumOverMaxUtilBins()
 {
     int count = 0;
@@ -237,6 +240,32 @@ int BinMap::getNumOverMaxUtilBins()
         for (auto bin : row)
         {
             if (bin->isOverMaxUtil())
+            {
+                count++;
+            }
+        }
+    }
+    return count;
+}
+
+/*
+Get the number of bins whose utilization is over the max utilization by Combs
+*/
+int BinMap::getNumOverMaxUtilBinsByComb()
+{
+    int count = 0;
+    for (auto row : _bins)
+    {
+        for (auto bin : row)
+        {
+            double util_comb = 0;
+            for (auto cell : bin->getCells())
+            {
+                if(cell->getCellType() == CellType::COMB){
+                    util_comb += 100.*bin->calOverlapArea(cell) / (BIN_WIDTH * BIN_HEIGHT);
+                }
+            }
+            if (util_comb > BIN_MAX_UTIL)
             {
                 count++;
             }
@@ -256,7 +285,7 @@ double BinMap::addCell(Cell* cell, bool trial)
     for (auto bin : bins)
     {
         double util = bin->getUtilization();
-        causedCost += ((bin->addCell(cell, trial) > BIN_MAX_UTIL) && (util <= BIN_MAX_UTIL))? 1 : 0;
+        causedCost += ((bin->addCell(cell, trial) > BIN_MAX_UTIL) && (util <= BIN_MAX_UTIL))? LAMBDA : 0;
         if(!trial)
             cell->addBin(bin);
         
@@ -275,7 +304,7 @@ double BinMap::removeCell(Cell* cell, bool trial)
     for (auto bin : bins)
     {
         double util = bin->getUtilization();
-        causedCost += ((bin->removeCell(cell, trial) <= BIN_MAX_UTIL) && (util > BIN_MAX_UTIL))? -1 : 0;
+        causedCost += ((bin->removeCell(cell, trial) <= BIN_MAX_UTIL) && (util > BIN_MAX_UTIL))? -LAMBDA : 0;
         if(!trial)
             cell->removeBin(bin);
     }
