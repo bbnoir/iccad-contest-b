@@ -21,16 +21,6 @@ Bin::~Bin()
 {
 }
 
-int Bin::getX()
-{
-    return _x;
-}
-
-int Bin::getY()
-{
-    return _y;
-}
-
 double Bin::getUtilization()
 {
     return _utilization;

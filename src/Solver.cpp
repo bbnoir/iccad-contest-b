@@ -465,13 +465,13 @@ bool Solver::placeable(Cell* cell)
     // check the cell is on site
     if(!_siteMap->onSite(cell->getX(), cell->getY()))
     {
-        std::cerr << "Cell not placed on site: " << cell->getInstName() << std::endl;
+        // std::cerr << "Cell not placed on site: " << cell->getInstName() << std::endl;
         return false;
     }
     // check the cell in the die
     if(cell->getX() < DIE_LOW_LEFT_X || cell->getX()+cell->getWidth() > DIE_UP_RIGHT_X || cell->getY() < DIE_LOW_LEFT_Y || cell->getY()+cell->getHeight() > DIE_UP_RIGHT_Y)
     {
-        std::cerr << "Cell not in die: " << cell->getInstName() << std::endl;
+        // std::cerr << "Cell not in die: " << cell->getInstName() << std::endl;
         return false;
     }
     // check the cell will not overlap with other cells in the bin
@@ -500,13 +500,13 @@ bool Solver::placeable(Cell* cell, int x,int y)
     // check the cell is on site
     if(!_siteMap->onSite(x, y))
     {
-        std::cerr << "Cell not placed on site: " << cell->getInstName() << std::endl;
+        // std::cerr << "Cell not placed on site: " << cell->getInstName() << std::endl;
         return false;
     }
     // check the cell in the die
     if(x < DIE_LOW_LEFT_X || x+cell->getWidth() > DIE_UP_RIGHT_X || y < DIE_LOW_LEFT_Y || y+cell->getHeight() > DIE_UP_RIGHT_Y)
     {
-        std::cerr << "Cell not in die: " << cell->getInstName() << std::endl;
+        // std::cerr << "Cell not in die: " << cell->getInstName() << std::endl;
         return false;
     }
     // check the cell will not overlap with other cells in the bin
@@ -536,13 +536,13 @@ bool Solver::placeable(Cell* cell, int x, int y, int& move_distance)
     // check the cell is on site
     if(!_siteMap->onSite(x, y))
     {
-        std::cerr << "Cell not placed on site: " << cell->getInstName() << std::endl;
+        // std::cerr << "Cell not placed on site: " << cell->getInstName() << std::endl;
         return false;
     }
     // check the cell in the die
     if(x < DIE_LOW_LEFT_X || x+cell->getWidth() > DIE_UP_RIGHT_X || y < DIE_LOW_LEFT_Y || y+cell->getHeight() > DIE_UP_RIGHT_Y)
     {
-        std::cerr << "Cell not in die: " << cell->getInstName() << std::endl;
+        // std::cerr << "Cell not in die: " << cell->getInstName() << std::endl;
         return false;
     }
     // check the cell will not overlap with other cells in the bin

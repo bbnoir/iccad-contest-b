@@ -29,8 +29,8 @@ class Pin
         std::string getName();
         std::string getOriginalName();
         std::vector<std::string> getOriginalNames();
-        int getX();
-        int getY();
+        int getX() const { return _x; }
+        int getY() const { return _y; }
         int getGlobalX();
         int getGlobalY();
         bool isDpin();

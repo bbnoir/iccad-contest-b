@@ -32,16 +32,6 @@ std::vector<std::string> Pin::getOriginalNames()
     return _originalCellPinNames;
 }
 
-int Pin::getX()
-{
-    return _x;
-}
-
-int Pin::getY()
-{
-    return _y;
-}
-
 int Pin::getGlobalX()
 {
     if (_cell != nullptr)

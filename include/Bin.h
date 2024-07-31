@@ -12,8 +12,8 @@ class Bin
         Bin(int x, int y);
         ~Bin();
 
-        int getX();
-        int getY();
+        int getX() const { return _x; }
+        int getY() const { return _y; }
         double getUtilization();
         bool isOverMaxUtil();
         const std::vector<Cell*>& getCells();

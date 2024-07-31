@@ -20,10 +20,11 @@ class Site
         bool isOverLapping();
         std::vector<Cell*> getCell();
         int getNumCells();
-        int getX();
-        int getY();
-        int getWidth();
-        int getHeight();
+        
+        int getX() const { return _x; }
+        int getY() const { return _y; }
+        int getWidth() const { return _width; }
+        int getHeight() const { return _height; }
 
     private:
         int _x;

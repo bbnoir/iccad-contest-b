@@ -60,10 +60,10 @@ public:
     Cell(int x, int y, std::string inst_name, LibCell* lib_cell);
     ~Cell();
 
-    int getX();
-    int getY();
-    int getWidth();
-    int getHeight();
+    int getX() const { return _x; }
+    int getY() const { return _y; }
+    int getWidth() const { return _lib_cell->width; }
+    int getHeight() const { return _lib_cell->height; }
     int getArea();
     std::string getInstName();
     std::string getCellName();

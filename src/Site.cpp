@@ -68,26 +68,6 @@ std::vector<Cell*> Site::getCell()
     return this->_cells;
 }
 
-int Site::getX()
-{
-    return this->_x;
-}
-
-int Site::getY()
-{
-    return this->_y;
-}
-
-int Site::getWidth()
-{
-    return this->_width;
-}
-
-int Site::getHeight()
-{
-    return this->_height;
-}
-
 int Site::getNumCells()
 {
     return this->_cells.size();

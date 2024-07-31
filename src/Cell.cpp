@@ -48,16 +48,6 @@ Cell::~Cell()
 {
 }
 
-int Cell::getX()
-{
-    return _x;
-}
-
-int Cell::getY()
-{
-    return _y;
-}
-
 int Cell::getArea()
 {
     return _lib_cell->width * _lib_cell->height;
@@ -76,16 +66,6 @@ std::string Cell::getCellName()
 CellType Cell::getCellType()
 {
     return _lib_cell->type;
-}
-
-int Cell::getWidth()
-{
-    return _lib_cell->width;
-}
-
-int Cell::getHeight()
-{
-    return _lib_cell->height;
 }
 
 std::vector<Pin*> Cell::getPins()
