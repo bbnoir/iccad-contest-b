@@ -1599,7 +1599,7 @@ double Solver::cal_banking_gain(FF* ff1, FF* ff2, LibCell* targetFF)
     for (int i = 0; i < ff1_bit+ff2_bit; i++)
     {
         int op_idx = (i < ff1_bit) ? i : i - ff1_bit;
-        FF* workingFF = (i < targetFF->bit) ? ff1 : ff2;
+        FF* workingFF = (i < ff1_bit) ? ff1 : ff2;
         Pin* inPin = workingFF->getInputPins()[op_idx];
         Pin* mapInPin = targetFF->inputPins[op_idx];
         Pin* faninPin = inPin->getFaninPin();
