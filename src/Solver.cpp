@@ -250,6 +250,63 @@ void Solver::parse_input(std::string filename)
             }
         }
     }
+
+    // Read bin info
+    in >> token >> BIN_WIDTH;
+    in >> token >> BIN_HEIGHT;
+    in >> token >> BIN_MAX_UTIL;
+    // Read placement rows
+    while(!in.eof())
+    {
+        int startX, startY, siteWidth, siteHeight, numSites;
+        in >> token;
+        if(token != "PlacementRows")
+            break;
+        in >> startX >> startY >> siteWidth >> siteHeight >> numSites;
+        _placementRows.push_back({startX, startY, siteWidth, siteHeight, numSites});
+    }
+    // Read timing info
+    in >> DISP_DELAY;
+    for(long unsigned int i = 0; i < _ffsLibList.size(); i++)
+    {
+        string cellName;
+        double delay;
+        in >> token >> cellName >> delay;
+        _ffsLibMap[cellName]->qDelay = delay;
+    }
+    // slack
+    for(long unsigned int i = 0; i < _ffs.size(); i++)
+    {
+        string instName;
+        string port;
+        double slack;
+        in >> token >> instName >> port >> slack;
+        _ffsMap[instName]->getPin(port)->setInitSlack(slack);
+        if (_ffsMap[instName]->getBit() > 1)
+        {
+            for (int j = 1; j < _ffsMap[instName]->getBit(); j++)
+            {
+                in >> token >> instName >> port >> slack;
+                _ffsMap[instName]->getPin(port)->setInitSlack(slack);
+            }
+        }
+    }
+    // Read power info
+    for(long unsigned int i = 0; i < _ffsLibList.size(); i++)
+    {
+        string cellName;
+        double power;
+        in >> token >> cellName >> power;
+        if(_ffsLibMap.find(cellName) != _ffsLibMap.end())
+        {
+            _ffsLibMap[cellName]->power = power;
+        }else if(_combsLibMap.find(cellName) != _combsLibMap.end())
+        {
+            _combsLibMap[cellName]->power = power;
+        }
+    }
+    // set power to instances
+
     // Set prev and next stage pins
     // TODO: check if is needed to set prev and next stage pins for INPUT and OUTPUT pins
     for (auto ff : _ffs)
@@ -299,9 +356,8 @@ void Solver::parse_input(std::string filename)
                     }
                     else if (curType == PinType::INPUT)
                     {
-                        // TODO: check if is needed to set prev and next stage pins for INPUT pins
-                        // inPin->addPrevStagePin(curPin, pinStack);
-                        break;
+                        inPin->addPrevStagePin(curPin, pinStack);
+                        curPin->addNextStagePin(inPin);
                     }
                     else if (curType == PinType::FF_D)
                     {
@@ -316,65 +372,9 @@ void Solver::parse_input(std::string filename)
                 }
             }
             inPin->initArrivalTime();
-            inPin->sortCriticalIndex();
+            inPin->initCriticalIndex();
         }
     }
-
-    // Read bin info
-    in >> token >> BIN_WIDTH;
-    in >> token >> BIN_HEIGHT;
-    in >> token >> BIN_MAX_UTIL;
-    // Read placement rows
-    while(!in.eof())
-    {
-        int startX, startY, siteWidth, siteHeight, numSites;
-        in >> token;
-        if(token != "PlacementRows")
-            break;
-        in >> startX >> startY >> siteWidth >> siteHeight >> numSites;
-        _placementRows.push_back({startX, startY, siteWidth, siteHeight, numSites});
-    }
-    // Read timing info
-    in >> DISP_DELAY;
-    for(long unsigned int i = 0; i < _ffsLibList.size(); i++)
-    {
-        string cellName;
-        double delay;
-        in >> token >> cellName >> delay;
-        _ffsLibMap[cellName]->qDelay = delay;
-    }
-    // slack
-    for(long unsigned int i = 0; i < _ffs.size(); i++)
-    {
-        string instName;
-        string port;
-        double slack;
-        in >> token >> instName >> port >> slack;
-        _ffsMap[instName]->getPin(port)->setSlack(slack);
-        if (_ffsMap[instName]->getBit() > 1)
-        {
-            for (int j = 1; j < _ffsMap[instName]->getBit(); j++)
-            {
-                in >> token >> instName >> port >> slack;
-                _ffsMap[instName]->getPin(port)->setSlack(slack);
-            }
-        }
-    }
-    // Read power info
-    for(long unsigned int i = 0; i < _ffsLibList.size(); i++)
-    {
-        string cellName;
-        double power;
-        in >> token >> cellName >> power;
-        if(_ffsLibMap.find(cellName) != _ffsLibMap.end())
-        {
-            _ffsLibMap[cellName]->power = power;
-        }else if(_combsLibMap.find(cellName) != _combsLibMap.end())
-        {
-            _combsLibMap[cellName]->power = power;
-        }
-    }
-    // set power to instances
 
     cout << "File parsed successfully" << endl;
     in.close();
@@ -693,7 +693,7 @@ double Solver::calCostChangeQDelay(Pin* changedQPin, double diffQDelay)
         if (nextStagePin->getType() == PinType::FF_D)
         {
             const double next_old_slack = nextStagePin->getSlack();
-            const double next_new_slack = nextStagePin->calSlack(diffQDelay);
+            const double next_new_slack = nextStagePin->calSlackQ(changedQPin, diffQDelay);
             diff_cost += calDiffCost(next_old_slack, next_new_slack);
         }
     }
@@ -708,7 +708,7 @@ double Solver::updateCostChangeQDelay(Pin* changedQPin, double diffQDelay)
         if (nextStagePin->getType() == PinType::FF_D)
         {
             const double next_old_slack = nextStagePin->getSlack();
-            const double next_new_slack = nextStagePin->updateSlack(diffQDelay);
+            const double next_new_slack = nextStagePin->updateSlackQ(changedQPin, diffQDelay);
             diff_cost += calDiffCost(next_old_slack, next_new_slack);
         }
     }
@@ -839,7 +839,8 @@ double Solver::updateCostBankFF(FF* ff1, FF* ff2, LibCell* targetFF, int targetX
                         const int secondLastPinX = secondLastPin->getGlobalX();
                         const int secondLastPinY = secondLastPin->getGlobalY();
                         const double old_arrival_time = arrivalTimes.at(index);
-                        const double new_arrival_time = old_arrival_time - abs(outPin->getGlobalX() - secondLastPinX) - abs(outPin->getGlobalY() - secondLastPinY) + abs(targetX + mapOutPin->getX() - secondLastPinX) + abs(targetY + mapOutPin->getY() - secondLastPinY);
+                        const double diff_arrival_time = DISP_DELAY * (abs(outPin->getGlobalX() - secondLastPinX) + abs(outPin->getGlobalY() - secondLastPinY) - abs(targetX + mapOutPin->getX() - secondLastPinX) - abs(targetY + mapOutPin->getY() - secondLastPinY));
+                        const double new_arrival_time = old_arrival_time - diff_arrival_time;
                         arrivalTimes.at(index) = new_arrival_time;
                         // reheap the new arrival time to the sorted list
                         int sortIndex = 0;
@@ -852,7 +853,7 @@ double Solver::updateCostBankFF(FF* ff1, FF* ff2, LibCell* targetFF, int targetX
                         });
                     }
                     const double new_arrival_time = arrivalTimes.at(sortedCriticalIndex.at(0));
-                    const double next_new_slack =  next_old_slack + (old_arrival_time - new_arrival_time) * DISP_DELAY;
+                    const double next_new_slack =  next_old_slack + (old_arrival_time - new_arrival_time);
                     const double d_cost = calDiffCost(next_old_slack, next_new_slack);
                     _currCost += d_cost;
                     diff_cost += d_cost;
@@ -869,6 +870,17 @@ double Solver::updateCostBankFF(FF* ff1, FF* ff2, LibCell* targetFF, int targetX
         }
     }
     return diff_cost;
+}
+
+void Solver::resetSlack()
+{
+    for (auto ff : _ffs)
+    {
+        for (auto inPin : ff->getInputPins())
+        {
+            inPin->resetSlack();
+        }
+    }
 }
 
 /*
@@ -1243,14 +1255,19 @@ void Solver::solve()
     chooseBaseFF();
     debankAll();
     std::cout << "==> Cost after debanking: " << _currCost << std::endl;
+    resetSlack();
+    _currCost = calCost();
+    std::cout << "==> Cost after reset slack: " << _currCost << std::endl;
 
     std::cout << "There are "<<_binMap->getNumOverMaxUtilBins()<<" over utilized bins initially."<<std::endl; 
     std::cout << _binMap->getNumOverMaxUtilBinsByComb() << " of them are over utilized by Combs." << std::endl;
     
     std::cout<<"Start to force directed placement"<<std::endl;
     forceDirectedPlacement();
-
     std::cout << "==> Cost after force directed placement: " << _currCost << std::endl;
+    resetSlack();
+    _currCost = calCost();
+    std::cout << "==> Cost after reset slack: " << _currCost << std::endl;
     
     std::cout << "Start clustering and banking" << std::endl;
     size_t prev_ffs_size;
@@ -1268,19 +1285,30 @@ void Solver::solve()
     } while (prev_ffs_size != _ffs.size());
 
     std::cout << "==> Cost after clustering and banking: " << _currCost << std::endl;
+    resetSlack();
+    _currCost = calCost();
+    std::cout << "==> Cost after reset slack: " << _currCost << std::endl;
     
     std::cout << "Start to force directed placement (second)" << std::endl;
     forceDirectedPlacement();
-
     std::cout << "==> Cost after force directed placement (second): " << _currCost << std::endl;
+    resetSlack();
+    _currCost = calCost();
+    std::cout << "==> Cost after reset slack: " << _currCost << std::endl;
     
     std::cout<<"Start to legalize"<<std::endl;
     _legalizer->legalize();
+    resetSlack();
+    _currCost = calCost();
+    std::cout << "==> Cost after reset slack: " << _currCost << std::endl;
 
     std::cout << "There are "<<_binMap->getNumOverMaxUtilBins()<<" over utilized bins after Legalization."<<std::endl; 
 
     std::cout<<"Start to fine tune"<<std::endl;
     fineTune();
+    resetSlack();
+    _currCost = calCost();
+    std::cout << "==> Cost after reset slack: " << _currCost << std::endl;
 
     std::cout << "There are "<<_binMap->getNumOverMaxUtilBins()<<" over utilized bins after Fine Tuning."<<std::endl;
 }
@@ -1633,7 +1661,8 @@ double Solver::cal_banking_gain(FF* ff1, FF* ff2, LibCell* targetFF)
                         const int secondLastPinX = secondLastPin->getGlobalX();
                         const int secondLastPinY = secondLastPin->getGlobalY();
                         const double old_arrival_time = tempArrivalTimes.at(index);
-                        const double new_arrival_time = old_arrival_time - abs(outPin->getGlobalX() - secondLastPinX) - abs(outPin->getGlobalY() - secondLastPinY) + abs(target_x + mapOutPin->getX() - secondLastPinX) + abs(target_y + mapOutPin->getY() - secondLastPinY);
+                        const double diff_arrival_time = DISP_DELAY * (abs(outPin->getGlobalX() - secondLastPinX) + abs(outPin->getGlobalY() - secondLastPinY) - abs(target_x + mapOutPin->getX() - secondLastPinX) - abs(target_y + mapOutPin->getY() - secondLastPinY));
+                        const double new_arrival_time = old_arrival_time - diff_arrival_time;
                         tempArrivalTimes.at(index) = new_arrival_time;
                         // reheap the new arrival time to the sorted list
                         int sortIndex = 0;
@@ -1646,7 +1675,7 @@ double Solver::cal_banking_gain(FF* ff1, FF* ff2, LibCell* targetFF)
                         });
                     }
                     const double new_arrival_time = tempArrivalTimes.at(tempSortedCriticalIndex.at(0));
-                    const double next_new_slack =  next_old_slack + (old_arrival_time - new_arrival_time) * DISP_DELAY;
+                    const double next_new_slack =  next_old_slack + (old_arrival_time - new_arrival_time);
                     gain -= calDiffCost(next_old_slack, next_new_slack);
                 }
                 else

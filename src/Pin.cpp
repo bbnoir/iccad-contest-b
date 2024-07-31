@@ -91,6 +91,13 @@ void Pin::setSlack(double slack)
     _isDpin = true;
 }
 
+void Pin::setInitSlack(double initSlack)
+{
+    _slack = initSlack;
+    _isDpin = true;
+    _initSlack = initSlack;
+}
+
 void Pin::setCell(Cell* cell)
 {
     _cell = cell;
@@ -215,8 +222,11 @@ void Pin::initArrivalTime()
             Pin* prevPin = path.at(j+1);
             arrival_time += abs(curPin->getGlobalX() - prevPin->getGlobalX()) + abs(curPin->getGlobalY() - prevPin->getGlobalY());
         }
-        // don't add q pin delay since it may change
-        // arrival_time += path.back()->getCell()->getQDelay();
+        arrival_time *= DISP_DELAY;
+        if (path.back()->getType() == PinType::FF_Q)
+        {
+            arrival_time += path.back()->getCell()->getQDelay();
+        }
         _arrivalTimes.push_back(arrival_time);
         _sortedCriticalIndex.push_back(i);
     }
@@ -225,7 +235,7 @@ void Pin::initArrivalTime()
 /*
 Sort the index of paths by arrival time, critical path first
 */
-void Pin::sortCriticalIndex()
+void Pin::initCriticalIndex()
 {
     if (_sortedCriticalIndex.size() > 0)
     {
@@ -233,6 +243,47 @@ void Pin::sortCriticalIndex()
             return _arrivalTimes.at(i) < _arrivalTimes.at(j);
         });
         _initCriticalArrivalTime = _arrivalTimes.at(_sortedCriticalIndex.front());
+    }
+}
+
+/*
+Reset the arrival time of all paths from previous stage pins to this pin
+*/
+void Pin::resetArrivalTime()
+{
+    _arrivalTimes.clear();
+    _sortedCriticalIndex.clear();
+    const int numPaths = _prevStagePins.size();
+    for (int i = 0; i < numPaths; i++)
+    {
+        std::vector<Pin*> path = _pathToPrevStagePins.at(i);
+        double arrival_time = 0;
+        for (size_t j = 0; j+1 < path.size(); j+=2)
+        {
+            Pin* curPin = path.at(j);
+            Pin* prevPin = path.at(j+1);
+            arrival_time += abs(curPin->getGlobalX() - prevPin->getGlobalX()) + abs(curPin->getGlobalY() - prevPin->getGlobalY());
+        }
+        arrival_time *= DISP_DELAY;
+        if (path.back()->getType() == PinType::FF_Q)
+        {
+            arrival_time += path.back()->getCell()->getQDelay();
+        }
+        _arrivalTimes.push_back(arrival_time);
+        _sortedCriticalIndex.push_back(i);
+    }
+}
+
+/*
+Re-sort the index of paths by arrival time, critical path first
+*/
+void Pin::resetCriticalIndex()
+{
+    if (_sortedCriticalIndex.size() > 0)
+    {
+        std::make_heap(_sortedCriticalIndex.begin(), _sortedCriticalIndex.end(), [this](int i, int j) {
+            return _arrivalTimes.at(i) < _arrivalTimes.at(j);
+        });
     }
 }
 
@@ -276,7 +327,8 @@ double Pin::calSlack(Pin* movedPrevStagePin, int sourceX, int sourceY, int targe
         const int secondLastPinX = secondLastPin->getGlobalX();
         const int secondLastPinY = secondLastPin->getGlobalY();
         const double old_arrival_time = tempArrivalTimes.at(index);
-        const double new_arrival_time = old_arrival_time - abs(sourceX - secondLastPinX) - abs(sourceY - secondLastPinY) + abs(targetX - secondLastPinX) + abs(targetY - secondLastPinY);
+        const double diff_arrival_time = (abs(sourceX - secondLastPinX) + abs(sourceY - secondLastPinY) - abs(targetX - secondLastPinX) - abs(targetY - secondLastPinY)) * DISP_DELAY;
+        const double new_arrival_time = old_arrival_time - diff_arrival_time;
         tempArrivalTimes.at(index) = new_arrival_time;
         // reheap the new arrival time to the sorted list
         int sortIndex = 0;
@@ -290,7 +342,7 @@ double Pin::calSlack(Pin* movedPrevStagePin, int sourceX, int sourceY, int targe
     }
     // update slack
     const double new_arrival_time = tempArrivalTimes.at(tempSortedCriticalIndex.at(0));
-    return _slack + (old_arrival_time - new_arrival_time) * DISP_DELAY;
+    return _slack + (old_arrival_time - new_arrival_time);
 }
 
 /*
@@ -314,7 +366,8 @@ double Pin::updateSlack(Pin* movedPrevStagePin, int sourceX, int sourceY, int ta
         const int secondLastPinX = secondLastPin->getGlobalX();
         const int secondLastPinY = secondLastPin->getGlobalY();
         const double old_arrival_time = _arrivalTimes.at(index);
-        const double new_arrival_time = old_arrival_time - abs(sourceX - secondLastPinX) - abs(sourceY - secondLastPinY) + abs(targetX - secondLastPinX) + abs(targetY - secondLastPinY);
+        const double diff_arrival_time = (abs(sourceX - secondLastPinX) + abs(sourceY - secondLastPinY) - abs(targetX - secondLastPinX) - abs(targetY - secondLastPinY)) * DISP_DELAY;
+        const double new_arrival_time = old_arrival_time - diff_arrival_time;
         _arrivalTimes.at(index) = new_arrival_time;
         // reheap the new arrival time to the sorted list
         int sortIndex = 0;
@@ -328,7 +381,7 @@ double Pin::updateSlack(Pin* movedPrevStagePin, int sourceX, int sourceY, int ta
     }
     // update slack
     const double new_arrival_time = _arrivalTimes.at(_sortedCriticalIndex.at(0));
-    _slack += (old_arrival_time - new_arrival_time) * DISP_DELAY;
+    _slack += (old_arrival_time - new_arrival_time);
     return _slack;
 }
 
@@ -336,23 +389,61 @@ double Pin::updateSlack(Pin* movedPrevStagePin, int sourceX, int sourceY, int ta
 Calculate the slack of this pin after the Q delay of a previous stage pin is changed, no update
 Return the calculated slack
 */
-double Pin::calSlack(double diffQDelay)
+double Pin::calSlackQ(Pin* changeQPin, double diffQDelay)
 {
     if (this->getType() != PinType::FF_D)
     {
         std::cout << "Error: only D pin can update slack" << std::endl;
         exit(1);
     }
-    return _slack - diffQDelay;
+    std::vector<double> tempArrivalTimes = _arrivalTimes;
+    std::vector<int> tempSortedCriticalIndex = _sortedCriticalIndex;
+    const double old_arrival_time = tempArrivalTimes.at(tempSortedCriticalIndex.at(0));
+    std::vector<int> indexList = getPathIndex(changeQPin);
+    for (int index : indexList)
+    {
+        tempArrivalTimes.at(index) += diffQDelay;
+        int sortIndex = 0;
+        while (tempSortedCriticalIndex.at(sortIndex) != index)
+        {
+            sortIndex++;
+        }
+        std::push_heap(tempSortedCriticalIndex.begin(), tempSortedCriticalIndex.begin()+sortIndex+1, [&tempArrivalTimes](int i, int j) {
+            return tempArrivalTimes.at(i) < tempArrivalTimes.at(j);
+        });
+    }
+    const double new_arrival_time = tempArrivalTimes.at(tempSortedCriticalIndex.at(0));
+    return _slack + (old_arrival_time - new_arrival_time);
 }
 
 /*
 Update the slack of this pin after the Q delay of a previous stage pin is changed
 Return the new slack
 */
-double Pin::updateSlack(double diffQDelay)
+double Pin::updateSlackQ(Pin* changeQPin, double diffQDelay)
 {
-    return _slack = calSlack(diffQDelay);
+    if (this->getType() != PinType::FF_D)
+    {
+        std::cout << "Error: only D pin can update slack" << std::endl;
+        exit(1);
+    }
+    const double old_arrival_time = _arrivalTimes.at(_sortedCriticalIndex.at(0));
+    std::vector<int> indexList = getPathIndex(changeQPin);
+    for (int index : indexList)
+    {
+        _arrivalTimes.at(index) += diffQDelay;
+        int sortIndex = 0;
+        while (_sortedCriticalIndex.at(sortIndex) != index)
+        {
+            sortIndex++;
+        }
+        std::push_heap(_sortedCriticalIndex.begin(), _sortedCriticalIndex.begin()+sortIndex+1, [this](int i, int j) {
+            return _arrivalTimes.at(i) < _arrivalTimes.at(j);
+        });
+    }
+    const double new_arrival_time = _arrivalTimes.at(_sortedCriticalIndex.at(0));
+    _slack += (old_arrival_time - new_arrival_time);
+    return _slack;
 }
 
 std::vector<double> Pin::getArrivalTimes()
@@ -373,4 +464,19 @@ std::vector<int> Pin::getSortedCriticalIndex()
 std::vector<int>& Pin::getSortedCriticalIndexRef()
 {
     return _sortedCriticalIndex;
+}
+
+void Pin::resetSlack()
+{
+    if (_arrivalTimes.size() == 0)
+    {
+        // TODO: there is empty path pin
+        _slack = (_initSlack == 0) ? 0 : _initSlack;
+    }
+    else
+    {
+        this->resetArrivalTime();
+        this->resetCriticalIndex();
+        _slack = _initSlack + (_initCriticalArrivalTime - _arrivalTimes.at(_sortedCriticalIndex.at(0)));
+    }
 }
