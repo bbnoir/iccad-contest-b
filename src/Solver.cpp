@@ -816,7 +816,8 @@ double Solver::updateCostBankFF(FF* ff1, FF* ff2, LibCell* targetFF, int targetX
                         const int secondLastPinX = secondLastPin->getGlobalX();
                         const int secondLastPinY = secondLastPin->getGlobalY();
                         const double old_arrival_time = arrivalTimes.at(index);
-                        const double new_arrival_time = old_arrival_time - abs(outPin->getGlobalX() - secondLastPinX) - abs(outPin->getGlobalY() - secondLastPinY) + abs(targetX + mapOutPin->getX() - secondLastPinX) + abs(targetY + mapOutPin->getY() - secondLastPinY);
+                        const double diff_arrival_time = DISP_DELAY * (abs(outPin->getGlobalX() - secondLastPinX) + abs(outPin->getGlobalY() - secondLastPinY) - abs(targetX + mapOutPin->getX() - secondLastPinX) - abs(targetY + mapOutPin->getY() - secondLastPinY));
+                        const double new_arrival_time = old_arrival_time - diff_arrival_time;
                         arrivalTimes.at(index) = new_arrival_time;
                         // reheap the new arrival time to the sorted list
                         int sortIndex = 0;
@@ -829,7 +830,7 @@ double Solver::updateCostBankFF(FF* ff1, FF* ff2, LibCell* targetFF, int targetX
                         });
                     }
                     const double new_arrival_time = arrivalTimes.at(sortedCriticalIndex.at(0));
-                    const double next_new_slack =  next_old_slack + (old_arrival_time - new_arrival_time) * DISP_DELAY;
+                    const double next_new_slack =  next_old_slack + (old_arrival_time - new_arrival_time);
                     const double d_cost = calDiffCost(next_old_slack, next_new_slack);
                     _currCost += d_cost;
                     diff_cost += d_cost;
@@ -1273,13 +1274,18 @@ void Solver::solve()
     chooseBaseFF();
     debankAll();
     std::cout << "==> Cost after debanking: " << _currCost << std::endl;
+    resetSlack();
+    _currCost = calCost();
+    std::cout << "==> Cost after reset slack: " << _currCost << std::endl;
 
     std::cout << "There are "<<_binMap->getNumOverMaxUtilBins()<<" over utilized bins initially."<<std::endl; 
     
     std::cout<<"Start to force directed placement"<<std::endl;
     forceDirectedPlacement();
-
     std::cout << "==> Cost after force directed placement: " << _currCost << std::endl;
+    resetSlack();
+    _currCost = calCost();
+    std::cout << "==> Cost after reset slack: " << _currCost << std::endl;
     
     std::cout << "Start clustering and banking" << std::endl;
     size_t prev_ffs_size;
@@ -1297,19 +1303,30 @@ void Solver::solve()
     } while (prev_ffs_size != _ffs.size());
 
     std::cout << "==> Cost after clustering and banking: " << _currCost << std::endl;
+    resetSlack();
+    _currCost = calCost();
+    std::cout << "==> Cost after reset slack: " << _currCost << std::endl;
     
     std::cout << "Start to force directed placement (second)" << std::endl;
     forceDirectedPlacement();
-
     std::cout << "==> Cost after force directed placement (second): " << _currCost << std::endl;
+    resetSlack();
+    _currCost = calCost();
+    std::cout << "==> Cost after reset slack: " << _currCost << std::endl;
     
     std::cout<<"Start to legalize"<<std::endl;
     _legalizer->legalize();
+    resetSlack();
+    _currCost = calCost();
+    std::cout << "==> Cost after reset slack: " << _currCost << std::endl;
 
     std::cout << "There are "<<_binMap->getNumOverMaxUtilBins()<<" over utilized bins after Legalization."<<std::endl; 
 
     std::cout<<"Start to fine tune"<<std::endl;
     fineTune();
+    resetSlack();
+    _currCost = calCost();
+    std::cout << "==> Cost after reset slack: " << _currCost << std::endl;
 
     std::cout << "There are "<<_binMap->getNumOverMaxUtilBins()<<" over utilized bins after Fine Tuning."<<std::endl;
 }
@@ -1662,7 +1679,8 @@ double Solver::cal_banking_gain(FF* ff1, FF* ff2, LibCell* targetFF)
                         const int secondLastPinX = secondLastPin->getGlobalX();
                         const int secondLastPinY = secondLastPin->getGlobalY();
                         const double old_arrival_time = tempArrivalTimes.at(index);
-                        const double new_arrival_time = old_arrival_time - abs(outPin->getGlobalX() - secondLastPinX) - abs(outPin->getGlobalY() - secondLastPinY) + abs(target_x + mapOutPin->getX() - secondLastPinX) + abs(target_y + mapOutPin->getY() - secondLastPinY);
+                        const double diff_arrival_time = DISP_DELAY * (abs(outPin->getGlobalX() - secondLastPinX) + abs(outPin->getGlobalY() - secondLastPinY) - abs(target_x + mapOutPin->getX() - secondLastPinX) - abs(target_y + mapOutPin->getY() - secondLastPinY));
+                        const double new_arrival_time = old_arrival_time - diff_arrival_time;
                         tempArrivalTimes.at(index) = new_arrival_time;
                         // reheap the new arrival time to the sorted list
                         int sortIndex = 0;
@@ -1675,7 +1693,7 @@ double Solver::cal_banking_gain(FF* ff1, FF* ff2, LibCell* targetFF)
                         });
                     }
                     const double new_arrival_time = tempArrivalTimes.at(tempSortedCriticalIndex.at(0));
-                    const double next_new_slack =  next_old_slack + (old_arrival_time - new_arrival_time) * DISP_DELAY;
+                    const double next_new_slack =  next_old_slack + (old_arrival_time - new_arrival_time);
                     gain -= calDiffCost(next_old_slack, next_new_slack);
                 }
                 else
