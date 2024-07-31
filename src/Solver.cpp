@@ -1223,6 +1223,7 @@ void Solver::fineTune()
                 {
                     cost_difference += cost_min;
                     moveCell(ff, sites[best_site]->getX(), sites[best_site]->getY());
+                    updateCostMoveFF(ff, ff->getX(), ff->getY(), sites[best_site]->getX(), sites[best_site]->getY());
                 }
             }
         }
