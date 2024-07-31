@@ -316,7 +316,7 @@ void Solver::parse_input(std::string filename)
                 }
             }
             inPin->initArrivalTime();
-            inPin->sortCriticalIndex();
+            inPin->initCriticalIndex();
         }
     }
 
@@ -693,7 +693,7 @@ double Solver::calCostChangeQDelay(Pin* changedQPin, double diffQDelay)
         if (nextStagePin->getType() == PinType::FF_D)
         {
             const double next_old_slack = nextStagePin->getSlack();
-            const double next_new_slack = nextStagePin->calSlack(diffQDelay);
+            const double next_new_slack = nextStagePin->calSlackQ(changedQPin, diffQDelay);
             diff_cost += calDiffCost(next_old_slack, next_new_slack);
         }
     }
@@ -708,7 +708,7 @@ double Solver::updateCostChangeQDelay(Pin* changedQPin, double diffQDelay)
         if (nextStagePin->getType() == PinType::FF_D)
         {
             const double next_old_slack = nextStagePin->getSlack();
-            const double next_new_slack = nextStagePin->updateSlack(diffQDelay);
+            const double next_new_slack = nextStagePin->updateSlackQ(changedQPin, diffQDelay);
             diff_cost += calDiffCost(next_old_slack, next_new_slack);
         }
     }

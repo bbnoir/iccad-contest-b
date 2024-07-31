@@ -61,12 +61,12 @@ class Pin
         void addPrevStagePin(Pin* pin, std::vector<Pin*> path);
         void addNextStagePin(Pin* pin);
         void initArrivalTime();
-        void sortCriticalIndex();
+        void initCriticalIndex();
         std::vector<int> getPathIndex(Pin* prevStagePin);
         double calSlack(Pin* movedPrevStagePin, int sourceX, int sourceY, int targetX, int targetY);
-        double calSlack(double diffQDelay);
+        double calSlackQ(Pin* changeQPin, double diffQDelay);
         double updateSlack(Pin* movedPrevStagePin, int sourceX, int sourceY, int targetX, int targetY);
-        double updateSlack(double diffQDelay);
+        double updateSlackQ(Pin* changeQPin, double diffQDelay);
 
         void connect(Net* net);
         void copyConnection(Pin* pin);
