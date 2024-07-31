@@ -18,6 +18,7 @@ int main(int argc, char* argv[])
     solver->parse_input(input_file);
     solver->solve();
     solver->check();
+    solver->evaluate();
     solver->dump(output_file);
 
     Renderer* renderer = new Renderer(solver);

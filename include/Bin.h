@@ -3,6 +3,7 @@
 #include <algorithm>
 
 class Cell;
+class FF;
 
 class Bin
 {
@@ -17,8 +18,10 @@ class Bin
         bool isOverMaxUtil();
         const std::vector<Cell*>& getCells();
 
-        void addCell(Cell* cell);
-        void removeCell(Cell* cell);
+        double addCell(Cell* cell, bool trial = false);
+        double removeCell(Cell* cell, bool trial = false);
+
+        bool totallyContains(Cell* cell);
 
     private:
         int _x;
@@ -36,10 +39,19 @@ class BinMap
         BinMap(int dieLowerLeftX, int dieLowerLeftY, int dieUpperRightX, int dieUpperRightY, int binWidth, int binHeight);
 
         std::vector<Bin*> getBins();
+        std::vector<std::vector<Bin*>> getBins2D();
         std::vector<Bin*> getBins(int leftDownX, int leftDownY, int rightUpX, int rightUpY);
+        std::vector<Bin*> getBinsBlocks(int indexX, int indexY, int numBlocksX, int numBlocksY);
+        std::vector<FF*> getFFsInBins(const std::vector<Bin*>& bins);
+        std::vector<FF*> getFFsInBinsBlocks(int indexX, int indexY, int numBlocksX, int numBlocksY);
 
-        void addCell(Cell* cell);
-        void removeCell(Cell* cell);
+        int getNumBinsX();
+        int getNumBinsY();
+
+        int getNumOverMaxUtilBins();
+
+        double addCell(Cell* cell, bool trial = false);
+        double removeCell(Cell* cell, bool trial = false);
 
     private:
         int _dieLowerLeftX;

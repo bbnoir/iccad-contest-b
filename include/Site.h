@@ -41,6 +41,7 @@ class SiteMap
 
         std::vector<Site*> getSites();
         std::vector<Site*> getSites(int leftDownX, int leftDownY, int rightUpX, int rightUpY);
+        std::vector<Site*> getSitesInBlock(int leftDownX, int leftDownY, int rightUpX, int rightUpY);
         std::vector<std::vector<Site*>> getSiteRows();
 
         Site* getNearestSite(int x, int y);

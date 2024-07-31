@@ -41,6 +41,7 @@ class Solver
         void init_placement();
         void solve();
         void check();
+        void evaluate();
         void dump(std::string filename);
 
         void display();
@@ -73,6 +74,21 @@ class Solver
         BinMap* _binMap;
         SiteMap* _siteMap;
         int uniqueNameCounter = 0;
+
+        // Cost Calculation
+
+        double _initCost;
+        double _currCost;
+        double calDiffCost(double oldSlack, double newSlack);
+        double calCostMoveD(Pin* movedDPin, int sourceX, int sourceY, int targetX, int targetY);
+        double calCostMoveQ(Pin* movedQPin, int sourceX, int sourceY, int targetX, int targetY);
+        double calCostChangeQDelay(Pin* changedQPin, double diffQDelay);
+        double updateCostMoveD(Pin* movedDPin, int sourceX, int sourceY, int targetX, int targetY);
+        double updateCostMoveQ(Pin* movedQPin, int sourceX, int sourceY, int targetX, int targetY);
+        double updateCostChangeQDelay(Pin* changedQPin, double diffQDelay);
+        double updateCostMoveFF(FF* movedFF, int sourceX, int sourceY, int targetX, int targetY);
+        double updateCostBankFF(FF* ff1, FF* ff2, LibCell* targetFF, int targetX, int targetY);
+        void resetSlack();
         
         // Modify Cell
         
@@ -101,7 +117,7 @@ class Solver
         bool placeable(Cell* cell, int x, int y, int& move_distance);
         void constructFFsCLKDomain();
         std::vector<int> regionQuery(std::vector<FF*> ffs, long unsigned int idx, int radius);
-
+        double calCost();
         // Main Algorithms
         
         // 1. Debank all FFs
@@ -111,6 +127,7 @@ class Solver
         void forceDirectedPlaceFF(FF* ff);
         void forceDirectedPlaceFFLock(const int ff_idx, std::vector<bool>& locked, std::vector<char>& lock_cnt, int& lock_num);
         void forceDirectedPlacement();
+        void findForceDirectedPlacementBankingFFs(FF* ff1, FF* ff2, int& result_x, int& result_y);
         // 3. Clustering in each clock domain
         std::vector<std::vector<FF*>> clusteringFFs(long unsigned int clkdomain_idx);
         // 4. Greedy banking
@@ -118,6 +135,8 @@ class Solver
         double cal_banking_gain(FF* ff1, FF* ff2, LibCell* targetFF);
         // 5. Legalization
         Legalizer* _legalizer;
+        // 6. Fine-tuning
+        void fineTune();
 
         // Checker
         bool checkOverlap();

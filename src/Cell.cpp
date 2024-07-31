@@ -63,11 +63,6 @@ int Cell::getArea()
     return _lib_cell->width * _lib_cell->height;
 }
 
-double Cell::getPower()
-{
-    return _lib_cell->power;
-}
-
 std::string Cell::getInstName()
 {
     return _inst_name;
@@ -130,6 +125,11 @@ std::vector<Bin*> Cell::getBins()
     return _bins;
 }
 
+LibCell* Cell::getLibCell()
+{
+    return _lib_cell;
+}
+
 void Cell::setX(int x)
 {
     this->_x = x;
@@ -137,6 +137,12 @@ void Cell::setX(int x)
 
 void Cell::setY(int y)
 {
+    this->_y = y;
+}
+
+void Cell::setXY(int x, int y)
+{
+    this->_x = x;
     this->_y = y;
 }
 
@@ -196,4 +202,9 @@ bool Cell::checkOverlap()
         }
     }
     return false;
+}
+
+double Cell::getQDelay()
+{
+    return _lib_cell->qDelay;
 }
