@@ -1132,7 +1132,7 @@ void Solver::forceDirectedPlaceFFLock(const int ff_idx, std::vector<bool>& locke
     {
         for (auto& slack : slack_list)
         {
-            slack = (slack < 0) ? 20 : 1;
+            slack = (slack < 0) ? 2 : 1;
             // slack = -slack;
             // slack = -slack+min_slack;
             // slack = -slack+min_slack+1;
@@ -1578,17 +1578,15 @@ std::vector<std::vector<FF*>> Solver::clusteringFFs(size_t clkdomain_idx)
 
 void Solver::findForceDirectedPlacementBankingFFs(FF* ff1, FF* ff2, int& result_x, int& result_y)
 {
-    double x_sum = 0.0;
-    double y_sum = 0.0;
-    int num_pins = 0;
+    std::vector<double> x_list, y_list, slack_list;
     for (auto inPin : ff1->getInputPins())
     {
         Pin* fanin = inPin->getFaninPin();
         if (fanin->getCell() != ff2)
         {
-            x_sum += fanin->getGlobalX();
-            y_sum += fanin->getGlobalY();
-            num_pins++;
+            x_list.push_back(fanin->getGlobalX());
+            y_list.push_back(fanin->getGlobalY());
+            slack_list.push_back(inPin->getSlack());
         }
     }
     for (auto inPin : ff2->getInputPins())
@@ -1596,40 +1594,78 @@ void Solver::findForceDirectedPlacementBankingFFs(FF* ff1, FF* ff2, int& result_
         Pin* fanin = inPin->getFaninPin();
         if (fanin->getCell() != ff1)
         {
-            x_sum += fanin->getGlobalX();
-            y_sum += fanin->getGlobalY();
-            num_pins++;
+            x_list.push_back(fanin->getGlobalX());
+            y_list.push_back(fanin->getGlobalY());
+            slack_list.push_back(inPin->getSlack());
         }
     }
     for (auto outPin : ff1->getOutputPins())
     {
-        for (auto fanout : outPin->getFanoutPins())
+        for (auto path : outPin->getPathToNextStagePins())
         {
+            Pin* fanout = path.at(path.size()-2);
             if (fanout->getCell() != ff2)
             {
-                x_sum += fanout->getGlobalX();
-                y_sum += fanout->getGlobalY();
-                num_pins++;
+                x_list.push_back(fanout->getGlobalX());
+                y_list.push_back(fanout->getGlobalY());
+                Pin* nextStagePin = path.front();
+                slack_list.push_back(nextStagePin->getSlack());
             }
         }
     }
     for (auto outPin : ff2->getOutputPins())
     {
-        for (auto fanout : outPin->getFanoutPins())
+        for (auto path : outPin->getPathToNextStagePins())
         {
+            Pin* fanout = path.at(path.size()-2);
             if (fanout->getCell() != ff1)
             {
-                x_sum += fanout->getGlobalX();
-                y_sum += fanout->getGlobalY();
-                num_pins++;
+                x_list.push_back(fanout->getGlobalX());
+                y_list.push_back(fanout->getGlobalY());
+                Pin* nextStagePin = path.front();
+                slack_list.push_back(nextStagePin->getSlack());
             }
         }
     }
-    int x_avg = x_sum / num_pins;
-    int y_avg = y_sum / num_pins;
-    Site* nearest_site = _siteMap->getNearestSite(x_avg, y_avg);
-    result_x = nearest_site->getX();
-    result_y = nearest_site->getY();
+    if (slack_list.size() == 0)
+    {
+        int x_avg = (ff1->getX() + ff2->getX()) / 2;
+        int y_avg = (ff1->getY() + ff2->getY()) / 2;
+        Site* nearest_site = _siteMap->getNearestSite(x_avg, y_avg);
+        result_x = nearest_site->getX();
+        result_y = nearest_site->getY();
+    }
+    else
+    {
+        for (auto& slack : slack_list)
+        {
+            slack = (slack < 0) ? 2 : 1;
+            // slack = -slack;
+            // slack = -slack+min_slack;
+            // slack = -slack+min_slack+1;
+            // slack = std::exp(-slack);
+            // slack = std::exp(-0.001*slack);
+        }
+        double x_sum = 0;
+        double y_sum = 0;
+        double total_slack = 0;
+        for (size_t i = 0; i < x_list.size(); i++)
+        {
+            x_sum += x_list[i] * slack_list[i];
+            y_sum += y_list[i] * slack_list[i];
+            total_slack += slack_list[i];
+        }
+        if (total_slack == 0)
+        {
+            std::cout << "Error: total slack is 0" << std::endl;
+            exit(1);
+        }
+        int x_avg = x_sum / total_slack;
+        int y_avg = y_sum / total_slack;
+        Site* nearest_site = _siteMap->getNearestSite(x_avg, y_avg);
+        result_x = nearest_site->getX();
+        result_y = nearest_site->getY();
+    }
 }
 
 double Solver::cal_banking_gain(FF* ff1, FF* ff2, LibCell* targetFF)
