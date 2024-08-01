@@ -206,7 +206,7 @@ void Pin::initArrivalTime()
     {
         std::vector<Pin*> path = _pathToPrevStagePins.at(i);
         double arrival_time = 0;
-        for (size_t j = 0; j+1 < path.size(); j+=2)
+        for (size_t j = 0; j < path.size()-1; j+=2)
         {
             Pin* curPin = path.at(j);
             Pin* prevPin = path.at(j+1);

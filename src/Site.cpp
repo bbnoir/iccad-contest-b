@@ -134,7 +134,11 @@ std::vector<Site*> SiteMap::getSites(int leftDownX, int leftDownY, int rightUpX,
     for (int row = startRow; row < endRow; row++)
     {
         const int startCol = getFirstLargerColInRow(row, leftDownX);
-        const int endCol = getFirstLargerColInRow(row, rightUpX);
+        int endCol = getFirstLargerColInRow(row, rightUpX);
+        if(rightUpX > _placementRows[row].startX + _placementRows[row].siteWidth * _placementRows[row].numSites)
+        {
+            endCol = _placementRows[row].numSites;
+        }
         if(startCol == endCol)
         {
             sites.push_back(_sites[row][startCol]);
@@ -164,7 +168,11 @@ std::vector<Site*> SiteMap::getSitesInBlock(int leftDownX, int leftDownY, int ri
     for (int row = startRow; row < endRow; row++)
     {
         const int startCol = getFirstLargerColInRow(row, leftDownX);
-        const int endCol = getFirstLargerColInRow(row, rightUpX);
+        int endCol = getFirstLargerColInRow(row, rightUpX);
+        if(rightUpX > _placementRows[row].startX + _placementRows[row].siteWidth * _placementRows[row].numSites)
+        {
+            endCol = _placementRows[row].numSites;
+        }   
         for (int col = startCol; col < endCol; col++)
         {
             sites.push_back(_sites[row][col]);
@@ -213,9 +221,9 @@ int SiteMap::getFirstLargerColInRow(int row, int x)
         std::cerr << "Error: SiteMap::getFirstLargerColInRow() - out of die boundary" << std::endl;
         exit(1);
     }
-    int col = (x - _placementRows[row].startX) / _placementRows[row].siteWidth;
+    int col = (x - _placementRows[row].startX) / _placementRows[row].siteWidth + 1;
     col = std::max(0, col);
-    col = std::min(col, _placementRows[row].numSites);
+    col = std::min(col, _placementRows[row].numSites - 1);
     return col;
 }
 
@@ -229,44 +237,52 @@ Site* SiteMap::getNearestSite(int x, int y)
     int distance;
     int minDistance = -1;
     Site* nearestSite = nullptr;
+    //TODO: rows with same y
     int topRow = getFirstLargerRow(y);
-    int botRow = topRow - 1;
-    int leftCol = getFirstLargerColInRow(topRow, x);
-    int rightCol = leftCol - 1;
-    if (topRow < int(_placementRows.size()) && leftCol < _placementRows[topRow].numSites)
+    int botRow = (topRow - 1)>=0?topRow - 1:0;
+    int toprightCol = getFirstLargerColInRow(topRow, x);
+    int topleftCol = toprightCol - 1;
+    int botrightCol = getFirstLargerColInRow(botRow, x);
+    int botleftCol = botrightCol - 1;
+
+    // top right
+    if (topRow < int(_placementRows.size()))
     {
-        distance = abs(_placementRows[topRow].startY - y);
+        distance = abs(_placementRows[topRow].startY - y) + abs(_placementRows[topRow].startX + _placementRows[topRow].siteWidth*toprightCol - x);
         if (minDistance == -1 || distance < minDistance)
         {
             minDistance = distance;
-            nearestSite = _sites[topRow][leftCol];
+            nearestSite = _sites[topRow][toprightCol];
         }
     }
-    if (botRow >= 0 && rightCol >= 0)
+    // top left
+    if (topRow < int(_placementRows.size()) && topleftCol >=0 )
     {
-        distance = abs(_placementRows[botRow].startY + _placementRows[botRow].siteHeight - y);
+        distance = abs(_placementRows[topRow].startY - y) + abs(_placementRows[topRow].startX + _placementRows[topRow].siteWidth*topleftCol - x);
         if (minDistance == -1 || distance < minDistance)
         {
             minDistance = distance;
-            nearestSite = _sites[botRow][rightCol];
+            nearestSite = _sites[topRow][topleftCol];
         }
     }
-    if (topRow < int(_placementRows.size()) && rightCol >= 0)
+    // bot right
+    if (botRow >= 0)
     {
-        distance = abs(_placementRows[topRow].startX + _placementRows[topRow].siteWidth - x);
+        distance = abs(_placementRows[botRow].startY - y) + abs(_placementRows[botRow].startX + _placementRows[botRow].siteWidth*botrightCol - x);
         if (minDistance == -1 || distance < minDistance)
         {
             minDistance = distance;
-            nearestSite = _sites[topRow][rightCol];
+            nearestSite = _sites[botRow][botrightCol];
         }
     }
-    if (botRow >= 0 && leftCol < _placementRows[botRow].numSites)
+    // bot left
+    if (botRow >= 0 && botleftCol >= 0)
     {
-        distance = abs(_placementRows[botRow].startX - x);
+        distance = abs(_placementRows[botRow].startY - y) + abs(_placementRows[botRow].startX + _placementRows[botRow].siteWidth*botleftCol - x);
         if (minDistance == -1 || distance < minDistance)
         {
             minDistance = distance;
-            nearestSite = _sites[botRow][leftCol];
+            nearestSite = _sites[botRow][botleftCol];
         }
     }
     return nearestSite;

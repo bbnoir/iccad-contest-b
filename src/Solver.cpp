@@ -25,6 +25,12 @@ double BIN_MAX_UTIL;
 // Delay info
 double DISP_DELAY;
 
+std::string toLower(std::string str)
+{
+    transform(str.begin(), str.end(), str.begin(), ::tolower);
+    return str;
+}
+
 Solver::Solver()
 {
     _legalizer = new Legalizer(this);
@@ -116,11 +122,11 @@ void Solver::parse_input(std::string filename)
                 string pinName;
                 int x, y;
                 in >> token >> pinName >> x >> y;
-                if (pinName[0] == 'D') {
+                if (tolower(pinName[0]) == 'd') {
                     ff->inputPins.push_back(new Pin(PinType::FF_D, x, y, pinName, nullptr));
-                } else if (pinName[0] == 'Q') {
+                } else if (tolower(pinName[0]) == 'q') {
                     ff->outputPins.push_back(new Pin(PinType::FF_Q, x, y, pinName, nullptr));
-                } else if (pinName[0] == 'C') {
+                } else if (tolower(pinName[0]) == 'c') {
                     ff->clkPin = new Pin(PinType::FF_CLK, x, y, pinName, nullptr);
                 }
             }
@@ -146,15 +152,12 @@ void Solver::parse_input(std::string filename)
                 string pinName;
                 int x, y;
                 in >> token >> pinName >> x >> y;
-                if (pinName[0] == 'I') {
+                if (tolower(pinName[0]) == 'i') {
                     comb->inputPins.push_back(new Pin(PinType::GATE_IN, x, y, pinName, nullptr));
-                } else if (pinName[0] == 'O') {
+                } else if (tolower(pinName[0]) == 'o') {
                     comb->outputPins.push_back(new Pin(PinType::GATE_OUT, x, y, pinName, nullptr));
                 }
             }
-            // sort the pins by name
-            sort(comb->inputPins.begin(), comb->inputPins.end(), [](Pin* a, Pin* b) -> bool { return a->getName() < b->getName(); });
-            sort(comb->outputPins.begin(), comb->outputPins.end(), [](Pin* a, Pin* b) -> bool { return a->getName() < b->getName(); });
             // set fanout of input pins to output pins
             for (auto inPin : comb->inputPins)
             {
@@ -207,14 +210,14 @@ void Solver::parse_input(std::string filename)
             string pin;
             if(pinName.find('/') != string::npos)
                 pin = pinName.substr(pinName.find('/') + 1);
-            if(pin == "CLK" && !clknet){
+            if((toLower(pin) == "clk" || toLower(pinName) == "clk") && !clknet){
                 clknet = true;
                 _ffs_clkdomains.push_back(vector<FF*>());
             }
             Pin* p = nullptr;
             if(_ffsMap.find(instName) != _ffsMap.end()){
                 p = _ffsMap[instName]->getPin(pin);
-                if(pin == "CLK" && clknet){
+                if(toLower(pin) == "clk" && clknet){
                     _ffs_clkdomains.back().push_back(_ffsMap[instName]);
                     _ffs_clkdomains.back().back()->setClkDomain(_ffs_clkdomains.size()-1);
                 }
@@ -234,19 +237,18 @@ void Solver::parse_input(std::string filename)
         newNet->setPins(pins);
         _nets.push_back(newNet);
         _netsMap[netName] = newNet;
-        // update pin fanin and fanout
-        for(auto pin : pins)
+        for(size_t i = 0; i < pins.size(); i++)
         {
-            // assume the first pin is the fanin pin
-            if(pin->getType() == PinType::FF_D || pin->getType() == PinType::GATE_IN || pin->getType() == PinType::FF_CLK)
+            if(pins[i]->getType() == PinType::FF_Q || pins[i]->getType() == PinType::GATE_OUT || pins[i]->getType() == PinType::INPUT)
             {
-                pin->setFaninPin(pins[0]);
-            }else if(pin->getType() == PinType::FF_Q || pin->getType() == PinType::GATE_OUT || pin->getType() == PinType::INPUT)
-            {
-                for(long unsigned int j = 1; j < pins.size(); j++)
+                for(size_t j = 0; j < pins.size(); j++)
                 {
-                    pin->addFanoutPin(pins[j]);
+                    if(i == j)
+                        continue;
+                    pins[j]->setFaninPin(pins[i]);
+                    pins[i]->addFanoutPin(pins[j]);
                 }
+                break;
             }
         }
     }
@@ -267,32 +269,29 @@ void Solver::parse_input(std::string filename)
     }
     // Read timing info
     in >> DISP_DELAY;
-    for(long unsigned int i = 0; i < _ffsLibList.size(); i++)
+    for(size_t i = 0; i < _ffsLibList.size(); i++)
     {
         string cellName;
         double delay;
         in >> token >> cellName >> delay;
         _ffsLibMap[cellName]->qDelay = delay;
     }
+    size_t totalBits = 0;
+    for(size_t i = 0; i < _ffs.size(); i++)
+    {
+        totalBits += _ffs[i]->getBit();
+    }
     // slack
-    for(long unsigned int i = 0; i < _ffs.size(); i++)
+    for(size_t i = 0; i < totalBits; i++)
     {
         string instName;
         string port;
         double slack;
         in >> token >> instName >> port >> slack;
         _ffsMap[instName]->getPin(port)->setInitSlack(slack);
-        if (_ffsMap[instName]->getBit() > 1)
-        {
-            for (int j = 1; j < _ffsMap[instName]->getBit(); j++)
-            {
-                in >> token >> instName >> port >> slack;
-                _ffsMap[instName]->getPin(port)->setInitSlack(slack);
-            }
-        }
     }
     // Read power info
-    for(long unsigned int i = 0; i < _ffsLibList.size(); i++)
+    for(size_t i = 0; i < _ffsLibList.size(); i++)
     {
         string cellName;
         double power;
@@ -300,9 +299,6 @@ void Solver::parse_input(std::string filename)
         if(_ffsLibMap.find(cellName) != _ffsLibMap.end())
         {
             _ffsLibMap[cellName]->power = power;
-        }else if(_combsLibMap.find(cellName) != _combsLibMap.end())
-        {
-            _combsLibMap[cellName]->power = power;
         }
     }
     // set power to instances
@@ -358,8 +354,7 @@ void Solver::parse_input(std::string filename)
                     {
                         inPin->addPrevStagePin(curPin, pinStack);
                         curPin->addNextStagePin(inPin);
-                    }
-                    else if (curType == PinType::FF_D)
+                    }else if(curType == PinType::FF_D)
                     {
                         break;
                     }
@@ -409,7 +404,7 @@ void Solver::checkCLKDomain()
 {
     constructFFsCLKDomain();
     int sum = 0;
-    for(long unsigned int i=0;i<_ffs_clkdomains.size();i++){
+    for(size_t i=0;i<_ffs_clkdomains.size();i++){
         sum += _ffs_clkdomains[i].size();
         std::cout<<"Sum from clk domain "<<i<<" : "<<_ffs_clkdomains[i].size()<<std::endl;
     }
@@ -609,6 +604,10 @@ void Solver::moveCell(Cell* cell, int x, int y)
 double Solver::calCostMoveD(Pin* movedDPin, int sourceX, int sourceY, int targetX, int targetY)
 {
     if (sourceX == targetX && sourceY == targetY)
+    {
+        return 0;
+    }
+    if (movedDPin->getFaninPin()->getCell() == movedDPin->getCell())
     {
         return 0;
     }
@@ -962,7 +961,6 @@ void Solver::debankAll()
         }
     }
 
-    
     for (auto ff : _ffs)
     {
         // Choose a 1 bit FF that fits the best
@@ -1020,7 +1018,7 @@ void Solver::debankAll()
         }
         delete clkPin;
     }
-    for(long unsigned int i=0;i<_ffs.size();i++)
+    for(size_t i=0;i<_ffs.size();i++)
     {
         delete _ffs[i];
     }
@@ -1197,7 +1195,7 @@ void Solver::fineTune()
 
             std::vector<Bin*> bins = _binMap->getBinsBlocks(x, y, kernel_size, kernel_size);
             bool is_over_max_util = false;
-            for(long unsigned int i = 0; i < bins.size(); i++)
+            for(size_t i = 0; i < bins.size(); i++)
             {
                 if(bins[i]->isOverMaxUtil())
                 {
@@ -1213,12 +1211,12 @@ void Solver::fineTune()
             std::vector<FF*> ffs_local = _binMap->getFFsInBins(bins);
             std::vector<Site*> sites = _siteMap->getSitesInBlock(cur_x, cur_y, upright_x, upright_y);
             
-            for(long unsigned int i = 0; i < ffs_local.size(); i++)
+            for(size_t i = 0; i < ffs_local.size(); i++)
             {
                 FF* ff = ffs_local[i];
                 double cost_min = 0;
                 int best_site = -1;
-                for(long unsigned int j = 0; j < sites.size(); j++)
+                for(size_t j = 0; j < sites.size(); j++)
                 {
                     if(!placeable(ff, sites[j]->getX(), sites[j]->getY()))
                         continue;
@@ -1287,7 +1285,7 @@ void Solver::solve()
     {
         constructFFsCLKDomain();
         prev_ffs_size = _ffs.size();
-        for(long unsigned int i = 0; i < _ffs_clkdomains.size(); i++)
+        for(size_t i = 0; i < _ffs_clkdomains.size(); i++)
         {
             std::vector<std::vector<FF*>> cluster = clusteringFFs(i);
             greedyBanking(cluster);
@@ -1404,9 +1402,9 @@ bool Solver::checkOverlap()
     cells.insert(cells.end(), _combs.begin(), _combs.end());
     cells.insert(cells.end(), _ffs.begin(), _ffs.end());
     bool overlap = false;
-    for(long unsigned int i = 0; i < cells.size(); i++)
+    for(size_t i = 0; i < cells.size(); i++)
     {
-        // for(long unsigned int j = i+1; j < cells.size(); j++)
+        // for(size_t j = i+1; j < cells.size(); j++)
         // {
         //     if(isOverlap(cells[i], cells[j]))
         //     {
@@ -1458,10 +1456,10 @@ bool Solver::isOverlap(int x1, int y1, int w1, int h1, Cell* cell2)
            y1 + h1 > cell2->getY();
 }
 
-std::vector<int> Solver::regionQuery(std::vector<FF*> FFs, long unsigned int idx, int eps)
+std::vector<int> Solver::regionQuery(std::vector<FF*> FFs, size_t idx, int eps)
 {
     std::vector<int> neighbors;
-    for(long unsigned int i = 0; i < FFs.size(); i++)
+    for(size_t i = 0; i < FFs.size(); i++)
     {
         if(i == idx)
             continue;
@@ -1475,7 +1473,7 @@ std::vector<int> Solver::regionQuery(std::vector<FF*> FFs, long unsigned int idx
     return neighbors;
 }
 
-std::vector<std::vector<FF*>> Solver::clusteringFFs(long unsigned int clkdomain_idx)
+std::vector<std::vector<FF*>> Solver::clusteringFFs(size_t clkdomain_idx)
 {
     if(clkdomain_idx >= _ffs_clkdomains.size())
     {
@@ -1487,7 +1485,7 @@ std::vector<std::vector<FF*>> Solver::clusteringFFs(long unsigned int clkdomain_
     std::vector<bool> visited(FFs.size(), false);
     // DBSCAN
     // TODO: optimize the algorithm or change to other clustering algorithm
-    for(long unsigned int i = 0; i < FFs.size(); i++)
+    for(size_t i = 0; i < FFs.size(); i++)
     {
         if(visited[i])
             continue;
@@ -1501,7 +1499,7 @@ std::vector<std::vector<FF*>> Solver::clusteringFFs(long unsigned int clkdomain_
             clusters.push_back(cluster);
             continue;
         }
-        for(long unsigned int j = 0; j < neighbors.size(); j++)
+        for(size_t j = 0; j < neighbors.size(); j++)
         {
             int idx = neighbors[j];
             if (visited[idx])
@@ -1512,7 +1510,7 @@ std::vector<std::vector<FF*>> Solver::clusteringFFs(long unsigned int clkdomain_
                 std::vector<int> new_neighbors = regionQuery(FFs, idx, 100);
                 if(new_neighbors.size() >= 2)
                 {
-                    for(long unsigned int k = 0; k < new_neighbors.size(); k++)
+                    for(size_t k = 0; k < new_neighbors.size(); k++)
                     {
                         if(std::find(neighbors.begin(), neighbors.end(), new_neighbors[k]) == neighbors.end())
                         {
