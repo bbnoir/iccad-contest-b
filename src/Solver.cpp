@@ -1608,6 +1608,10 @@ double Solver::cal_banking_gain(FF* ff1, FF* ff2, LibCell* targetFF)
         Pin* faninPin = inPin->getFaninPin();
         if (faninPin->getType() != PinType::INPUT && (faninPin->getCell() == ff1 || faninPin->getCell() == ff2))
         {
+            if(faninPin->getCell() == workingFF)
+            {
+                continue;
+            }
             int fanin_ff_pin_idx = 0;
             for (auto p : faninPin->getCell()->getOutputPins())
             {
@@ -1636,7 +1640,7 @@ double Solver::cal_banking_gain(FF* ff1, FF* ff2, LibCell* targetFF)
     for (int i = 0; i < ff1_bit+ff2_bit; i++)
     {
         int op_idx = (i < ff1_bit) ? i : i - ff1_bit;
-        FF* workingFF = (i < targetFF->bit) ? ff1 : ff2;
+        FF* workingFF = (i < ff1_bit) ? ff1 : ff2;
         Pin* outPin = workingFF->getOutputPins()[op_idx];
         Pin* mapOutPin = targetFF->outputPins[op_idx];
         gain -= calCostChangeQDelay(outPin, targetFF->qDelay - workingFF->getQDelay());
