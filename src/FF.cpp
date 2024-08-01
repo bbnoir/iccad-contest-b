@@ -70,6 +70,11 @@ FF::FF(int x, int y, std::string inst_name, LibCell* lib_cell, std::vector<std::
         this->_outputPins.push_back(newOutPin);
         newOutPin->setCell(this);
     }
+
+    for(auto clk : clks)
+    {
+        delete clk;
+    }
 }
 
 FF::~FF()

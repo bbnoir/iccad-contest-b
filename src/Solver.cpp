@@ -776,7 +776,7 @@ double Solver::updateCostBankFF(FF* ff1, FF* ff2, LibCell* targetFF, int targetX
         int op_idx = (i < ff1_bit) ? i : i - ff1_bit;
         FF* workingFF = (i < ff1_bit) ? ff1 : ff2;
         Pin* inPin = workingFF->getInputPins()[op_idx];
-        Pin* mapInPin = targetFF->inputPins[op_idx];
+        Pin* mapInPin = targetFF->inputPins[i];
         Pin* faninPin = inPin->getFaninPin();
         if (faninPin->getType() != PinType::INPUT && (faninPin->getCell() == ff1 || faninPin->getCell() == ff2))
         {
@@ -815,9 +815,9 @@ double Solver::updateCostBankFF(FF* ff1, FF* ff2, LibCell* targetFF, int targetX
     for (int i = 0; i < ff1_bit+ff2_bit; i++)
     {
         int op_idx = (i < ff1_bit) ? i : i - ff1_bit;
-        FF* workingFF = (i < targetFF->bit) ? ff1 : ff2;
+        FF* workingFF = (i < ff1_bit) ? ff1 : ff2;
         Pin* outPin = workingFF->getOutputPins()[op_idx];
-        Pin* mapOutPin = targetFF->outputPins[op_idx];
+        Pin* mapOutPin = targetFF->outputPins[i];
         diff_cost += updateCostChangeQDelay(outPin, targetFF->qDelay - workingFF->getQDelay());
         for (auto nextStagePin : outPin->getNextStagePins())
         {
@@ -1100,6 +1100,10 @@ void Solver::forceDirectedPlaceFFLock(const int ff_idx, std::vector<bool>& locke
     for (auto inPin : ff->getInputPins())
     {
         Pin* fanin = inPin->getFaninPin();
+        if(fanin == nullptr)
+        {
+            continue;
+        }
         x_list.push_back(fanin->getGlobalX());
         y_list.push_back(fanin->getGlobalY());
         slack_list.push_back(inPin->getSlack());
@@ -1132,7 +1136,7 @@ void Solver::forceDirectedPlaceFFLock(const int ff_idx, std::vector<bool>& locke
     {
         for (auto& slack : slack_list)
         {
-            slack = (slack < 0) ? 2 : 1;
+            slack = (slack < 0) ? 20 : 1;
             // slack = -slack;
             // slack = -slack+min_slack;
             // slack = -slack+min_slack+1;
@@ -1164,7 +1168,7 @@ void Solver::forceDirectedPlaceFFLock(const int ff_idx, std::vector<bool>& locke
         moveCell(ff, target_x, target_y);
         updateCostMoveFF(ff, source_x, source_y, target_x, target_y);
         // check if the ff should be locked
-        if (dist < 1e-3)
+        if (dist < nearest_site->getWidth() / 2)
         {
             lock_cnt[ff_idx]++;
         }
@@ -1538,7 +1542,7 @@ std::vector<std::vector<FF*>> Solver::clusteringFFs(size_t clkdomain_idx)
         visited[i] = true;
         std::vector<FF*> cluster;
         cluster.push_back(FFs[i]);
-        std::vector<int> neighbors = regionQuery(FFs, i, 10000);
+        std::vector<int> neighbors = regionQuery(FFs, i, (DIE_UP_RIGHT_X - DIE_LOW_LEFT_X) / 200);
         if(neighbors.size() < 2)
         {
             // noise
@@ -1553,7 +1557,7 @@ std::vector<std::vector<FF*>> Solver::clusteringFFs(size_t clkdomain_idx)
             if(!visited[idx])
             {
                 visited[idx] = true;
-                std::vector<int> new_neighbors = regionQuery(FFs, idx, 100);
+                std::vector<int> new_neighbors = regionQuery(FFs, idx, (DIE_UP_RIGHT_X - DIE_LOW_LEFT_X) / 1000);
                 if(new_neighbors.size() >= 2)
                 {
                     for(size_t k = 0; k < new_neighbors.size(); k++)
@@ -1639,7 +1643,7 @@ void Solver::findForceDirectedPlacementBankingFFs(FF* ff1, FF* ff2, int& result_
     {
         for (auto& slack : slack_list)
         {
-            slack = (slack < 0) ? 2 : 1;
+            slack = (slack < 0) ? 20 : 1;
             // slack = -slack;
             // slack = -slack+min_slack;
             // slack = -slack+min_slack+1;
@@ -1688,7 +1692,7 @@ double Solver::cal_banking_gain(FF* ff1, FF* ff2, LibCell* targetFF)
         int op_idx = (i < ff1_bit) ? i : i - ff1_bit;
         FF* workingFF = (i < ff1_bit) ? ff1 : ff2;
         Pin* inPin = workingFF->getInputPins()[op_idx];
-        Pin* mapInPin = targetFF->inputPins[op_idx];
+        Pin* mapInPin = targetFF->inputPins[i];
         Pin* faninPin = inPin->getFaninPin();
         if (faninPin->getType() != PinType::INPUT && (faninPin->getCell() == ff1 || faninPin->getCell() == ff2))
         {
@@ -1726,7 +1730,7 @@ double Solver::cal_banking_gain(FF* ff1, FF* ff2, LibCell* targetFF)
         int op_idx = (i < ff1_bit) ? i : i - ff1_bit;
         FF* workingFF = (i < ff1_bit) ? ff1 : ff2;
         Pin* outPin = workingFF->getOutputPins()[op_idx];
-        Pin* mapOutPin = targetFF->outputPins[op_idx];
+        Pin* mapOutPin = targetFF->outputPins[i];
         gain -= calCostChangeQDelay(outPin, targetFF->qDelay - workingFF->getQDelay());
         for (auto nextStagePin : outPin->getNextStagePins())
         {
