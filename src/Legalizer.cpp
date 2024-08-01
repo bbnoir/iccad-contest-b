@@ -77,10 +77,8 @@ double Legalizer::placeRow(FF* ff, int subRowIndex, bool trial){
     int bestX = -1;
     double bestCost = INFINITY;
     for(int i = startX;i <= endX - ff->getWidth();i+=siteWidth){
-        std::cout << "Trying to place FF at " << i << " " << rowY << std::endl;
         int move = 0;
         if(!_solver->placeable(ff, i, rowY, move)){
-            std::cout << move << " cells need to be moved." << std::endl;
             i += (ceil(1.*move/siteWidth)- 1)*siteWidth;
             continue;
         }
@@ -120,7 +118,6 @@ void Legalizer::legalize(){
     int searchDistance = (DIE_UP_RIGHT_Y-DIE_LOW_LEFT_Y)/10;
 
     for(long unsigned int i = 0;i < _ffs.size();i++){
-        std::cout << "Legalizing FF " << i << "/" << _ffs.size() << std::endl;
         double cost_min = INFINITY;
         int best_subrow = -1;
         std::vector<int> nearSubRows = getNearSubRows(_ffs[i], -1, searchDistance);
@@ -140,20 +137,17 @@ void Legalizer::legalize(){
     }
     // Place orphans
     for(long unsigned int i = 0;i < orphans.size();i++){
-        std::cout << "Legalizing Orphan " << i << "/" << orphans.size() << std::endl;
         double cost_min = INFINITY;
         int best_subrow = -1;
         int min_distance = searchDistance;
         int max_distance = 2*searchDistance;
         while(best_subrow == -1 && max_distance < (DIE_UP_RIGHT_Y-DIE_LOW_LEFT_Y)){
-            std::cout << "Search distance: " << min_distance << " " << max_distance << std::endl;
             std::vector<int> nearSubRows = getNearSubRows(_ffs[orphans[i]], min_distance, max_distance);
             for(long unsigned int j = 0;j < nearSubRows.size();j++){
                 double cost = placeRow(_ffs[orphans[i]], nearSubRows[j], true);
                 if(cost < cost_min){
                     cost_min = cost;
                     best_subrow = nearSubRows[j];
-                    std::cout << "Best subrow: " << best_subrow << " Cost: " << cost_min << std::endl;
                 }
             }
             // Increase search distance
