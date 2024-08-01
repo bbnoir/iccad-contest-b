@@ -111,6 +111,7 @@ class Solver
         
         bool isOverlap(Cell* cell1, Cell* cell2);
         bool isOverlap(int x1, int y1, Cell* cell1, Cell* cell2);
+        bool isOverlap(int x1, int y1, int w1, int h1, Cell* cell2);
         bool placeable(Cell* cell);
         bool placeable(Cell* cell, int x, int y);
         bool placeable(Cell* cell, int x, int y, int& move_distance);

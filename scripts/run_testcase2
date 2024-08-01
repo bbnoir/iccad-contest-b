@@ -1,1 +1,1 @@
-./bin/RUN cases/testcase2.txt out/testcase2_out.txt
+./bin/RUN cases/testcase2_0801.txt out/testcase2_out.txt

@@ -1267,7 +1267,6 @@ void Solver::solve()
     _currCost = calCost();
     std::cout << "==> Cost after reset slack: " << _currCost << std::endl;
 
-    std::cout << "There are "<<_binMap->getNumOverMaxUtilBins()<<" over utilized bins initially."<<std::endl; 
     std::cout << _binMap->getNumOverMaxUtilBinsByComb() << " of them are over utilized by Combs." << std::endl;
     
     std::cout<<"Start to force directed placement"<<std::endl;
@@ -1310,15 +1309,15 @@ void Solver::solve()
     _currCost = calCost();
     std::cout << "==> Cost after reset slack: " << _currCost << std::endl;
 
-    std::cout << "There are "<<_binMap->getNumOverMaxUtilBins()<<" over utilized bins after Legalization."<<std::endl; 
-
     std::cout<<"Start to fine tune"<<std::endl;
     fineTune();
     resetSlack();
     _currCost = calCost();
     std::cout << "==> Cost after reset slack: " << _currCost << std::endl;
 
-    std::cout << "There are "<<_binMap->getNumOverMaxUtilBins()<<" over utilized bins after Fine Tuning."<<std::endl;
+    std::cout << "Cost after solving: " << _currCost << std::endl;
+    std::cout << "Cost difference: " << _currCost - _initCost << std::endl;
+    std::cout << "Cost difference percentage: " << (_currCost - _initCost) / _initCost * 100 << "%" << std::endl;
 }
 
 /*
@@ -1442,6 +1441,17 @@ bool Solver::isOverlap(int x1, int y1, Cell* cell1, Cell* cell2)
            x1 + cell1->getWidth() > cell2->getX() &&
            y1 < cell2->getY() + cell2->getHeight() &&
            y1 + cell1->getHeight() > cell2->getY();
+}
+
+/*
+if cell1(x1,y1,w1,h1) and cell2 overlap, return true
+*/
+bool Solver::isOverlap(int x1, int y1, int w1, int h1, Cell* cell2)
+{
+    return x1 < cell2->getX() + cell2->getWidth() &&
+           x1 + w1 > cell2->getX() &&
+           y1 < cell2->getY() + cell2->getHeight() &&
+           y1 + h1 > cell2->getY();
 }
 
 std::vector<int> Solver::regionQuery(std::vector<FF*> FFs, long unsigned int idx, int eps)
@@ -1629,7 +1639,7 @@ double Solver::cal_banking_gain(FF* ff1, FF* ff2, LibCell* targetFF)
         FF* workingFF = (i < targetFF->bit) ? ff1 : ff2;
         Pin* outPin = workingFF->getOutputPins()[op_idx];
         Pin* mapOutPin = targetFF->outputPins[op_idx];
-        gain += calCostChangeQDelay(outPin, targetFF->qDelay - workingFF->getQDelay());
+        gain -= calCostChangeQDelay(outPin, targetFF->qDelay - workingFF->getQDelay());
         for (auto nextStagePin : outPin->getNextStagePins())
         {
             if (nextStagePin->getType() == PinType::FF_D)

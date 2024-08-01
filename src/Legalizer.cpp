@@ -103,7 +103,7 @@ double Legalizer::placeRow(FF* ff, int subRowIndex, bool trial){
 void Legalizer::legalize(){
     std::cout << "Legalizing..." << std::endl;
     _ffs = _solver->_ffs;
-    double totalCost = 0;
+    double totalMove = 0;
     removeAllFFs();
     generateSubRows();
     // Sort FFs by x
@@ -130,7 +130,7 @@ void Legalizer::legalize(){
         }
         if(best_subrow != -1){
             placeRow(_ffs[i], best_subrow, false);      
-            totalCost += cost_min;
+            totalMove += cost_min;
         }else{
             orphans.push_back(i);
         }
@@ -155,7 +155,7 @@ void Legalizer::legalize(){
             min_distance = max_distance;
             max_distance += searchDistance;
         }
-        totalCost += cost_min;
+        totalMove += cost_min;
         if(best_subrow != -1)
             placeRow(_ffs[orphans[i]], best_subrow, false);
         else
@@ -163,7 +163,7 @@ void Legalizer::legalize(){
     }
 
     std::cout << "Legalizing done." << std::endl;
-    // std::cout << "Total cost: " << totalCost << std::endl;
+    std::cout << "Total movement: " << totalMove << std::endl;
     // std::cout << (orphans.size()/double(_ffs.size()))*100 << "% FFs are orphan." << std::endl;
 }
 

@@ -110,6 +110,16 @@ double FF::getTotalNegativeSlack()
     return -totalNegativeSlack;
 }
 
+double FF::getTotalSlack()
+{
+    double totalSlack = 0.0;
+    for (Pin* pin : _inputPins)
+    {
+        totalSlack += pin->getSlack();
+    }
+    return totalSlack;
+}
+
 Pin* FF::getClkPin()
 {
     return _clkPin;
