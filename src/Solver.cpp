@@ -607,12 +607,17 @@ double Solver::calCostMoveD(Pin* movedDPin, int sourceX, int sourceY, int target
     {
         return 0;
     }
-    if (movedDPin->getFaninPin()->getCell() == movedDPin->getCell())
+    Pin* faninPin = movedDPin->getFaninPin();
+    if (faninPin == nullptr)
     {
         return 0;
     }
-    const int faninpin_x = movedDPin->getFaninPin()->getGlobalX();
-    const int faninpin_y = movedDPin->getFaninPin()->getGlobalY();
+    if (faninPin->getCell() == movedDPin->getCell())
+    {
+        return 0;
+    }
+    const int faninpin_x = faninPin->getGlobalX();
+    const int faninpin_y = faninPin->getGlobalY();
     const int diff_dist = abs(targetX - faninpin_x) + abs(targetY - faninpin_y) - abs(sourceX - faninpin_x) - abs(sourceY - faninpin_y);
     const double old_slack = movedDPin->getSlack();
     const double new_slack = old_slack - DISP_DELAY * diff_dist;
@@ -628,7 +633,7 @@ double Solver::calCostMoveQ(Pin* movedQPin, int sourceX, int sourceY, int target
     double diff_cost = 0;
     for (auto nextStagePin : movedQPin->getNextStagePins())
     {
-        if (nextStagePin->getType() == PinType::FF_D)
+        if (nextStagePin->getType() == PinType::FF_D && (nextStagePin->getCell() != movedQPin->getCell() || nextStagePin->getFaninPin() != movedQPin))
         {
             const double next_old_slack = nextStagePin->getSlack();
             const double next_new_slack = nextStagePin->calSlack(movedQPin, sourceX, sourceY, targetX, targetY);
