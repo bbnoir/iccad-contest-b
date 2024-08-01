@@ -328,10 +328,10 @@ void Solver::parse_input(std::string filename)
                 {
                     visited[curPin] = true;
                     PinType curType = curPin->getType();
-                    if (curType == PinType::FF_Q)
+                    if (curType == PinType::FF_Q || curType == PinType::INPUT)
                     {
                         inPin->addPrevStagePin(curPin, pinStack);
-                        curPin->addNextStagePin(inPin);
+                        curPin->addNextStagePin(inPin, pinStack);
                     }
                     else if (curType == PinType::GATE_OUT)
                     {
@@ -350,11 +350,7 @@ void Solver::parse_input(std::string filename)
                         Pin* g_fanin = curPin->getFaninPin();
                         pinStack.push_back(g_fanin);
                     }
-                    else if (curType == PinType::INPUT)
-                    {
-                        inPin->addPrevStagePin(curPin, pinStack);
-                        curPin->addNextStagePin(inPin);
-                    }else if(curType == PinType::FF_D)
+                    else if(curType == PinType::FF_D)
                     {
                         break;
                     }
@@ -1098,56 +1094,84 @@ void Solver::forceDirectedPlaceFFLock(const int ff_idx, std::vector<bool>& locke
         return;
     }
     // calculate the force
-    double x_sum = 0.0;
-    double y_sum = 0.0;
-    int num_pins = 1;
+    std::vector<double> x_list, y_list, slack_list;
     FF* ff = _ffs[ff_idx];
     // display ff's info
-    bool isAllConnectedToComb = true;
     for (auto inPin : ff->getInputPins())
     {
         Pin* fanin = inPin->getFaninPin();
-        x_sum += fanin->getGlobalX();
-        y_sum += fanin->getGlobalY();
-        num_pins++;
-        if (fanin->getType() == PinType::FF_Q)
-        {
-            isAllConnectedToComb = false;
-        }
+        x_list.push_back(fanin->getGlobalX());
+        y_list.push_back(fanin->getGlobalY());
+        slack_list.push_back(inPin->getSlack());
     }
     for (auto outPin : ff->getOutputPins())
     {
-        for (auto fanout : outPin->getFanoutPins())
+        for (auto path : outPin->getPathToNextStagePins())
         {
-            x_sum += fanout->getGlobalX();
-            y_sum += fanout->getGlobalY();
-            num_pins++;            
-            if (fanout->getType() == PinType::FF_D)
-            {
-                isAllConnectedToComb = false;
-            }
+            Pin* fanout = path.at(path.size()-2);
+            x_list.push_back(fanout->getGlobalX());
+            y_list.push_back(fanout->getGlobalY());
+            Pin* nextStagePin = path.front();
+            slack_list.push_back(nextStagePin->getSlack());
         }
     }
-    int x_avg = x_sum / num_pins;
-    int y_avg = y_sum / num_pins;
-    Site* nearest_site = _siteMap->getNearestSite(x_avg, y_avg);
-    const int source_x = ff->getX();
-    const int source_y = ff->getY();
-    const int target_x = nearest_site->getX();
-    const int target_y = nearest_site->getY();
-    // TODO: maybe change to manhattan distance
-    double dist = sqrt(pow(source_x - target_x, 2) + pow(source_y - target_y, 2));
-    moveCell(ff, target_x, target_y);
-    updateCostMoveFF(ff, source_x, source_y, target_x, target_y);
-
-    // check if the ff should be locked
-    if (dist < 1e-2)
-    {
-        lock_cnt[ff_idx]++;
-    }
-    if (isAllConnectedToComb || lock_cnt[ff_idx] > 3)
+    if (slack_list.size() == 0)
     {
         locked[ff_idx] = true;
+    }
+    else if (slack_list.size() == 1)
+    {
+        if (slack_list[0] < 0)
+        {
+            moveCell(ff, x_list[0], y_list[0]);
+            updateCostMoveFF(ff, ff->getX(), ff->getY(), x_list[0], y_list[0]);
+        }
+        locked[ff_idx] = true;
+    }
+    else
+    {
+        for (auto& slack : slack_list)
+        {
+            slack = (slack < 0) ? 20 : 1;
+            // slack = -slack;
+            // slack = -slack+min_slack;
+            // slack = -slack+min_slack+1;
+            // slack = std::exp(-slack);
+            // slack = std::exp(-0.001*slack);
+        }
+        double x_sum = 0;
+        double y_sum = 0;
+        double total_slack = 0;
+        for (size_t i = 0; i < x_list.size(); i++)
+        {
+            x_sum += x_list[i] * slack_list[i];
+            y_sum += y_list[i] * slack_list[i];
+            total_slack += slack_list[i];
+        }
+        if (total_slack == 0)
+        {
+            std::cout << "Error: total slack is 0" << std::endl;
+            exit(1);
+        }
+        int x_avg = x_sum / total_slack;
+        int y_avg = y_sum / total_slack;
+        Site* nearest_site = _siteMap->getNearestSite(x_avg, y_avg);
+        const int source_x = ff->getX();
+        const int source_y = ff->getY();
+        const int target_x = nearest_site->getX();
+        const int target_y = nearest_site->getY();
+        double dist = abs(source_x - target_x) + abs(source_y - target_y);
+        moveCell(ff, target_x, target_y);
+        updateCostMoveFF(ff, source_x, source_y, target_x, target_y);
+        // check if the ff should be locked
+        if (dist < 1e-3)
+        {
+            lock_cnt[ff_idx]++;
+        }
+        if (lock_cnt[ff_idx] > 1)
+        {
+            locked[ff_idx] = true;
+        }
     }
     if (locked[ff_idx])
     {
@@ -1162,8 +1186,12 @@ void Solver::forceDirectedPlacement()
     int max_iter = 1000;
     int iter = 0;
     const int numFFs = _ffs.size();
-    const int lockThreshold = numFFs;
-    // std::cout << "Lock threshold: " << lockThreshold << std::endl;
+    const int lockThreshold = numFFs * 0.9;
+    std::cout << "Lock threshold: " << lockThreshold << std::endl;
+    const int diff_lock_threshold = 5;
+    const int diff_lock_count_threshold = 10;
+    int diff_lock_count = 0;
+    int prev_lock_num = 0;
     int lock_num = 0;
     std::vector<char> lock_cnt(numFFs, 0);
     std::vector<bool> locked(numFFs, false);
@@ -1172,8 +1200,17 @@ void Solver::forceDirectedPlacement()
         {
             forceDirectedPlaceFFLock(i, locked, lock_cnt, lock_num);
         }
-        // std::cout << "Iteration: " << iter << ", Lock/Total: " << lock_num << "/" << numFFs << std::endl;
-        converged = lock_num >= lockThreshold;
+        std::cout << "Iteration: " << iter << ", Lock/Total: " << lock_num << "/" << numFFs << std::endl;
+        if (lock_num - prev_lock_num < diff_lock_threshold)
+        {
+            diff_lock_count++;
+        }
+        else
+        {
+            diff_lock_count = 0;
+        }
+        converged = (lock_num >= lockThreshold) || (diff_lock_count > diff_lock_count_threshold);
+        prev_lock_num = lock_num;
     }
 }
 

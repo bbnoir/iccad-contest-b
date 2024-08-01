@@ -46,6 +46,7 @@ class Pin
         std::vector<Pin*> getPathToPrevStagePins(int idx);
         std::vector<Pin*> getNextStagePins();
         size_t getNextStagePinsSize();
+        const std::vector<std::vector<Pin*>>& getPathToNextStagePins() const { return _pathToNextStagePins; }
         std::vector<double> getArrivalTimes();
         std::vector<double>& getArrivalTimesRef();
         std::vector<int> getSortedCriticalIndex();
@@ -60,7 +61,7 @@ class Pin
         void setFaninPin(Pin* pin);
         void addFanoutPin(Pin* pin);
         void addPrevStagePin(Pin* pin, std::vector<Pin*> path);
-        void addNextStagePin(Pin* pin);
+        void addNextStagePin(Pin* pin, std::vector<Pin*> path);
         void initArrivalTime();
         void initCriticalIndex();
         void resetArrivalTime();
@@ -101,6 +102,7 @@ class Pin
         double _initSlack;
         double _initCriticalArrivalTime;
         std::vector<std::vector<Pin*>> _pathToPrevStagePins;
+        std::vector<std::vector<Pin*>> _pathToNextStagePins;
         std::vector<double> _arrivalTimes;
         std::vector<int> _sortedCriticalIndex;
 };

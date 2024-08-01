@@ -126,9 +126,10 @@ void Pin::addPrevStagePin(Pin* pin, std::vector<Pin*> path)
     _pathToPrevStagePins.push_back(std::vector<Pin*>(path));
 }
 
-void Pin::addNextStagePin(Pin* pin)
+void Pin::addNextStagePin(Pin* pin, std::vector<Pin*> path)
 {
     _nextStagePins.push_back(pin);
+    _pathToNextStagePins.push_back(std::vector<Pin*>(path));
 }
 
 void Pin::connect(Net* net)
