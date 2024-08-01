@@ -1005,6 +1005,10 @@ void Solver::debankAll()
             }
         }
 
+        double areaDiff = GAMMA*(bestFF->width * bestFF->height - ff->getArea());
+        double powerDiff = BETA*(bestFF->power - ff->getPower());
+        _currCost += areaDiff + powerDiff;
+
         const int d_x = x + bestFF->inputPins[0]->getX();
         const int d_y = y + bestFF->inputPins[0]->getY();
         const int q_x = x + bestFF->outputPins[0]->getX();
