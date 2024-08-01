@@ -774,12 +774,16 @@ double Solver::updateCostBankFF(FF* ff1, FF* ff2, LibCell* targetFF, int targetX
     for (int i = 0; i < ff1_bit+ff2_bit; i++)
     {
         int op_idx = (i < ff1_bit) ? i : i - ff1_bit;
-        FF* workingFF = (i < targetFF->bit) ? ff1 : ff2;
+        FF* workingFF = (i < ff1_bit) ? ff1 : ff2;
         Pin* inPin = workingFF->getInputPins()[op_idx];
         Pin* mapInPin = targetFF->inputPins[op_idx];
         Pin* faninPin = inPin->getFaninPin();
         if (faninPin->getType() != PinType::INPUT && (faninPin->getCell() == ff1 || faninPin->getCell() == ff2))
         {
+            if (faninPin->getCell() == workingFF)
+            {
+                continue;
+            }
             int fanin_ff_pin_idx = 0;
             for (auto p : faninPin->getCell()->getOutputPins())
             {
