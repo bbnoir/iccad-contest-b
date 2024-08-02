@@ -1,1 +1,3 @@
+set -x
 ./bin/RUN cases/testcase2_0801.txt out/testcase2_out.txt
+./sanity_20240801 cases/testcase2_0801.txt out/testcase2_out.txt

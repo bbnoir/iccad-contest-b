@@ -1,1 +1,3 @@
+set -x
 ./bin/RUN cases/sampleCase out/sampleOut
+./sanity_20240801 cases/sampleCase out/sampleOut
