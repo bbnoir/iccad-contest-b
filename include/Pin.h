@@ -26,29 +26,29 @@ class Pin
         Pin(PinType type, int x, int y, std::string name, Cell* cell);
         ~Pin();
         
-        std::string getName();
-        std::string getOriginalName();
-        std::vector<std::string> getOriginalNames();
-        int getX() const { return _x; }
-        int getY() const { return _y; }
-        int getGlobalX();
-        int getGlobalY();
-        bool isDpin();
-        double getSlack();
-        Cell *getCell();
-        PinType getType();
-        Net* getNet();
-        Pin* getFaninPin();
-        Pin* getFirstFanoutPin();
-        std::vector<Pin*> getFanoutPins();
-        std::vector<Pin*> getPrevStagePins();
-        size_t getPrevStagePinsSize();
-        std::vector<Pin*> getPathToPrevStagePins(int idx);
-        std::vector<Pin*> getNextStagePins();
-        size_t getNextStagePinsSize();
-        const std::vector<std::vector<Pin*>>& getPathToNextStagePins() const { return _pathToNextStagePins; }
-        std::vector<double> getArrivalTimes();
-        std::vector<double>& getArrivalTimesRef();
+        inline std::string getName() const { return _name; }
+        inline std::string getOriginalName() const { return _originalCellPinNames[0]; }
+        inline std::vector<std::string> getOriginalNames() const { return _originalCellPinNames; }
+        inline int getX() const { return _x; }
+        inline int getY() const { return _y; }
+        int getGlobalX() const;
+        int getGlobalY() const;
+        inline bool isDpin() const { return _isDpin; }
+        inline double getSlack() const { return _slack; }
+        inline Cell *getCell() const { return _cell; }
+        inline PinType getType() const { return _type; }
+        inline Net* getNet() const { return _net; }
+        inline Pin* getFaninPin() const { return _faninPin; }
+        inline Pin* getFirstFanoutPin() const { return (_fanoutPins.size() > 0) ? _fanoutPins[0] : nullptr; }
+        inline std::vector<Pin*> getFanoutPins() const { return _fanoutPins; }
+        inline std::vector<Pin*> getPrevStagePins() const { return _prevStagePins; }
+        inline size_t getPrevStagePinsSize() const { return _prevStagePins.size(); }
+        inline std::vector<Pin*> getPathToPrevStagePins(int idx) const { return _pathToPrevStagePins.at(idx); }
+        inline std::vector<Pin*> getNextStagePins() const { return _nextStagePins; }
+        inline size_t getNextStagePinsSize() const { return _nextStagePins.size(); }
+        inline const std::vector<std::vector<Pin*>>& getPathToNextStagePins() const { return _pathToNextStagePins; }
+        inline std::vector<double> getArrivalTimes() const { return _arrivalTimes; }
+        inline std::vector<double>& getArrivalTimesRef() { return _arrivalTimes; }
 
         void setSlack(double slack);
         void setInitSlack(double initSlack);
@@ -61,9 +61,7 @@ class Pin
         void addPrevStagePin(Pin* pin, std::vector<Pin*> path);
         void addNextStagePin(Pin* pin, std::vector<Pin*> path);
         void initArrivalTime();
-        void initCritical();
         void resetArrivalTime();
-        void resetCritical();
         std::vector<int> getPathIndex(Pin* prevStagePin);
         double calSlack(Pin* movedPrevStagePin, int sourceX, int sourceY, int targetX, int targetY);
         double calSlackQ(Pin* changeQPin, double diffQDelay);

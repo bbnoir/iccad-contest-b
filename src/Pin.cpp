@@ -17,62 +17,14 @@ Pin::~Pin()
 {
 }
 
-std::string Pin::getName()
+int Pin::getGlobalX() const
 {
-    return _name;
+    return (_cell != nullptr) ? _cell->getX() + _x : _x;
 }
 
-std::string Pin::getOriginalName()
+int Pin::getGlobalY() const
 {
-    return _originalCellPinNames[0];
-}
-
-std::vector<std::string> Pin::getOriginalNames()
-{
-    return _originalCellPinNames;
-}
-
-int Pin::getGlobalX()
-{
-    if (_cell != nullptr)
-    {
-        return _cell->getX() + _x;
-    }
-    return _x;
-}
-
-int Pin::getGlobalY()
-{
-    if (_cell != nullptr)
-    {
-        return _cell->getY() + _y;
-    }
-    return _y;
-}
-
-bool Pin::isDpin()
-{
-    return _isDpin;
-}
-
-double Pin::getSlack()
-{
-    return _slack;
-}
-
-Cell* Pin::getCell()
-{
-    return _cell;
-}
-
-PinType Pin::getType()
-{
-    return _type;
-}
-
-Net* Pin::getNet()
-{
-    return _net;
+    return (_cell != nullptr) ? _cell->getY() + _y : _y;
 }
 
 void Pin::setSlack(double slack)
@@ -135,50 +87,6 @@ void Pin::addNextStagePin(Pin* pin, std::vector<Pin*> path)
 void Pin::connect(Net* net)
 {
     _net = net;
-}
-
-Pin* Pin::getFaninPin()
-{
-    return _faninPin;
-}
-
-Pin* Pin::getFirstFanoutPin()
-{
-    if (_fanoutPins.size() > 0)
-    {
-        return _fanoutPins[0];
-    }
-    return nullptr;
-}
-
-std::vector<Pin*> Pin::getFanoutPins()
-{
-    return _fanoutPins;
-}
-
-std::vector<Pin*> Pin::getPrevStagePins()
-{
-    return _prevStagePins;
-}
-
-size_t Pin::getPrevStagePinsSize()
-{
-    return _prevStagePins.size();
-}
-
-std::vector<Pin*> Pin::getPathToPrevStagePins(int idx)
-{
-    return _pathToPrevStagePins.at(idx);
-}
-
-std::vector<Pin*> Pin::getNextStagePins()
-{
-    return _nextStagePins;
-}
-
-size_t Pin::getNextStagePinsSize()
-{
-    return _nextStagePins.size();
 }
 
 void Pin::copyConnection(Pin* pin)
@@ -375,16 +283,6 @@ double Pin::updateSlackQ(Pin* changeQPin, double diffQDelay)
     const double new_arrival_time = _currCriticalArrivalTime;
     _slack += (old_arrival_time - new_arrival_time);
     return _slack;
-}
-
-std::vector<double> Pin::getArrivalTimes()
-{
-    return _arrivalTimes;
-}
-
-std::vector<double>& Pin::getArrivalTimesRef()
-{
-    return _arrivalTimes;
 }
 
 /*
