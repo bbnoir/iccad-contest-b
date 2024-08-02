@@ -203,6 +203,7 @@ Initialize the arrival time of all paths from previous stage pins to this pin
 void Pin::initArrivalTime()
 {
     const int numPaths = _prevStagePins.size();
+    _currCriticalArrivalTime = 0;
     for (int i = 0; i < numPaths; i++)
     {
         std::vector<Pin*> path = _pathToPrevStagePins.at(i);
@@ -219,21 +220,7 @@ void Pin::initArrivalTime()
             arrival_time += path.back()->getCell()->getQDelay();
         }
         _arrivalTimes.push_back(arrival_time);
-        _sortedCriticalIndex.push_back(i);
-    }
-}
-
-/*
-Sort the index of paths by arrival time, critical path first
-*/
-void Pin::initCriticalIndex()
-{
-    if (_sortedCriticalIndex.size() > 0)
-    {
-        std::make_heap(_sortedCriticalIndex.begin(), _sortedCriticalIndex.end(), [this](int i, int j) {
-            return _arrivalTimes.at(i) < _arrivalTimes.at(j);
-        });
-        _initCriticalArrivalTime = _arrivalTimes.at(_sortedCriticalIndex.front());
+        _currCriticalArrivalTime = std::max(_currCriticalArrivalTime, arrival_time);
     }
 }
 
@@ -243,7 +230,7 @@ Reset the arrival time of all paths from previous stage pins to this pin
 void Pin::resetArrivalTime()
 {
     _arrivalTimes.clear();
-    _sortedCriticalIndex.clear();
+    _currCriticalArrivalTime = 0;
     const int numPaths = _prevStagePins.size();
     for (int i = 0; i < numPaths; i++)
     {
@@ -261,20 +248,7 @@ void Pin::resetArrivalTime()
             arrival_time += path.back()->getCell()->getQDelay();
         }
         _arrivalTimes.push_back(arrival_time);
-        _sortedCriticalIndex.push_back(i);
-    }
-}
-
-/*
-Re-sort the index of paths by arrival time, critical path first
-*/
-void Pin::resetCriticalIndex()
-{
-    if (_sortedCriticalIndex.size() > 0)
-    {
-        std::make_heap(_sortedCriticalIndex.begin(), _sortedCriticalIndex.end(), [this](int i, int j) {
-            return _arrivalTimes.at(i) < _arrivalTimes.at(j);
-        });
+        _currCriticalArrivalTime = std::max(_currCriticalArrivalTime, arrival_time);
     }
 }
 
@@ -307,8 +281,7 @@ double Pin::calSlack(Pin* movedPrevStagePin, int sourceX, int sourceY, int targe
         exit(1);
     }
     std::vector<double> tempArrivalTimes = _arrivalTimes;
-    std::vector<int> tempSortedCriticalIndex = _sortedCriticalIndex;
-    const double old_arrival_time = tempArrivalTimes.at(tempSortedCriticalIndex.at(0));
+    const double old_arrival_time = _currCriticalArrivalTime;
     // update the arrival time and re-sort the critical index
     std::vector<int> indexList = getPathIndex(movedPrevStagePin);
     for (int index : indexList)
@@ -321,18 +294,10 @@ double Pin::calSlack(Pin* movedPrevStagePin, int sourceX, int sourceY, int targe
         const double diff_arrival_time = (abs(sourceX - secondLastPinX) + abs(sourceY - secondLastPinY) - abs(targetX - secondLastPinX) - abs(targetY - secondLastPinY)) * DISP_DELAY;
         const double new_arrival_time = old_arrival_time - diff_arrival_time;
         tempArrivalTimes.at(index) = new_arrival_time;
-        // reheap the new arrival time to the sorted list
-        int sortIndex = 0;
-        while (tempSortedCriticalIndex.at(sortIndex) != index)
-        {
-            sortIndex++;
-        }
-        std::push_heap(tempSortedCriticalIndex.begin(), tempSortedCriticalIndex.begin()+sortIndex+1, [&tempArrivalTimes](int i, int j) {
-            return tempArrivalTimes.at(i) < tempArrivalTimes.at(j);
-        });
+        _currCriticalArrivalTime = std::max(_currCriticalArrivalTime, new_arrival_time);
     }
     // update slack
-    const double new_arrival_time = tempArrivalTimes.at(tempSortedCriticalIndex.at(0));
+    const double new_arrival_time = _currCriticalArrivalTime;
     return _slack + (old_arrival_time - new_arrival_time);
 }
 
@@ -347,7 +312,7 @@ double Pin::updateSlack(Pin* movedPrevStagePin, int sourceX, int sourceY, int ta
         std::cout << "Error: only D pin can update slack" << std::endl;
         exit(1);
     }
-    const double old_arrival_time = _arrivalTimes.at(_sortedCriticalIndex.at(0));
+    const double old_arrival_time = _currCriticalArrivalTime;
     // update the arrival time and re-sort the critical index
     std::vector<int> indexList = getPathIndex(movedPrevStagePin);
     for (int index : indexList)
@@ -360,18 +325,10 @@ double Pin::updateSlack(Pin* movedPrevStagePin, int sourceX, int sourceY, int ta
         const double diff_arrival_time = (abs(sourceX - secondLastPinX) + abs(sourceY - secondLastPinY) - abs(targetX - secondLastPinX) - abs(targetY - secondLastPinY)) * DISP_DELAY;
         const double new_arrival_time = old_arrival_time - diff_arrival_time;
         _arrivalTimes.at(index) = new_arrival_time;
-        // reheap the new arrival time to the sorted list
-        int sortIndex = 0;
-        while (_sortedCriticalIndex.at(sortIndex) != index)
-        {
-            sortIndex++;
-        }
-        std::push_heap(_sortedCriticalIndex.begin(), _sortedCriticalIndex.begin()+sortIndex+1, [this](int i, int j) {
-            return _arrivalTimes.at(i) < _arrivalTimes.at(j);
-        });
+        _currCriticalArrivalTime = std::max(_currCriticalArrivalTime, new_arrival_time);
     }
     // update slack
-    const double new_arrival_time = _arrivalTimes.at(_sortedCriticalIndex.at(0));
+    const double new_arrival_time = _currCriticalArrivalTime;
     _slack += (old_arrival_time - new_arrival_time);
     return _slack;
 }
@@ -388,22 +345,14 @@ double Pin::calSlackQ(Pin* changeQPin, double diffQDelay)
         exit(1);
     }
     std::vector<double> tempArrivalTimes = _arrivalTimes;
-    std::vector<int> tempSortedCriticalIndex = _sortedCriticalIndex;
-    const double old_arrival_time = tempArrivalTimes.at(tempSortedCriticalIndex.at(0));
+    const double old_arrival_time = _currCriticalArrivalTime;
     std::vector<int> indexList = getPathIndex(changeQPin);
     for (int index : indexList)
     {
         tempArrivalTimes.at(index) += diffQDelay;
-        int sortIndex = 0;
-        while (tempSortedCriticalIndex.at(sortIndex) != index)
-        {
-            sortIndex++;
-        }
-        std::push_heap(tempSortedCriticalIndex.begin(), tempSortedCriticalIndex.begin()+sortIndex+1, [&tempArrivalTimes](int i, int j) {
-            return tempArrivalTimes.at(i) < tempArrivalTimes.at(j);
-        });
+        _currCriticalArrivalTime = std::max(_currCriticalArrivalTime, tempArrivalTimes.at(index));
     }
-    const double new_arrival_time = tempArrivalTimes.at(tempSortedCriticalIndex.at(0));
+    const double new_arrival_time = _currCriticalArrivalTime;
     return _slack + (old_arrival_time - new_arrival_time);
 }
 
@@ -418,21 +367,14 @@ double Pin::updateSlackQ(Pin* changeQPin, double diffQDelay)
         std::cout << "Error: only D pin can update slack" << std::endl;
         exit(1);
     }
-    const double old_arrival_time = _arrivalTimes.at(_sortedCriticalIndex.at(0));
+    const double old_arrival_time = _currCriticalArrivalTime;
     std::vector<int> indexList = getPathIndex(changeQPin);
     for (int index : indexList)
     {
         _arrivalTimes.at(index) += diffQDelay;
-        int sortIndex = 0;
-        while (_sortedCriticalIndex.at(sortIndex) != index)
-        {
-            sortIndex++;
-        }
-        std::push_heap(_sortedCriticalIndex.begin(), _sortedCriticalIndex.begin()+sortIndex+1, [this](int i, int j) {
-            return _arrivalTimes.at(i) < _arrivalTimes.at(j);
-        });
+        _currCriticalArrivalTime = std::max(_currCriticalArrivalTime, _arrivalTimes.at(index));
     }
-    const double new_arrival_time = _arrivalTimes.at(_sortedCriticalIndex.at(0));
+    const double new_arrival_time = _currCriticalArrivalTime;
     _slack += (old_arrival_time - new_arrival_time);
     return _slack;
 }
@@ -447,16 +389,6 @@ std::vector<double>& Pin::getArrivalTimesRef()
     return _arrivalTimes;
 }
 
-std::vector<int> Pin::getSortedCriticalIndex()
-{
-    return _sortedCriticalIndex;
-}
-
-std::vector<int>& Pin::getSortedCriticalIndexRef()
-{
-    return _sortedCriticalIndex;
-}
-
 void Pin::resetSlack()
 {
     if (_arrivalTimes.size() == 0)
@@ -467,7 +399,6 @@ void Pin::resetSlack()
     else
     {
         this->resetArrivalTime();
-        this->resetCriticalIndex();
-        _slack = _initSlack + (_initCriticalArrivalTime - _arrivalTimes.at(_sortedCriticalIndex.at(0)));
+        _slack = _initSlack + (_initCriticalArrivalTime - _currCriticalArrivalTime);
     }
 }

@@ -49,8 +49,6 @@ class Pin
         const std::vector<std::vector<Pin*>>& getPathToNextStagePins() const { return _pathToNextStagePins; }
         std::vector<double> getArrivalTimes();
         std::vector<double>& getArrivalTimesRef();
-        std::vector<int> getSortedCriticalIndex();
-        std::vector<int>& getSortedCriticalIndexRef();
 
         void setSlack(double slack);
         void setInitSlack(double initSlack);
@@ -63,9 +61,9 @@ class Pin
         void addPrevStagePin(Pin* pin, std::vector<Pin*> path);
         void addNextStagePin(Pin* pin, std::vector<Pin*> path);
         void initArrivalTime();
-        void initCriticalIndex();
+        void initCritical();
         void resetArrivalTime();
-        void resetCriticalIndex();
+        void resetCritical();
         std::vector<int> getPathIndex(Pin* prevStagePin);
         double calSlack(Pin* movedPrevStagePin, int sourceX, int sourceY, int targetX, int targetY);
         double calSlackQ(Pin* changeQPin, double diffQDelay);
@@ -101,8 +99,8 @@ class Pin
         // for slack calculation
         double _initSlack;
         double _initCriticalArrivalTime;
+        double _currCriticalArrivalTime;
         std::vector<std::vector<Pin*>> _pathToPrevStagePins;
         std::vector<std::vector<Pin*>> _pathToNextStagePins;
         std::vector<double> _arrivalTimes;
-        std::vector<int> _sortedCriticalIndex;
 };
