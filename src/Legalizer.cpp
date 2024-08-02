@@ -115,7 +115,7 @@ void Legalizer::legalize(){
     });
 
     std::vector<int> orphans;
-    int searchDistance = (DIE_UP_RIGHT_Y-DIE_LOW_LEFT_Y)/10;
+    int searchDistance = 130000;
 
     for(long unsigned int i = 0;i < _ffs.size();i++){
         double cost_min = INFINITY;

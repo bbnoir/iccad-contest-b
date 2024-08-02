@@ -995,7 +995,7 @@ void Solver::debankAll()
         addFF(ff);
         placeCell(ff);
     }
-}
+}   
 
 void Solver::forceDirectedPlaceFF(FF* ff)
 {
@@ -1493,7 +1493,7 @@ std::vector<std::vector<FF*>> Solver::clusteringFFs(size_t clkdomain_idx)
         visited[i] = true;
         std::vector<FF*> cluster;
         cluster.push_back(FFs[i]);
-        std::vector<int> neighbors = regionQuery(FFs, i, (DIE_UP_RIGHT_X - DIE_LOW_LEFT_X) / 200);
+        std::vector<int> neighbors = regionQuery(FFs, i, 5000);
         if(neighbors.size() < 2)
         {
             // noise
@@ -1508,7 +1508,7 @@ std::vector<std::vector<FF*>> Solver::clusteringFFs(size_t clkdomain_idx)
             if(!visited[idx])
             {
                 visited[idx] = true;
-                std::vector<int> new_neighbors = regionQuery(FFs, idx, (DIE_UP_RIGHT_X - DIE_LOW_LEFT_X) / 1000);
+                std::vector<int> new_neighbors = regionQuery(FFs, idx, 1000);
                 if(new_neighbors.size() >= 2)
                 {
                     for(size_t k = 0; k < new_neighbors.size(); k++)
