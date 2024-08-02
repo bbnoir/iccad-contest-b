@@ -87,7 +87,7 @@ class Solver
         double updateCostChangeQDelay(Pin* changedQPin, double diffQDelay);
         double updateCostMoveFF(FF* movedFF, int sourceX, int sourceY, int targetX, int targetY);
         double updateCostBankFF(FF* ff1, FF* ff2, LibCell* targetFF, int targetX, int targetY);
-        void resetSlack();
+        void resetSlack(bool check = false);
         
         // Modify Cell
         

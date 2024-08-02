@@ -77,7 +77,7 @@ void Solver::parse_input(std::string filename)
     ifstream in(filename);
     if(!in.good())
     {
-        cout << "Error opening file: " << filename << endl;
+        cerr << "Error opening file: " << filename << endl;
         return;
     }
     string token;
@@ -228,7 +228,7 @@ void Solver::parse_input(std::string filename)
             }else if(_outputPinsMap.find(pinName) != _outputPinsMap.end()){
                 p = _outputPinsMap[pinName];
             }else{
-                cout << "Pin not found: " << pinName << endl;
+                cerr << "Error: Pin not found: " << pinName << endl;
                 exit(1);
             }
             pins.push_back(p);
@@ -356,14 +356,13 @@ void Solver::parse_input(std::string filename)
                     }
                     else
                     {
-                        std::cout << "Error: Unexpected fanin pin type" << endl;
-                        std::cout << "Pin: " << curPin->getCell()->getInstName() << " " << curPin->getName() << endl;
+                        std::cerr << "Error: Unexpected fanin pin type" << endl;
+                        std::cerr << "Pin: " << curPin->getCell()->getInstName() << " " << curPin->getName() << endl;
                         exit(1);
                     }
                 }
             }
             inPin->initArrivalTime();
-            inPin->initCriticalIndex();
         }
     }
 
@@ -725,7 +724,6 @@ double Solver::calCostMoveFF(FF* movedFF, int sourceX, int sourceY, int targetX,
     {
         return 0;
     }
-    // std::cout << "Update cost for " << movedFF->getInstName() << " from (" << sourceX << ", " << sourceY << ") to (" << targetX << ", " << targetY << ")" << std::endl;
     double diff_cost = 0;
     for (auto inPin : movedFF->getInputPins())
     {
@@ -735,7 +733,6 @@ double Solver::calCostMoveFF(FF* movedFF, int sourceX, int sourceY, int targetX,
     {
         diff_cost += calCostMoveQ(outPin, sourceX + outPin->getX(), sourceY + outPin->getY(), targetX + outPin->getX(), targetY + outPin->getY());
     }
-    // std::cout << "Diff cost: " << diff_cost << std::endl << std::endl;
     return diff_cost;
 }
 
@@ -748,7 +745,6 @@ double Solver::updateCostMoveFF(FF* movedFF, int sourceX, int sourceY, int targe
     {
         return 0;
     }
-    // std::cout << "Update cost for " << movedFF->getInstName() << " from (" << sourceX << ", " << sourceY << ") to (" << targetX << ", " << targetY << ")" << std::endl;
     double diff_cost = 0;
     for (auto inPin : movedFF->getInputPins())
     {
@@ -758,7 +754,7 @@ double Solver::updateCostMoveFF(FF* movedFF, int sourceX, int sourceY, int targe
     {
         diff_cost += updateCostMoveQ(outPin, sourceX + outPin->getX(), sourceY + outPin->getY(), targetX + outPin->getX(), targetY + outPin->getY());
     }
-    // std::cout << "Diff cost: " << diff_cost << std::endl << std::endl;
+    // resetSlack(true);
     return diff_cost;
 }
 
@@ -823,44 +819,11 @@ double Solver::updateCostBankFF(FF* ff1, FF* ff2, LibCell* targetFF, int targetX
         {
             if (nextStagePin->getType() == PinType::FF_D)
             {
-                if (nextStagePin->getCell() == ff1 || nextStagePin->getCell() == ff2)
+                Pin* faninPin = nextStagePin->getFaninPin();
+                if (faninPin->getCell() == workingFF)
                 {
-                    if (nextStagePin->getFaninPin()->getCell() == ff1 || nextStagePin->getFaninPin()->getCell() == ff2)
-                    {
-                        // already considered in the D pin
-                        break;
-                    }
-                    const double next_old_slack = nextStagePin->getSlack();
-                    std::vector<double> arrivalTimes = nextStagePin->getArrivalTimesRef();
-                    std::vector<int> sortedCriticalIndex = nextStagePin->getSortedCriticalIndexRef();
-                    const double old_arrival_time = arrivalTimes.at(sortedCriticalIndex.at(0));
-                    // update the arrival time and re-sort the critical index
-                    std::vector<int> indexList = nextStagePin->getPathIndex(outPin);
-                    for (int index : indexList)
-                    {
-                        std::vector<Pin*> path = nextStagePin->getPathToPrevStagePins(index);
-                        Pin* secondLastPin = path.at(path.size()-2);
-                        const int secondLastPinX = secondLastPin->getGlobalX();
-                        const int secondLastPinY = secondLastPin->getGlobalY();
-                        const double old_arrival_time = arrivalTimes.at(index);
-                        const double diff_arrival_time = DISP_DELAY * (abs(outPin->getGlobalX() - secondLastPinX) + abs(outPin->getGlobalY() - secondLastPinY) - abs(targetX + mapOutPin->getX() - secondLastPinX) - abs(targetY + mapOutPin->getY() - secondLastPinY));
-                        const double new_arrival_time = old_arrival_time - diff_arrival_time;
-                        arrivalTimes.at(index) = new_arrival_time;
-                        // reheap the new arrival time to the sorted list
-                        int sortIndex = 0;
-                        while (sortedCriticalIndex.at(sortIndex) != index)
-                        {
-                            sortIndex++;
-                        }
-                        std::push_heap(sortedCriticalIndex.begin(), sortedCriticalIndex.begin()+sortIndex+1, [&arrivalTimes](int i, int j) {
-                            return arrivalTimes.at(i) < arrivalTimes.at(j);
-                        });
-                    }
-                    const double new_arrival_time = arrivalTimes.at(sortedCriticalIndex.at(0));
-                    const double next_new_slack =  next_old_slack + (old_arrival_time - new_arrival_time);
-                    const double d_cost = calDiffCost(next_old_slack, next_new_slack);
-                    _currCost += d_cost;
-                    diff_cost += d_cost;
+                    // already considered in the D pin
+                    break;
                 }
                 else
                 {
@@ -876,13 +839,13 @@ double Solver::updateCostBankFF(FF* ff1, FF* ff2, LibCell* targetFF, int targetX
     return diff_cost;
 }
 
-void Solver::resetSlack()
+void Solver::resetSlack(bool check)
 {
     for (auto ff : _ffs)
     {
         for (auto inPin : ff->getInputPins())
         {
-            inPin->resetSlack();
+            inPin->resetSlack(check);
         }
     }
 }
@@ -1123,15 +1086,6 @@ void Solver::forceDirectedPlaceFFLock(const int ff_idx, std::vector<bool>& locke
     {
         locked[ff_idx] = true;
     }
-    else if (slack_list.size() == 1)
-    {
-        if (slack_list[0] < 0)
-        {
-            moveCell(ff, x_list[0], y_list[0]);
-            updateCostMoveFF(ff, ff->getX(), ff->getY(), x_list[0], y_list[0]);
-        }
-        locked[ff_idx] = true;
-    }
     else
     {
         for (auto& slack : slack_list)
@@ -1154,7 +1108,7 @@ void Solver::forceDirectedPlaceFFLock(const int ff_idx, std::vector<bool>& locke
         }
         if (total_slack == 0)
         {
-            std::cout << "Error: total slack is 0" << std::endl;
+            std::cerr << "Error: total slack is 0" << std::endl;
             exit(1);
         }
         int x_avg = x_sum / total_slack;
@@ -1185,15 +1139,14 @@ void Solver::forceDirectedPlaceFFLock(const int ff_idx, std::vector<bool>& locke
 
 void Solver::forceDirectedPlacement()
 {
-    // std::cout << "Force directed placement" << std::endl;
     bool converged = false;
     int max_iter = 1000;
     int iter = 0;
     const int numFFs = _ffs.size();
-    const int lockThreshold = numFFs * 0.9;
+    const int lockThreshold = numFFs;
     std::cout << "Lock threshold: " << lockThreshold << std::endl;
     const int diff_lock_threshold = 5;
-    const int diff_lock_count_threshold = 10;
+    const int diff_lock_count_threshold = 20;
     int diff_lock_count = 0;
     int prev_lock_num = 0;
     int lock_num = 0;
@@ -1736,42 +1689,11 @@ double Solver::cal_banking_gain(FF* ff1, FF* ff2, LibCell* targetFF)
         {
             if (nextStagePin->getType() == PinType::FF_D)
             {
-                if (nextStagePin->getCell() == ff1 || nextStagePin->getCell() == ff2)
+                Pin* faninPin = nextStagePin->getFaninPin();
+                if (faninPin != nullptr && (faninPin->getCell() == ff1 || faninPin->getCell() == ff2))
                 {
-                    if (nextStagePin->getFaninPin()->getCell() == ff1 || nextStagePin->getFaninPin()->getCell() == ff2)
-                    {
-                        // already considered in the D pin
-                        break;
-                    }
-                    const double next_old_slack = nextStagePin->getSlack();
-                    std::vector<double> tempArrivalTimes = nextStagePin->getArrivalTimes();
-                    std::vector<int> tempSortedCriticalIndex = nextStagePin->getSortedCriticalIndex();
-                    const double old_arrival_time = tempArrivalTimes.at(tempSortedCriticalIndex.at(0));
-                    // update the arrival time and re-sort the critical index
-                    std::vector<int> indexList = nextStagePin->getPathIndex(outPin);
-                    for (int index : indexList)
-                    {
-                        std::vector<Pin*> path = nextStagePin->getPathToPrevStagePins(index);
-                        Pin* secondLastPin = path.at(path.size()-2);
-                        const int secondLastPinX = secondLastPin->getGlobalX();
-                        const int secondLastPinY = secondLastPin->getGlobalY();
-                        const double old_arrival_time = tempArrivalTimes.at(index);
-                        const double diff_arrival_time = DISP_DELAY * (abs(outPin->getGlobalX() - secondLastPinX) + abs(outPin->getGlobalY() - secondLastPinY) - abs(target_x + mapOutPin->getX() - secondLastPinX) - abs(target_y + mapOutPin->getY() - secondLastPinY));
-                        const double new_arrival_time = old_arrival_time - diff_arrival_time;
-                        tempArrivalTimes.at(index) = new_arrival_time;
-                        // reheap the new arrival time to the sorted list
-                        int sortIndex = 0;
-                        while (tempSortedCriticalIndex.at(sortIndex) != index)
-                        {
-                            sortIndex++;
-                        }
-                        std::push_heap(tempSortedCriticalIndex.begin(), tempSortedCriticalIndex.begin()+sortIndex+1, [&tempArrivalTimes](int i, int j) {
-                            return tempArrivalTimes.at(i) < tempArrivalTimes.at(j);
-                        });
-                    }
-                    const double new_arrival_time = tempArrivalTimes.at(tempSortedCriticalIndex.at(0));
-                    const double next_new_slack =  next_old_slack + (old_arrival_time - new_arrival_time);
-                    gain -= calDiffCost(next_old_slack, next_new_slack);
+                    // already considered in the D pin
+                    break;
                 }
                 else
                 {
