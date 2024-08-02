@@ -101,7 +101,7 @@ double Legalizer::placeRow(FF* ff, int subRowIndex, bool trial){
 }
 
 void Legalizer::legalize(){
-    std::cout << "Legalizing..." << std::endl;
+    // std::cout << "Legalizing..." << std::endl;
     _ffs = _solver->_ffs;
     double totalMove = 0;
     removeAllFFs();
@@ -161,8 +161,8 @@ void Legalizer::legalize(){
             std::cout<<"There is no place for orphan "<<orphans[i]<<std::endl;
     }
 
-    std::cout << "Legalizing done." << std::endl;
-    std::cout << "Total movement: " << totalMove << std::endl;
+    // std::cout << "Legalizing done." << std::endl;
+    // std::cout << "Total movement: " << totalMove << std::endl;
     // std::cout << (orphans.size()/double(_ffs.size()))*100 << "% FFs are orphan." << std::endl;
 }
 

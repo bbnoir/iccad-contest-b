@@ -365,8 +365,6 @@ void Solver::parse_input(std::string filename)
             inPin->initArrivalTime();
         }
     }
-
-    cout << "File parsed successfully" << endl;
     in.close();
 }
 
@@ -382,14 +380,14 @@ double Solver::calCost()
         power += ff->getPower();
         area += ff->getArea();
     }
-    std::cout<<"Alpha: "<<ALPHA<<" ";
-    std::cout<<"Beta: "<<BETA<<" ";
-    std::cout<<"Gamma: "<<GAMMA<<" ";
-    std::cout<<"Lambda: "<<LAMBDA<<std::endl;
-    std::cout<<"TNS: "<<tns<<std::endl;
-    std::cout<<"Power: "<<power<<std::endl;
-    std::cout<<"Area: "<<area<<std::endl;
-    std::cout<<"Num of bins violated: "<<numOfBinsViolated<<std::endl;
+    // std::cout<<"Alpha: "<<ALPHA<<" ";
+    // std::cout<<"Beta: "<<BETA<<" ";
+    // std::cout<<"Gamma: "<<GAMMA<<" ";
+    // std::cout<<"Lambda: "<<LAMBDA<<std::endl;
+    // std::cout<<"TNS: "<<tns<<std::endl;
+    // std::cout<<"Power: "<<power<<std::endl;
+    // std::cout<<"Area: "<<area<<std::endl;
+    // std::cout<<"Num of bins violated: "<<numOfBinsViolated<<std::endl;
     double cost = ALPHA * tns + BETA * power + GAMMA * area + LAMBDA * numOfBinsViolated;
     // std::cout<<"Cost: "<<cost<<std::endl;
     return cost;
@@ -1144,7 +1142,7 @@ void Solver::forceDirectedPlacement()
     int iter = 0;
     const int numFFs = _ffs.size();
     const int lockThreshold = numFFs;
-    std::cout << "Lock threshold: " << lockThreshold << std::endl;
+    // std::cout << "Lock threshold: " << lockThreshold << std::endl;
     const int diff_lock_threshold = 5;
     const int diff_lock_count_threshold = 20;
     int diff_lock_count = 0;
@@ -1157,7 +1155,7 @@ void Solver::forceDirectedPlacement()
         {
             forceDirectedPlaceFFLock(i, locked, lock_cnt, lock_num);
         }
-        std::cout << "Iteration: " << iter << ", Lock/Total: " << lock_num << "/" << numFFs << std::endl;
+        // std::cout << "Iteration: " << iter << ", Lock/Total: " << lock_num << "/" << numFFs << std::endl;
         if (lock_num - prev_lock_num < diff_lock_threshold)
         {
             diff_lock_count++;
@@ -1173,8 +1171,8 @@ void Solver::forceDirectedPlacement()
 
 void Solver::fineTune()
 {
-    std::cout << "Fine tuning..." << std::endl;
-    std::cout << "Bin Grid: " << _binMap->getNumBinsX() << "x" << _binMap->getNumBinsY() << std::endl;
+    // std::cout << "Fine tuning..." << std::endl;
+    // std::cout << "Bin Grid: " << _binMap->getNumBinsX() << "x" << _binMap->getNumBinsY() << std::endl;
 
     int kernel_size = 5;
     int stride_x = 1;
@@ -1188,7 +1186,7 @@ void Solver::fineTune()
 
     for(int y = 0; y < num_y; y++)
     {
-        std::cout << "Fine tuning: " << y << "/" << num_y << std::endl;
+        // std::cout << "Fine tuning: " << y << "/" << num_y << std::endl;
         for(int x = 0; x < num_x; x++)
         {
             int cur_x = x * stride_x_width;
@@ -1249,13 +1247,13 @@ void Solver::fineTune()
                 if(best_site != -1)
                 {
                     cost_difference += cost_min;
-                    moveCell(ff, sites[best_site]->getX(), sites[best_site]->getY());
                     updateCostMoveFF(ff, ff->getX(), ff->getY(), sites[best_site]->getX(), sites[best_site]->getY());
+                    moveCell(ff, sites[best_site]->getX(), sites[best_site]->getY());
                 }
             }
         }
     }
-    std::cout << "Cost difference: " << cost_difference << std::endl;
+    // std::cout << "Cost difference: " << cost_difference << std::endl;
 }
 
 void Solver::solve()
@@ -1264,26 +1262,26 @@ void Solver::solve()
     
     _initCost = calCost();
     _currCost = _initCost;
-    std::cout << "==> Initial cost: " << _initCost << std::endl;
+    // std::cout << "==> Initial cost: " << _initCost << std::endl;
 
     debankAll();
-    std::cout << "==> Cost after debanking: " << _currCost << std::endl;
+    // std::cout << "==> Cost after debanking: " << _currCost << std::endl;
     resetSlack();
     _currCost = calCost();
-    std::cout << "==> Cost after reset slack: " << _currCost << std::endl;
+    // std::cout << "==> Cost after reset slack: " << _currCost << std::endl;
 
-    std::cout << _binMap->getNumOverMaxUtilBinsByComb() << " of them are over utilized by Combs." << std::endl;
+    // std::cout << _binMap->getNumOverMaxUtilBinsByComb() << " of them are over utilized by Combs." << std::endl;
     
-    std::cout<<"Start to force directed placement"<<std::endl;
+    // std::cout<<"Start to force directed placement"<<std::endl;
     forceDirectedPlacement();
-    std::cout << "==> Cost after force directed placement: " << _currCost << std::endl;
+    // std::cout << "==> Cost after force directed placement: " << _currCost << std::endl;
     resetSlack();
     _currCost = calCost();
-    std::cout << "==> Cost after reset slack: " << _currCost << std::endl;
+    // std::cout << "==> Cost after reset slack: " << _currCost << std::endl;
     
-    std::cout << "Start clustering and banking" << std::endl;
+    // std::cout << "Start clustering and banking" << std::endl;
     size_t prev_ffs_size;
-    std::cout << "FFs size: " << _ffs.size() << std::endl;
+    // std::cout << "FFs size: " << _ffs.size() << std::endl;
     do
     {
         constructFFsCLKDomain();
@@ -1293,35 +1291,35 @@ void Solver::solve()
             std::vector<std::vector<FF*>> cluster = clusteringFFs(i);
             greedyBanking(cluster);
         }
-        std::cout << "FFs size after greedy banking: " << _ffs.size() << std::endl;
+        // std::cout << "FFs size after greedy banking: " << _ffs.size() << std::endl;
     } while (prev_ffs_size != _ffs.size());
 
-    std::cout << "==> Cost after clustering and banking: " << _currCost << std::endl;
+    // std::cout << "==> Cost after clustering and banking: " << _currCost << std::endl;
     resetSlack();
     _currCost = calCost();
-    std::cout << "==> Cost after reset slack: " << _currCost << std::endl;
+    // std::cout << "==> Cost after reset slack: " << _currCost << std::endl;
     
-    std::cout << "Start to force directed placement (second)" << std::endl;
+    // std::cout << "Start to force directed placement (second)" << std::endl;
     forceDirectedPlacement();
-    std::cout << "==> Cost after force directed placement (second): " << _currCost << std::endl;
+    // std::cout << "==> Cost after force directed placement (second): " << _currCost << std::endl;
     resetSlack();
     _currCost = calCost();
-    std::cout << "==> Cost after reset slack: " << _currCost << std::endl;
+    // std::cout << "==> Cost after reset slack: " << _currCost << std::endl;
     
-    std::cout<<"Start to legalize"<<std::endl;
+    // std::cout<<"Start to legalize"<<std::endl;
     _legalizer->legalize();
     resetSlack();
     _currCost = calCost();
-    std::cout << "==> Cost after reset slack: " << _currCost << std::endl;
+    // std::cout << "==> Cost after reset slack: " << _currCost << std::endl;
 
-    std::cout<<"Start to fine tune"<<std::endl;
+    // std::cout<<"Start to fine tune"<<std::endl;
     fineTune();
     resetSlack();
     _currCost = calCost();
-    std::cout << "==> Cost after reset slack: " << _currCost << std::endl;
+    // std::cout << "==> Cost after reset slack: " << _currCost << std::endl;
 
+    std::cout << "Initial cost: " << _initCost << std::endl;
     std::cout << "Cost after solving: " << _currCost << std::endl;
-    std::cout << "Cost difference: " << _currCost - _initCost << std::endl;
     std::cout << "Cost difference percentage: " << (_currCost - _initCost) / _initCost * 100 << "%" << std::endl;
 }
 

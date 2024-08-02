@@ -1,0 +1,21 @@
+CellInst 5
+Inst A0 SVT_FF_3 8859 6000
+Inst A1 SVT_FF_3 8517 6000
+Inst A2 SVT_FF_3 9486 6000
+Inst A3 SVT_FF_3 9828 6000
+Inst A4 SVT_FF_3 8403 3600
+reg1/D map A0/D
+reg1/Q map A0/Q
+reg1/CLK map A0/CLK
+reg2/D map A1/D
+reg2/Q map A1/Q
+reg2/CLK map A1/CLK
+reg3/D map A2/D
+reg3/Q map A2/Q
+reg3/CLK map A2/CLK
+reg4/D0 map A3/D
+reg4/Q0 map A3/Q
+reg4/CLK map A3/CLK
+reg4/D1 map A4/D
+reg4/Q1 map A4/Q
+reg4/CLK map A4/CLK

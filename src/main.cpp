@@ -1,7 +1,6 @@
 #include <iostream>
 #include <string>
 #include "Solver.h"
-#include "Renderer.h"
 
 int main(int argc, char* argv[])
 {
@@ -20,10 +19,6 @@ int main(int argc, char* argv[])
     solver->check();
     solver->dump(output_file);
 
-    Renderer* renderer = new Renderer(solver);
-    renderer->render();
-
-    delete renderer;
     delete solver;
     return 0;
 }
