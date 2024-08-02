@@ -69,7 +69,8 @@ class Pin
         double calSlackQ(Pin* changeQPin, double diffQDelay);
         double updateSlack(Pin* movedPrevStagePin, int sourceX, int sourceY, int targetX, int targetY);
         double updateSlackQ(Pin* changeQPin, double diffQDelay);
-        void resetSlack();
+        void resetSlack(bool check = false);
+        bool checkCritical();
 
         void connect(Net* net);
         void copyConnection(Pin* pin);

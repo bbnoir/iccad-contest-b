@@ -77,7 +77,7 @@ void Solver::parse_input(std::string filename)
     ifstream in(filename);
     if(!in.good())
     {
-        cout << "Error opening file: " << filename << endl;
+        cerr << "Error opening file: " << filename << endl;
         return;
     }
     string token;
@@ -228,7 +228,7 @@ void Solver::parse_input(std::string filename)
             }else if(_outputPinsMap.find(pinName) != _outputPinsMap.end()){
                 p = _outputPinsMap[pinName];
             }else{
-                cout << "Pin not found: " << pinName << endl;
+                cerr << "Error: Pin not found: " << pinName << endl;
                 exit(1);
             }
             pins.push_back(p);
@@ -356,8 +356,8 @@ void Solver::parse_input(std::string filename)
                     }
                     else
                     {
-                        std::cout << "Error: Unexpected fanin pin type" << endl;
-                        std::cout << "Pin: " << curPin->getCell()->getInstName() << " " << curPin->getName() << endl;
+                        std::cerr << "Error: Unexpected fanin pin type" << endl;
+                        std::cerr << "Pin: " << curPin->getCell()->getInstName() << " " << curPin->getName() << endl;
                         exit(1);
                     }
                 }
@@ -724,7 +724,6 @@ double Solver::calCostMoveFF(FF* movedFF, int sourceX, int sourceY, int targetX,
     {
         return 0;
     }
-    // std::cout << "Update cost for " << movedFF->getInstName() << " from (" << sourceX << ", " << sourceY << ") to (" << targetX << ", " << targetY << ")" << std::endl;
     double diff_cost = 0;
     for (auto inPin : movedFF->getInputPins())
     {
@@ -734,7 +733,6 @@ double Solver::calCostMoveFF(FF* movedFF, int sourceX, int sourceY, int targetX,
     {
         diff_cost += calCostMoveQ(outPin, sourceX + outPin->getX(), sourceY + outPin->getY(), targetX + outPin->getX(), targetY + outPin->getY());
     }
-    // std::cout << "Diff cost: " << diff_cost << std::endl << std::endl;
     return diff_cost;
 }
 
@@ -747,7 +745,6 @@ double Solver::updateCostMoveFF(FF* movedFF, int sourceX, int sourceY, int targe
     {
         return 0;
     }
-    // std::cout << "Update cost for " << movedFF->getInstName() << " from (" << sourceX << ", " << sourceY << ") to (" << targetX << ", " << targetY << ")" << std::endl;
     double diff_cost = 0;
     for (auto inPin : movedFF->getInputPins())
     {
@@ -757,7 +754,7 @@ double Solver::updateCostMoveFF(FF* movedFF, int sourceX, int sourceY, int targe
     {
         diff_cost += updateCostMoveQ(outPin, sourceX + outPin->getX(), sourceY + outPin->getY(), targetX + outPin->getX(), targetY + outPin->getY());
     }
-    // std::cout << "Diff cost: " << diff_cost << std::endl << std::endl;
+    // resetSlack(true);
     return diff_cost;
 }
 
@@ -842,13 +839,13 @@ double Solver::updateCostBankFF(FF* ff1, FF* ff2, LibCell* targetFF, int targetX
     return diff_cost;
 }
 
-void Solver::resetSlack()
+void Solver::resetSlack(bool check)
 {
     for (auto ff : _ffs)
     {
         for (auto inPin : ff->getInputPins())
         {
-            inPin->resetSlack();
+            inPin->resetSlack(check);
         }
     }
 }
@@ -1089,15 +1086,6 @@ void Solver::forceDirectedPlaceFFLock(const int ff_idx, std::vector<bool>& locke
     {
         locked[ff_idx] = true;
     }
-    else if (slack_list.size() == 1)
-    {
-        if (slack_list[0] < 0)
-        {
-            moveCell(ff, x_list[0], y_list[0]);
-            updateCostMoveFF(ff, ff->getX(), ff->getY(), x_list[0], y_list[0]);
-        }
-        locked[ff_idx] = true;
-    }
     else
     {
         for (auto& slack : slack_list)
@@ -1120,7 +1108,7 @@ void Solver::forceDirectedPlaceFFLock(const int ff_idx, std::vector<bool>& locke
         }
         if (total_slack == 0)
         {
-            std::cout << "Error: total slack is 0" << std::endl;
+            std::cerr << "Error: total slack is 0" << std::endl;
             exit(1);
         }
         int x_avg = x_sum / total_slack;
@@ -1151,7 +1139,6 @@ void Solver::forceDirectedPlaceFFLock(const int ff_idx, std::vector<bool>& locke
 
 void Solver::forceDirectedPlacement()
 {
-    // std::cout << "Force directed placement" << std::endl;
     bool converged = false;
     int max_iter = 1000;
     int iter = 0;
@@ -1159,7 +1146,7 @@ void Solver::forceDirectedPlacement()
     const int lockThreshold = numFFs;
     std::cout << "Lock threshold: " << lockThreshold << std::endl;
     const int diff_lock_threshold = 5;
-    const int diff_lock_count_threshold = 10;
+    const int diff_lock_count_threshold = 20;
     int diff_lock_count = 0;
     int prev_lock_num = 0;
     int lock_num = 0;
