@@ -8,6 +8,7 @@
 #include <unordered_map>
 #include <cmath>
 #include <climits>
+#include <iomanip>
 #include "param.h"
 #include "util.h"
 
@@ -41,7 +42,10 @@ class Solver
         void init_placement();
         void solve();
         void check();
-        void dump(std::string filename);
+        void dump(std::string filename) const;
+        void dump(std::vector<std::string>& vecStr) const;
+        void dump_best(std::string filename) const;
+        void report();
 
         void display();
         
@@ -136,6 +140,15 @@ class Solver
         Legalizer* _legalizer;
         // 6. Fine-tuning
         void fineTune();
+
+        // State saving
+        std::vector<std::string> _stateNames;
+        std::vector<double> _stateCosts;
+        std::vector<std::vector<std::string>> _stateDumps;
+        std::vector<bool> _stateLegal;
+        size_t _bestStateIdx;
+        double _bestCost = -1;
+        void saveState(std::string stateName, bool legal = false);
 
         // Checker
         bool checkOverlap();

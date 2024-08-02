@@ -1265,12 +1265,27 @@ void Solver::solve()
     _initCost = calCost();
     _currCost = _initCost;
     std::cout << "==> Initial cost: " << _initCost << std::endl;
+    saveState("Initial");
 
     debankAll();
     std::cout << "==> Cost after debanking: " << _currCost << std::endl;
     resetSlack();
     _currCost = calCost();
     std::cout << "==> Cost after reset slack: " << _currCost << std::endl;
+    saveState("Debank");
+
+    _legalizer->legalize();
+    resetSlack();
+    _currCost = calCost();
+    std::cout << "==> Cost after legalize: " << _currCost << std::endl;
+    saveState("DebankLegalized", true);
+
+    std::cout<<"Start to fine tune"<<std::endl;
+    fineTune();
+    resetSlack();
+    _currCost = calCost();
+    std::cout << "==> Cost after fine tune: " << _currCost << std::endl;
+    saveState("DebankFineTuned", true);
 
     std::cout << _binMap->getNumOverMaxUtilBinsByComb() << " of them are over utilized by Combs." << std::endl;
     
@@ -1280,6 +1295,7 @@ void Solver::solve()
     resetSlack();
     _currCost = calCost();
     std::cout << "==> Cost after reset slack: " << _currCost << std::endl;
+    saveState("ForceDirected");
     
     std::cout << "Start clustering and banking" << std::endl;
     size_t prev_ffs_size;
@@ -1300,6 +1316,7 @@ void Solver::solve()
     resetSlack();
     _currCost = calCost();
     std::cout << "==> Cost after reset slack: " << _currCost << std::endl;
+    saveState("Banking");
     
     std::cout << "Start to force directed placement (second)" << std::endl;
     forceDirectedPlacement();
@@ -1307,18 +1324,21 @@ void Solver::solve()
     resetSlack();
     _currCost = calCost();
     std::cout << "==> Cost after reset slack: " << _currCost << std::endl;
+    saveState("ForceDirected2");
     
     std::cout<<"Start to legalize"<<std::endl;
     _legalizer->legalize();
     resetSlack();
     _currCost = calCost();
     std::cout << "==> Cost after reset slack: " << _currCost << std::endl;
+    saveState("Legalize", true);
 
     std::cout<<"Start to fine tune"<<std::endl;
     fineTune();
     resetSlack();
     _currCost = calCost();
     std::cout << "==> Cost after reset slack: " << _currCost << std::endl;
+    saveState("FineTune", true);
 
     std::cout << "Cost after solving: " << _currCost << std::endl;
     std::cout << "Cost difference: " << _currCost - _initCost << std::endl;
@@ -1876,7 +1896,7 @@ void Solver::display()
 
 }
 
-void Solver::dump(std::string filename)
+void Solver::dump(std::string filename) const
 {
     using namespace std;
     ofstream out(filename);
@@ -1901,5 +1921,86 @@ void Solver::dump(std::string filename)
         {
             out << clkPinName << " map " << clkPin->getCell()->getInstName() << "/" << clkPin->getName() << endl;
         }
+    }
+}
+
+void Solver::dump(std::vector<std::string>& vecStr) const
+{
+    using namespace std;
+    string s;
+    s = "CellInst " + std::to_string(_ffs.size()) + "\n"; vecStr.push_back(s);
+    for (auto ff : _ffs)
+    {
+        s = "Inst " + ff->getInstName() + " " + ff->getCellName() + " " + std::to_string(ff->getX()) + " " + std::to_string(ff->getY()) + "\n";
+        vecStr.push_back(s);
+    }
+    for (auto ff : _ffs)
+    {
+        for (auto pin : ff->getInputPins())
+        {
+            s = pin->getOriginalName() + " map " + pin->getCell()->getInstName() + "/" + pin->getName() + "\n";
+            vecStr.push_back(s);
+        }
+        for (auto pin : ff->getOutputPins())
+        {
+            s = pin->getOriginalName() + " map " + pin->getCell()->getInstName() + "/" + pin->getName() + "\n";
+            vecStr.push_back(s);
+        }
+        Pin* clkPin = ff->getClkPin();
+        std::vector<std::string> clkPinNames = ff->getClkPin()->getOriginalNames();
+        for(auto clkPinName : clkPinNames)
+        {
+            s = clkPinName + " map " + clkPin->getCell()->getInstName() + "/" + clkPin->getName() + "\n";
+            vecStr.push_back(s);
+        }
+    }
+}
+
+void Solver::saveState(std::string stateName, bool legal)
+{
+    _stateNames.push_back(stateName);
+    _stateCosts.push_back(_currCost);
+    _stateLegal.push_back(legal);
+    if (legal)
+    {
+        if (_bestCost == -1 || _currCost < _bestCost)
+        {
+            _bestCost = _currCost;
+            _bestStateIdx = _stateCosts.size() - 1;
+        }
+    }
+    std::vector<std::string> vecStr;
+    dump(vecStr);
+    _stateDumps.push_back(vecStr);
+}
+
+void Solver::report()
+{
+    std::cout << std::endl;
+    std::cout << "----------------------------------------------------------" << std::endl;
+    std::cout << "------------------------- Report -------------------------" << std::endl;
+    std::cout << "----------------------------------------------------------" << std::endl;
+    double firstCost = _stateCosts[0];
+    for (size_t i = 0; i < _stateNames.size(); i++)
+    {
+        std::cout << std::setw(16) << std::left << _stateNames[i] << " \t\t " << std::right << std::fixed << std::setprecision(6) << _stateCosts[i];
+        std::cout << "\t" << std::fixed << std::setprecision(2) << _stateCosts[i] / firstCost * 100 << "%";
+        if (_bestStateIdx == i)
+        {
+            std::cout << " *";
+        }
+        std::cout << std::endl;
+    }
+    std::cout << "----------------------------------------------------------" << std::endl;
+}
+
+void Solver::dump_best(std::string filename) const
+{
+    using namespace std;
+    ofstream out(filename);
+    const vector<string>& vecStr = _stateDumps.at((_bestCost != -1) ? _bestStateIdx : _stateDumps.size() - 1);
+    for (auto str : vecStr)
+    {
+        out << str;
     }
 }
