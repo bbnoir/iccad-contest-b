@@ -1274,18 +1274,18 @@ void Solver::solve()
     std::cout << "==> Cost after reset slack: " << _currCost << std::endl;
     saveState("Debank");
 
-    _legalizer->legalize();
-    resetSlack();
-    _currCost = calCost();
-    std::cout << "==> Cost after legalize: " << _currCost << std::endl;
-    saveState("DebankLegalized", true);
+    // _legalizer->legalize();
+    // resetSlack();
+    // _currCost = calCost();
+    // std::cout << "==> Cost after legalize: " << _currCost << std::endl;
+    // saveState("DebankLegalized", true);
 
-    std::cout<<"Start to fine tune"<<std::endl;
-    fineTune();
-    resetSlack();
-    _currCost = calCost();
-    std::cout << "==> Cost after fine tune: " << _currCost << std::endl;
-    saveState("DebankFineTuned", true);
+    // std::cout<<"Start to fine tune"<<std::endl;
+    // fineTune();
+    // resetSlack();
+    // _currCost = calCost();
+    // std::cout << "==> Cost after fine tune: " << _currCost << std::endl;
+    // saveState("DebankFineTuned", true);
 
     std::cout << _binMap->getNumOverMaxUtilBinsByComb() << " of them are over utilized by Combs." << std::endl;
     
@@ -1983,7 +1983,7 @@ void Solver::report()
     double firstCost = _stateCosts[0];
     for (size_t i = 0; i < _stateNames.size(); i++)
     {
-        std::cout << std::setw(16) << std::left << _stateNames[i] << " \t\t " << std::right << std::fixed << std::setprecision(6) << _stateCosts[i];
+        std::cout << std::setw(16) << std::left << _stateNames[i] << " \t\t " << std::right << std::scientific << std::setprecision(6) << _stateCosts[i];
         std::cout << "\t" << std::fixed << std::setprecision(2) << _stateCosts[i] / firstCost * 100 << "%";
         if (_bestStateIdx == i)
         {
