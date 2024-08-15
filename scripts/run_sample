@@ -1,3 +1,10 @@
 set -x
-./bin/RUN cases/sampleCase out/sampleOut
-./sanity_20240801 cases/sampleCase out/sampleOut
+
+testcase="sampleCase"
+input="cases/$testcase"
+output="out/$testcase.out"
+log="log/$testcase.log"
+sanity="sanity_20240801"
+
+./bin/RUN "$input" "$output" | tee "$log"
+./"$sanity" "$input" "$output" | tee -a "$log"
