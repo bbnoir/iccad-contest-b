@@ -550,6 +550,10 @@ bool Solver::placeable(Cell* cell, int x, int y, int& move_distance)
         {
             overlap = true;
             move = std::max(move, c->getX()+c->getWidth()-x);
+            if(move == 0) {
+                std::cerr << "Error: move distance is 0" << std::endl;
+                std::cout << c->getX() << " " << c->getWidth() << " " << x << " " << y << std::endl;
+            }
         }
     }
     move_distance = move;
@@ -1269,7 +1273,6 @@ void Solver::solve()
 
     debankAll();
     std::cout << "==> Cost after debanking: " << _currCost << std::endl;
-    std::cout << "==> Cost after debanking: " << _currCost << std::endl;
     resetSlack();
     _currCost = calCost();
     std::cout << "==> Cost after reset slack: " << _currCost << std::endl;
@@ -1291,9 +1294,7 @@ void Solver::solve()
     std::cout << _binMap->getNumOverMaxUtilBinsByComb() << " of them are over utilized by Combs." << std::endl;
     
     std::cout<<"Start to force directed placement"<<std::endl;
-    std::cout<<"Start to force directed placement"<<std::endl;
     forceDirectedPlacement();
-    std::cout << "==> Cost after force directed placement: " << _currCost << std::endl;
     std::cout << "==> Cost after force directed placement: " << _currCost << std::endl;
     resetSlack();
     _currCost = calCost();
@@ -1313,10 +1314,8 @@ void Solver::solve()
             greedyBanking(cluster);
         }
         std::cout << "FFs size after greedy banking: " << _ffs.size() << std::endl;
-        std::cout << "FFs size after greedy banking: " << _ffs.size() << std::endl;
     } while (prev_ffs_size != _ffs.size());
 
-    std::cout << "==> Cost after clustering and banking: " << _currCost << std::endl;
     std::cout << "==> Cost after clustering and banking: " << _currCost << std::endl;
     resetSlack();
     _currCost = calCost();
@@ -1324,9 +1323,7 @@ void Solver::solve()
     saveState("Banking");
     
     std::cout << "Start to force directed placement (second)" << std::endl;
-    std::cout << "Start to force directed placement (second)" << std::endl;
     forceDirectedPlacement();
-    std::cout << "==> Cost after force directed placement (second): " << _currCost << std::endl;
     std::cout << "==> Cost after force directed placement (second): " << _currCost << std::endl;
     resetSlack();
     _currCost = calCost();
@@ -1334,14 +1331,12 @@ void Solver::solve()
     saveState("ForceDirected2");
     
     std::cout<<"Start to legalize"<<std::endl;
-    std::cout<<"Start to legalize"<<std::endl;
     _legalizer->legalize();
     resetSlack();
     _currCost = calCost();
     std::cout << "==> Cost after reset slack: " << _currCost << std::endl;
     saveState("Legalize", true);
 
-    std::cout<<"Start to fine tune"<<std::endl;
     std::cout<<"Start to fine tune"<<std::endl;
     fineTune();
     resetSlack();
