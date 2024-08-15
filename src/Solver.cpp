@@ -784,10 +784,6 @@ double Solver::updateCostBankFF(FF* ff1, FF* ff2, LibCell* targetFF, int targetX
         Pin* faninPin = inPin->getFaninPin();
         if (faninPin->getType() != PinType::INPUT && (faninPin->getCell() == ff1 || faninPin->getCell() == ff2))
         {
-            if (faninPin->getCell() == workingFF)
-            {
-                continue;
-            }
             int fanin_ff_pin_idx = 0;
             for (auto p : faninPin->getCell()->getOutputPins())
             {
@@ -828,10 +824,10 @@ double Solver::updateCostBankFF(FF* ff1, FF* ff2, LibCell* targetFF, int targetX
             if (nextStagePin->getType() == PinType::FF_D)
             {
                 Pin* faninPin = nextStagePin->getFaninPin();
-                if (faninPin->getCell() == workingFF)
+                if ((nextStagePin->getCell() == ff1 || nextStagePin->getCell() == ff2) && faninPin->getCell() == workingFF)
                 {
                     // already considered in the D pin
-                    break;
+                    continue;
                 }
                 else
                 {
@@ -901,7 +897,7 @@ void Solver::bankFFs(FF* ff1, FF* ff2, LibCell* targetFF)
     int target_x, target_y;
     findForceDirectedPlacementBankingFFs(ff1, ff2, target_x, target_y);
     updateCostBankFF(ff1, ff2, targetFF, target_x, target_y);
-    FF* bankedFF = new FF(target_x, target_x, makeUniqueName(), targetFF, dqPairs, clkPins);
+    FF* bankedFF = new FF(target_x, target_y, makeUniqueName(), targetFF, dqPairs, clkPins);
     bankedFF->setClkDomain(ff1->getClkDomain());
     addFF(bankedFF);
     placeCell(bankedFF);
@@ -1679,10 +1675,6 @@ double Solver::cal_banking_gain(FF* ff1, FF* ff2, LibCell* targetFF)
         Pin* faninPin = inPin->getFaninPin();
         if (faninPin->getType() != PinType::INPUT && (faninPin->getCell() == ff1 || faninPin->getCell() == ff2))
         {
-            if(faninPin->getCell() == workingFF)
-            {
-                continue;
-            }
             int fanin_ff_pin_idx = 0;
             for (auto p : faninPin->getCell()->getOutputPins())
             {
@@ -1720,10 +1712,10 @@ double Solver::cal_banking_gain(FF* ff1, FF* ff2, LibCell* targetFF)
             if (nextStagePin->getType() == PinType::FF_D)
             {
                 Pin* faninPin = nextStagePin->getFaninPin();
-                if (faninPin != nullptr && (faninPin->getCell() == ff1 || faninPin->getCell() == ff2))
+                if ((nextStagePin->getCell() == ff1 || nextStagePin->getCell() == ff2) && faninPin->getCell() == workingFF)
                 {
                     // already considered in the D pin
-                    break;
+                    continue;
                 }
                 else
                 {

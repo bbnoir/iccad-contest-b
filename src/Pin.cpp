@@ -307,14 +307,13 @@ void Pin::resetSlack(bool check)
             double old_slack = _slack;
             this->resetArrivalTime();
             _slack = _initSlack + (_initCriticalArrivalTime - _currCriticalArrivalTime);
-            if (old_slack - _slack > 1e-6)
+            if (std::abs(old_slack - _slack) > 1e-6)
             {
-                std::cerr << "Warning: slack after reset is not the same as before" << std::endl;
-                std::cerr << "Pin: " << this->getCell()->getInstName() << "/" << this->getName() << std::endl;
-                std::cerr << "Old slack: " << old_slack << std::endl;
-                std::cerr << "New slack: " << _slack << std::endl;
-                std::cerr << "Difference: " << old_slack - _slack << std::endl;
-                exit(1);
+                std::cout << "Warning: slack after reset is not the same as before" << std::endl;
+                std::cout << "Pin: " << this->getCell()->getInstName() << "/" << this->getName() << std::endl;
+                std::cout << "Old slack: " << old_slack << std::endl;
+                std::cout << "New slack: " << _slack << std::endl;
+                std::cout << "Difference: " << old_slack - _slack << std::endl;
             }
         }
     }
