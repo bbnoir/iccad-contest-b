@@ -1,3 +1,3 @@
 set -x
-./bin/RUN cases/testcase1_0614.txt out/testcase1_out.txt
-./sanity_20240801 cases/testcase1_0614.txt out/testcase1_out.txt
+./bin/RUN cases/testcase1_0812.txt out/testcase1_out.txt
+./sanity_20240801 cases/testcase1_0812.txt out/testcase1_out.txt

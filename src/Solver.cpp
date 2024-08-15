@@ -1262,26 +1262,26 @@ void Solver::solve()
     
     _initCost = calCost();
     _currCost = _initCost;
-    // std::cout << "==> Initial cost: " << _initCost << std::endl;
+    std::cout << "==> Initial cost: " << _initCost << std::endl;
 
     debankAll();
-    // std::cout << "==> Cost after debanking: " << _currCost << std::endl;
+    std::cout << "==> Cost after debanking: " << _currCost << std::endl;
     resetSlack();
     _currCost = calCost();
-    // std::cout << "==> Cost after reset slack: " << _currCost << std::endl;
+    std::cout << "==> Cost after reset slack: " << _currCost << std::endl;
 
     // std::cout << _binMap->getNumOverMaxUtilBinsByComb() << " of them are over utilized by Combs." << std::endl;
     
-    // std::cout<<"Start to force directed placement"<<std::endl;
+    std::cout<<"Start to force directed placement"<<std::endl;
     forceDirectedPlacement();
-    // std::cout << "==> Cost after force directed placement: " << _currCost << std::endl;
+    std::cout << "==> Cost after force directed placement: " << _currCost << std::endl;
     resetSlack();
     _currCost = calCost();
-    // std::cout << "==> Cost after reset slack: " << _currCost << std::endl;
+    std::cout << "==> Cost after reset slack: " << _currCost << std::endl;
     
-    // std::cout << "Start clustering and banking" << std::endl;
+    std::cout << "Start clustering and banking" << std::endl;
     size_t prev_ffs_size;
-    // std::cout << "FFs size: " << _ffs.size() << std::endl;
+    std::cout << "FFs size: " << _ffs.size() << std::endl;
     do
     {
         constructFFsCLKDomain();
@@ -1291,32 +1291,32 @@ void Solver::solve()
             std::vector<std::vector<FF*>> cluster = clusteringFFs(i);
             greedyBanking(cluster);
         }
-        // std::cout << "FFs size after greedy banking: " << _ffs.size() << std::endl;
+        std::cout << "FFs size after greedy banking: " << _ffs.size() << std::endl;
     } while (prev_ffs_size != _ffs.size());
 
-    // std::cout << "==> Cost after clustering and banking: " << _currCost << std::endl;
+    std::cout << "==> Cost after clustering and banking: " << _currCost << std::endl;
     resetSlack();
     _currCost = calCost();
-    // std::cout << "==> Cost after reset slack: " << _currCost << std::endl;
+    std::cout << "==> Cost after reset slack: " << _currCost << std::endl;
     
-    // std::cout << "Start to force directed placement (second)" << std::endl;
+    std::cout << "Start to force directed placement (second)" << std::endl;
     forceDirectedPlacement();
-    // std::cout << "==> Cost after force directed placement (second): " << _currCost << std::endl;
+    std::cout << "==> Cost after force directed placement (second): " << _currCost << std::endl;
     resetSlack();
     _currCost = calCost();
-    // std::cout << "==> Cost after reset slack: " << _currCost << std::endl;
+    std::cout << "==> Cost after reset slack: " << _currCost << std::endl;
     
-    // std::cout<<"Start to legalize"<<std::endl;
+    std::cout<<"Start to legalize"<<std::endl;
     _legalizer->legalize();
     resetSlack();
     _currCost = calCost();
-    // std::cout << "==> Cost after reset slack: " << _currCost << std::endl;
+    std::cout << "==> Cost after reset slack: " << _currCost << std::endl;
 
-    // std::cout<<"Start to fine tune"<<std::endl;
+    std::cout<<"Start to fine tune"<<std::endl;
     fineTune();
     resetSlack();
     _currCost = calCost();
-    // std::cout << "==> Cost after reset slack: " << _currCost << std::endl;
+    std::cout << "==> Cost after reset slack: " << _currCost << std::endl;
 
     std::cout << "Initial cost: " << _initCost << std::endl;
     std::cout << "Cost after solving: " << _currCost << std::endl;
