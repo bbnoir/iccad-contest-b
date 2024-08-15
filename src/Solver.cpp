@@ -7,6 +7,10 @@
 #include "Site.h"
 #include "Bin.h"
 #include "Legalizer.h"
+#ifdef _OPENMP
+#include <omp.h>
+const int NUM_THREADS = 4;
+#endif
 
 // cost metrics
 double ALPHA;
@@ -941,6 +945,7 @@ void Solver::debankAll()
         const int y = ff->getY();
         const int clkDomain = ff->getClkDomain();
 
+        #pragma omp parallel for num_threads(NUM_THREADS)
         for(auto oneBitFF: oneBitFFs)
         {
             // calculate the cost difference if the FF is replaced by the 1 bit FF at the same position
@@ -961,6 +966,7 @@ void Solver::debankAll()
                 slackDiff += calCostChangeQDelay(q, diffQDelay);
             }
             double costDiff = areaDiff + powerDiff + slackDiff;
+            #pragma omp critical
             if (costDiff < minCost)
             {
                 minCost = costDiff;
