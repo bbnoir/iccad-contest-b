@@ -79,7 +79,8 @@ double Legalizer::placeRow(FF* ff, int subRowIndex, bool trial){
     for(int i = startX;i <= endX - ff->getWidth();i+=siteWidth){
         int move = 0;
         if(!_solver->placeable(ff, i, rowY, move)){
-            i += (ceil(1.*move/siteWidth)- 1)*siteWidth;
+            int delta = (ceil(1.*move/siteWidth)- 1)*siteWidth;
+            i += std::max(0, delta);
             continue;
         }
         // Calculate cost(displacement in Manhattan distance)
