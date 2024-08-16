@@ -962,6 +962,14 @@ void Solver::debankAll()
                 slackDiff += calCostMoveD(d, x + d->getX(), y + d->getY(), d_x, d_y);
                 slackDiff += calCostMoveQ(q, x + q->getX(), y + q->getY(), q_x, q_y);
                 slackDiff += calCostChangeQDelay(q, diffQDelay);
+                if (d->getFaninPin() == q)
+                {
+                    // loop
+                    const double old_slack = d->getSlack();
+                    const double diff_dist = abs(d_x - q_x) + abs(d_y - q_y) - abs(x + d->getX() - x - q->getX()) - abs(y + d->getY() - y - q->getY());
+                    const double new_slack = old_slack - DISP_DELAY * diff_dist;
+                    slackDiff += calDiffCost(old_slack, new_slack);
+                }
             }
             double costDiff = areaDiff + powerDiff + slackDiff;
             #pragma omp critical
@@ -988,6 +996,16 @@ void Solver::debankAll()
             updateCostMoveD(d, x + d->getX(), y + d->getY(), d_x, d_y);
             updateCostMoveQ(q, x + q->getX(), y + q->getY(), q_x, q_y);
             updateCostChangeQDelay(q, diffQDelay);
+            if (d->getFaninPin() == q)
+            {
+                // loop
+                const double old_slack = d->getSlack();
+                const double diff_dist = abs(d_x - q_x) + abs(d_y - q_y) - abs(x + d->getX() - x - q->getX()) - abs(y + d->getY() - y - q->getY());
+                const double new_slack = old_slack - DISP_DELAY * diff_dist;
+                d->modArrivalTime(DISP_DELAY * diff_dist);
+                d->setSlack(new_slack);
+                _currCost += calDiffCost(old_slack, new_slack);
+            }
             FF* newFF = new FF(x, y, makeUniqueName(), bestFF, dq, clkPin);
             newFF->setClkDomain(clkDomain);
             debankedFFs.push_back(newFF);
