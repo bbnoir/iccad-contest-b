@@ -376,6 +376,7 @@ void Solver::parse_input(std::string filename)
 
 double Solver::calCost()
 {
+    std::cout<<"--- Calculating cost ---\n";
     double tns = 0.0;
     double power = 0.0;
     double area = 0.0;
@@ -386,16 +387,11 @@ double Solver::calCost()
         power += ff->getPower();
         area += ff->getArea();
     }
-    std::cout<<"Alpha: "<<ALPHA<<" ";
-    std::cout<<"Beta: "<<BETA<<" ";
-    std::cout<<"Gamma: "<<GAMMA<<" ";
-    std::cout<<"Lambda: "<<LAMBDA<<std::endl;
-    std::cout<<"TNS: "<<tns<<std::endl;
-    std::cout<<"Power: "<<power<<std::endl;
-    std::cout<<"Area: "<<area<<std::endl;
-    std::cout<<"Num of bins violated: "<<numOfBinsViolated<<std::endl;
+    std::cout<<"TNS: "<<tns<<"\n";
+    std::cout<<"Power: "<<power<<"\n";
+    std::cout<<"Area: "<<area<<"\n";
+    std::cout<<"Num of bins violated: "<<numOfBinsViolated<<"\n";
     double cost = ALPHA * tns + BETA * power + GAMMA * area + LAMBDA * numOfBinsViolated;
-    // std::cout<<"Cost: "<<cost<<std::endl;
     return cost;
 }
 
@@ -1286,46 +1282,32 @@ void Solver::fineTune()
 
 void Solver::solve()
 {
+    std::cout<<"Alpha: "<<ALPHA<<" Beta: "<<BETA<<" Gamma: "<<GAMMA<<" Lambda: "<<LAMBDA<<"\n";
+
+    std::cout << "\nStart initial placement...\n";
     init_placement();
-    
-    _initCost = calCost();
-    _currCost = _initCost;
-    std::cout << "==> Initial cost: " << _initCost << std::endl;
+    _currCost = calCost();
+    _initCost = _currCost;
+    std::cout << "==> Initial cost: " << _initCost << "\n";
     saveState("Initial");
 
+    std::cout << "\nStart to debank...\n";
     debankAll();
-    std::cout << "==> Cost after debanking: " << _currCost << std::endl;
-    resetSlack();
     _currCost = calCost();
-    std::cout << "==> Cost after reset slack: " << _currCost << std::endl;
+    std::cout << "==> Cost after debanking: " << _currCost << "\n";
     saveState("Debank");
 
-    // _legalizer->legalize();
-    // resetSlack();
-    // _currCost = calCost();
-    // std::cout << "==> Cost after legalize: " << _currCost << std::endl;
-    // saveState("DebankLegalized", true);
-
-    // std::cout<<"Start to fine tune"<<std::endl;
-    // fineTune();
-    // resetSlack();
-    // _currCost = calCost();
-    // std::cout << "==> Cost after fine tune: " << _currCost << std::endl;
-    // saveState("DebankFineTuned", true);
-
-    std::cout << _binMap->getNumOverMaxUtilBinsByComb() << " of them are over utilized by Combs." << std::endl;
+    std::cout << _binMap->getNumOverMaxUtilBinsByComb() << " of them are over utilized by Combs.\n";
     
-    std::cout<<"Start to force directed placement"<<std::endl;
+    std::cout<<"\nStart to force directed placement...\n";
     forceDirectedPlacement();
-    std::cout << "==> Cost after force directed placement: " << _currCost << std::endl;
-    resetSlack();
     _currCost = calCost();
-    std::cout << "==> Cost after reset slack: " << _currCost << std::endl;
+    std::cout << "==> Cost after force directed placement: " << _currCost << "\n";
     saveState("ForceDirected");
     
-    std::cout << "Start clustering and banking" << std::endl;
+    std::cout << "\nStart clustering and banking...\n";
     size_t prev_ffs_size;
-    std::cout << "FFs size: " << _ffs.size() << std::endl;
+    std::cout << "Init FFs size: " << _ffs.size() << "\n";
     do
     {
         constructFFsCLKDomain();
@@ -1335,40 +1317,35 @@ void Solver::solve()
             std::vector<std::vector<FF*>> cluster = clusteringFFs(i);
             greedyBanking(cluster);
         }
-        std::cout << "FFs size after greedy banking: " << _ffs.size() << std::endl;
+        std::cout << "FFs size after greedy banking: " << _ffs.size() << "\n";
     } while (prev_ffs_size != _ffs.size());
-
-    std::cout << "==> Cost after clustering and banking: " << _currCost << std::endl;
-    resetSlack();
     _currCost = calCost();
-    std::cout << "==> Cost after reset slack: " << _currCost << std::endl;
+    std::cout << "==> Cost after clustering and banking: " << _currCost << "\n";
     saveState("Banking");
     
-    std::cout << "Start to force directed placement (second)" << std::endl;
+    std::cout << "\nStart to force directed placement (second)...\n";
     forceDirectedPlacement();
-    std::cout << "==> Cost after force directed placement (second): " << _currCost << std::endl;
-    resetSlack();
     _currCost = calCost();
-    std::cout << "==> Cost after reset slack: " << _currCost << std::endl;
+    std::cout << "==> Cost after force directed placement (second): " << _currCost << "\n";
     saveState("ForceDirected2");
     
-    std::cout<<"Start to legalize"<<std::endl;
+    std::cout<<"\nStart to legalize...\n";
     _legalizer->legalize();
     resetSlack();
     _currCost = calCost();
-    std::cout << "==> Cost after reset slack: " << _currCost << std::endl;
+    std::cout << "==> Cost after reset slack: " << _currCost << "\n";
     saveState("Legalize", true);
 
-    std::cout<<"Start to fine tune"<<std::endl;
+    std::cout<<"\nStart to fine tune...\n";
     fineTune();
     resetSlack();
     _currCost = calCost();
-    std::cout << "==> Cost after reset slack: " << _currCost << std::endl;
+    std::cout << "==> Cost after reset slack: " << _currCost << "\n";
     saveState("FineTune", true);
 
-    std::cout << "Cost after solving: " << _currCost << std::endl;
-    std::cout << "Cost difference: " << _currCost - _initCost << std::endl;
-    std::cout << "Cost difference percentage: " << (_currCost - _initCost) / _initCost * 100 << "%" << std::endl;
+    std::cout << "\nCost after solving: " << _currCost << "\n";
+    std::cout << "Cost difference: " << _currCost - _initCost << "\n";
+    std::cout << "Cost difference percentage: " << (_currCost - _initCost) / _initCost * 100 << "%\n";
 }
 
 /*
