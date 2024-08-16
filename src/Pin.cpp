@@ -237,7 +237,10 @@ double Pin::updateSlack(Pin* movedPrevStagePin, int sourceX, int sourceY, int ta
         std::cerr << "Error: only D pin can update slack" << std::endl;
         exit(1);
     }
-    const double old_arrival_time = _currCriticalArrivalTime;
+    if (_arrivalTimes.size() == 0)
+    {
+        return 0;
+    }
     // update the arrival time and re-sort the critical index
     std::vector<int> indexList = getPathIndex(movedPrevStagePin);
     for (int index : indexList)
@@ -285,13 +288,13 @@ double Pin::updateSlack(Pin* movedPrevStagePin, int sourceX, int sourceY, int ta
         _arrivalTimes.at(index) = new_arrival_time;
     }
     // update slack
-    _currCriticalArrivalTime = 0;
+    const double oldCriticalArrivalTime = _currCriticalArrivalTime;
+    _currCriticalArrivalTime = _arrivalTimes.at(0);
     for (auto arrival_time : _arrivalTimes)
     {
         _currCriticalArrivalTime = std::max(_currCriticalArrivalTime, arrival_time);
     }
-    const double new_arrival_time = _currCriticalArrivalTime;
-    _slack += (old_arrival_time - new_arrival_time);
+    _slack += (oldCriticalArrivalTime - _currCriticalArrivalTime);
     return _slack;
 }
 
@@ -410,4 +413,13 @@ bool Pin::checkCritical()
         max_arrival_time = std::max(max_arrival_time, arrival_time);
     }
     return max_arrival_time == _currCriticalArrivalTime;
+}
+
+void Pin::modArrivalTime(double delay)
+{
+    for (size_t i = 0; i < _arrivalTimes.size(); i++)
+    {
+        _arrivalTimes.at(i) += delay;
+    }
+    _currCriticalArrivalTime += delay;
 }

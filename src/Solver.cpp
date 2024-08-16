@@ -666,6 +666,7 @@ double Solver::updateCostMoveD(Pin* movedDPin, int sourceX, int sourceY, int tar
     const int diff_dist = abs(targetX - faninpin_x) + abs(targetY - faninpin_y) - abs(sourceX - faninpin_x) - abs(sourceY - faninpin_y);
     const double old_slack = movedDPin->getSlack();
     const double new_slack = old_slack - DISP_DELAY * diff_dist;
+    movedDPin->modArrivalTime(DISP_DELAY * diff_dist);
     movedDPin->setSlack(new_slack);
     double diff_cost = calDiffCost(old_slack, new_slack);
     _currCost += diff_cost;
@@ -681,7 +682,8 @@ double Solver::updateCostMoveQ(Pin* movedQPin, int sourceX, int sourceY, int tar
     double diff_cost = 0;
     for (auto nextStagePin : movedQPin->getNextStagePins())
     {
-        if (nextStagePin->getType() == PinType::FF_D && (nextStagePin->getCell() != movedQPin->getCell() || nextStagePin->getFaninPin() != movedQPin))
+        const bool isLoopback = nextStagePin->getCell() != nullptr && nextStagePin->getCell() == movedQPin->getCell() && nextStagePin->getFaninPin() == movedQPin;
+        if (!isLoopback && nextStagePin->getType() == PinType::FF_D)
         {
             const double next_old_slack = nextStagePin->getSlack();
             const double next_new_slack = nextStagePin->updateSlack(movedQPin, sourceX, sourceY, targetX, targetY);
