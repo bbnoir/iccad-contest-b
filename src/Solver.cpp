@@ -1288,7 +1288,7 @@ void Solver::solve()
         start = std::chrono::high_resolution_clock::now();
     }
 
-    std::cout<<"Start to force directed placement"<<std::endl;
+    std::cout<<"\nStart to force directed placement...\n";
     forceDirectedPlacement();
     _currCost = calCost();
     std::cout << "==> Cost after force directed placement: " << _currCost << "\n";
@@ -1330,7 +1330,7 @@ void Solver::solve()
         start = std::chrono::high_resolution_clock::now();
     }
 
-    std::cout << "Start to force directed placement (second)" << std::endl;
+    std::cout << "\nStart to force directed placement (second)...\n";
     forceDirectedPlacement();
     _currCost = calCost();
     std::cout << "==> Cost after force directed placement (second): " << _currCost << "\n";
@@ -1345,30 +1345,12 @@ void Solver::solve()
         start = std::chrono::high_resolution_clock::now();
     }
 
-    std::cout<<"Start to legalize"<<std::endl;
+    std::cout<<"\nStart to legalize...\n";
     _legalizer->legalize();
     resetSlack();
     _currCost = calCost();
     std::cout << "==> Cost after reset slack: " << _currCost << "\n";
     saveState("Legalize", true);
-
-    if(calTime)
-    {
-        end = std::chrono::high_resolution_clock::now();
-        std::chrono::duration<double> elapsed = end - start;
-        _stateTimes.push_back(elapsed.count());
-        std::cout << "Legalization time: " << elapsed.count() << "s" << std::endl;
-        start = std::chrono::high_resolution_clock::now();
-    }
-
-    if(calTime)
-    {
-        end = std::chrono::high_resolution_clock::now();
-        std::chrono::duration<double> elapsed = end - start;
-        _stateTimes.push_back(elapsed.count());
-        std::cout << "Legalization time: " << elapsed.count() << "s" << std::endl;
-        start = std::chrono::high_resolution_clock::now();
-    }
 
     if(calTime)
     {
@@ -1385,22 +1367,6 @@ void Solver::solve()
     _currCost = calCost();
     std::cout << "==> Cost after reset slack: " << _currCost << "\n";
     saveState("FineTune", true);
-
-    if(calTime)
-    {
-        end = std::chrono::high_resolution_clock::now();
-        std::chrono::duration<double> elapsed = end - start;
-        _stateTimes.push_back(elapsed.count());
-        std::cout << "Fine tuning time: " << elapsed.count() << "s" << std::endl;
-    }
-
-    if(calTime)
-    {
-        end = std::chrono::high_resolution_clock::now();
-        std::chrono::duration<double> elapsed = end - start;
-        _stateTimes.push_back(elapsed.count());
-        std::cout << "Fine tuning time: " << elapsed.count() << "s" << std::endl;
-    }
 
     if(calTime)
     {
