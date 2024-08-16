@@ -5,6 +5,8 @@
 
 int main(int argc, char* argv[])
 {
+    std::ios::sync_with_stdio(false);
+    std::cin.tie(nullptr);
     // format ./$binary_name <input.txt> <output.txt>
     if (argc != 3)
     {

@@ -102,7 +102,6 @@ double Legalizer::placeRow(FF* ff, int subRowIndex, bool trial){
 }
 
 void Legalizer::legalize(){
-    std::cout << "Legalizing..." << std::endl;
     _ffs = _solver->_ffs;
     double totalMove = 0;
     removeAllFFs();

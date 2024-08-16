@@ -7,6 +7,10 @@
 #include "Site.h"
 #include "Bin.h"
 #include "Legalizer.h"
+#ifdef _OPENMP
+#include <omp.h>
+const int NUM_THREADS = 4;
+#endif
 
 // cost metrics
 double ALPHA;
@@ -372,6 +376,7 @@ void Solver::parse_input(std::string filename)
 
 double Solver::calCost()
 {
+    std::cout<<"--- Calculating cost ---\n";
     double tns = 0.0;
     double power = 0.0;
     double area = 0.0;
@@ -382,17 +387,11 @@ double Solver::calCost()
         power += ff->getPower();
         area += ff->getArea();
     }
-    std::cout<<"------------- Cost Report -------------"<<std::endl;
-    std::cout<<"Alpha: "<<ALPHA<<" ";
-    std::cout<<"Beta: "<<BETA<<" ";
-    std::cout<<"Gamma: "<<GAMMA<<" ";
-    std::cout<<"Lambda: "<<LAMBDA<<std::endl;
-    std::cout<<"TNS: "<<tns<<std::endl;
-    std::cout<<"Power: "<<power<<std::endl;
-    std::cout<<"Area: "<<area<<std::endl;
-    std::cout<<"Num of bins violated: "<<numOfBinsViolated<<std::endl;
+    std::cout<<"TNS: "<<tns<<"\n";
+    std::cout<<"Power: "<<power<<"\n";
+    std::cout<<"Area: "<<area<<"\n";
+    std::cout<<"Num of bins violated: "<<numOfBinsViolated<<"\n";
     double cost = ALPHA * tns + BETA * power + GAMMA * area + LAMBDA * numOfBinsViolated;
-    // std::cout<<"Cost: "<<cost<<std::endl;
     return cost;
 }
 
@@ -663,6 +662,7 @@ double Solver::updateCostMoveD(Pin* movedDPin, int sourceX, int sourceY, int tar
     const int diff_dist = abs(targetX - faninpin_x) + abs(targetY - faninpin_y) - abs(sourceX - faninpin_x) - abs(sourceY - faninpin_y);
     const double old_slack = movedDPin->getSlack();
     const double new_slack = old_slack - DISP_DELAY * diff_dist;
+    movedDPin->modArrivalTime(DISP_DELAY * diff_dist);
     movedDPin->setSlack(new_slack);
     double diff_cost = calDiffCost(old_slack, new_slack);
     _currCost += diff_cost;
@@ -678,7 +678,8 @@ double Solver::updateCostMoveQ(Pin* movedQPin, int sourceX, int sourceY, int tar
     double diff_cost = 0;
     for (auto nextStagePin : movedQPin->getNextStagePins())
     {
-        if (nextStagePin->getType() == PinType::FF_D && (nextStagePin->getCell() != movedQPin->getCell() || nextStagePin->getFaninPin() != movedQPin))
+        const bool isLoopback = nextStagePin->getCell() != nullptr && nextStagePin->getCell() == movedQPin->getCell() && nextStagePin->getFaninPin() == movedQPin;
+        if (!isLoopback && nextStagePin->getType() == PinType::FF_D)
         {
             const double next_old_slack = nextStagePin->getSlack();
             const double next_new_slack = nextStagePin->updateSlack(movedQPin, sourceX, sourceY, targetX, targetY);
@@ -781,10 +782,6 @@ double Solver::updateCostBankFF(FF* ff1, FF* ff2, LibCell* targetFF, int targetX
         Pin* faninPin = inPin->getFaninPin();
         if (faninPin->getType() != PinType::INPUT && (faninPin->getCell() == ff1 || faninPin->getCell() == ff2))
         {
-            if (faninPin->getCell() == workingFF)
-            {
-                continue;
-            }
             int fanin_ff_pin_idx = 0;
             for (auto p : faninPin->getCell()->getOutputPins())
             {
@@ -825,10 +822,10 @@ double Solver::updateCostBankFF(FF* ff1, FF* ff2, LibCell* targetFF, int targetX
             if (nextStagePin->getType() == PinType::FF_D)
             {
                 Pin* faninPin = nextStagePin->getFaninPin();
-                if (faninPin->getCell() == workingFF)
+                if ((nextStagePin->getCell() == ff1 || nextStagePin->getCell() == ff2) && faninPin->getCell() == workingFF)
                 {
                     // already considered in the D pin
-                    break;
+                    continue;
                 }
                 else
                 {
@@ -898,7 +895,7 @@ void Solver::bankFFs(FF* ff1, FF* ff2, LibCell* targetFF)
     int target_x, target_y;
     findForceDirectedPlacementBankingFFs(ff1, ff2, target_x, target_y);
     updateCostBankFF(ff1, ff2, targetFF, target_x, target_y);
-    FF* bankedFF = new FF(target_x, target_x, makeUniqueName(), targetFF, dqPairs, clkPins);
+    FF* bankedFF = new FF(target_x, target_y, makeUniqueName(), targetFF, dqPairs, clkPins);
     bankedFF->setClkDomain(ff1->getClkDomain());
     addFF(bankedFF);
     placeCell(bankedFF);
@@ -942,6 +939,7 @@ void Solver::debankAll()
         const int y = ff->getY();
         const int clkDomain = ff->getClkDomain();
 
+        #pragma omp parallel for num_threads(NUM_THREADS)
         for(auto oneBitFF: oneBitFFs)
         {
             // calculate the cost difference if the FF is replaced by the 1 bit FF at the same position
@@ -960,8 +958,17 @@ void Solver::debankAll()
                 slackDiff += calCostMoveD(d, x + d->getX(), y + d->getY(), d_x, d_y);
                 slackDiff += calCostMoveQ(q, x + q->getX(), y + q->getY(), q_x, q_y);
                 slackDiff += calCostChangeQDelay(q, diffQDelay);
+                if (d->getFaninPin() == q)
+                {
+                    // loop
+                    const double old_slack = d->getSlack();
+                    const double diff_dist = abs(d_x - q_x) + abs(d_y - q_y) - abs(x + d->getX() - x - q->getX()) - abs(y + d->getY() - y - q->getY());
+                    const double new_slack = old_slack - DISP_DELAY * diff_dist;
+                    slackDiff += calDiffCost(old_slack, new_slack);
+                }
             }
             double costDiff = areaDiff + powerDiff + slackDiff;
+            #pragma omp critical
             if (costDiff < minCost)
             {
                 minCost = costDiff;
@@ -985,6 +992,16 @@ void Solver::debankAll()
             updateCostMoveD(d, x + d->getX(), y + d->getY(), d_x, d_y);
             updateCostMoveQ(q, x + q->getX(), y + q->getY(), q_x, q_y);
             updateCostChangeQDelay(q, diffQDelay);
+            if (d->getFaninPin() == q)
+            {
+                // loop
+                const double old_slack = d->getSlack();
+                const double diff_dist = abs(d_x - q_x) + abs(d_y - q_y) - abs(x + d->getX() - x - q->getX()) - abs(y + d->getY() - y - q->getY());
+                const double new_slack = old_slack - DISP_DELAY * diff_dist;
+                d->modArrivalTime(DISP_DELAY * diff_dist);
+                d->setSlack(new_slack);
+                _currCost += calDiffCost(old_slack, new_slack);
+            }
             FF* newFF = new FF(x, y, makeUniqueName(), bestFF, dq, clkPin);
             newFF->setClkDomain(clkDomain);
             debankedFFs.push_back(newFF);
@@ -1238,11 +1255,13 @@ void Solver::solve()
     auto start = std::chrono::high_resolution_clock::now();
     auto end = std::chrono::high_resolution_clock::now();
 
+    std::cout<<"Alpha: "<<ALPHA<<" Beta: "<<BETA<<" Gamma: "<<GAMMA<<" Lambda: "<<LAMBDA<<"\n";
+
+    std::cout << "\nStart initial placement...\n";
     init_placement();
-    
-    _initCost = calCost();
-    _currCost = _initCost;
-    std::cout << "==> Initial cost: " << _initCost << std::endl;
+    _currCost = calCost();
+    _initCost = _currCost;
+    std::cout << "==> Initial cost: " << _initCost << "\n";
     saveState("Initial");
 
     if(calTime)
@@ -1254,11 +1273,10 @@ void Solver::solve()
         start = std::chrono::high_resolution_clock::now();
     }
     
+    std::cout << "\nStart to debank...\n";
     debankAll();
-    std::cout << "==> Cost after debanking: " << _currCost << std::endl;
-    resetSlack();
     _currCost = calCost();
-    std::cout << "==> Cost after reset slack: " << _currCost << std::endl;
+    std::cout << "==> Cost after debanking: " << _currCost << "\n";
     saveState("Debank");
 
     if(calTime)
@@ -1272,10 +1290,8 @@ void Solver::solve()
 
     std::cout<<"Start to force directed placement"<<std::endl;
     forceDirectedPlacement();
-    std::cout << "==> Cost after force directed placement: " << _currCost << std::endl;
-    resetSlack();
     _currCost = calCost();
-    std::cout << "==> Cost after reset slack: " << _currCost << std::endl;
+    std::cout << "==> Cost after force directed placement: " << _currCost << "\n";
     saveState("ForceDirected");
 
     if(calTime)
@@ -1287,9 +1303,9 @@ void Solver::solve()
         start = std::chrono::high_resolution_clock::now();
     }
     
-    std::cout << "Start clustering and banking" << std::endl;
+    std::cout << "\nStart clustering and banking...\n";
     size_t prev_ffs_size;
-    std::cout << "FFs size: " << _ffs.size() << std::endl;
+    std::cout << "Init FFs size: " << _ffs.size() << "\n";
     do
     {
         constructFFsCLKDomain();
@@ -1299,13 +1315,10 @@ void Solver::solve()
             std::vector<std::vector<FF*>> cluster = clusteringFFs(i);
             greedyBanking(cluster);
         }
-        std::cout << "FFs size after greedy banking: " << _ffs.size() << std::endl;
+        std::cout << "FFs size after greedy banking: " << _ffs.size() << "\n";
     } while (prev_ffs_size != _ffs.size());
-
-    std::cout << "==> Cost after clustering and banking: " << _currCost << std::endl;
-    resetSlack();
     _currCost = calCost();
-    std::cout << "==> Cost after reset slack: " << _currCost << std::endl;
+    std::cout << "==> Cost after clustering and banking: " << _currCost << "\n";
     saveState("Banking");
 
     if(calTime)
@@ -1319,10 +1332,8 @@ void Solver::solve()
 
     std::cout << "Start to force directed placement (second)" << std::endl;
     forceDirectedPlacement();
-    std::cout << "==> Cost after force directed placement (second): " << _currCost << std::endl;
-    resetSlack();
     _currCost = calCost();
-    std::cout << "==> Cost after reset slack: " << _currCost << std::endl;
+    std::cout << "==> Cost after force directed placement (second): " << _currCost << "\n";
     saveState("ForceDirected2");
     
     if(calTime)
@@ -1338,7 +1349,7 @@ void Solver::solve()
     _legalizer->legalize();
     resetSlack();
     _currCost = calCost();
-    std::cout << "==> Cost after reset slack: " << _currCost << std::endl;
+    std::cout << "==> Cost after reset slack: " << _currCost << "\n";
     saveState("Legalize", true);
 
     if(calTime)
@@ -1350,11 +1361,29 @@ void Solver::solve()
         start = std::chrono::high_resolution_clock::now();
     }
 
-    std::cout<<"Start to fine tune"<<std::endl;
+    if(calTime)
+    {
+        end = std::chrono::high_resolution_clock::now();
+        std::chrono::duration<double> elapsed = end - start;
+        _stateTimes.push_back(elapsed.count());
+        std::cout << "Legalization time: " << elapsed.count() << "s" << std::endl;
+        start = std::chrono::high_resolution_clock::now();
+    }
+
+    if(calTime)
+    {
+        end = std::chrono::high_resolution_clock::now();
+        std::chrono::duration<double> elapsed = end - start;
+        _stateTimes.push_back(elapsed.count());
+        std::cout << "Legalization time: " << elapsed.count() << "s" << std::endl;
+        start = std::chrono::high_resolution_clock::now();
+    }
+
+    std::cout<<"\nStart to fine tune...\n";
     fineTune();
     resetSlack();
     _currCost = calCost();
-    std::cout << "==> Cost after reset slack: " << _currCost << std::endl;
+    std::cout << "==> Cost after reset slack: " << _currCost << "\n";
     saveState("FineTune", true);
 
     if(calTime)
@@ -1365,9 +1394,25 @@ void Solver::solve()
         std::cout << "Fine tuning time: " << elapsed.count() << "s" << std::endl;
     }
 
-    std::cout << "Cost after solving: " << _currCost << std::endl;
-    std::cout << "Cost difference: " << _currCost - _initCost << std::endl;
-    std::cout << "Cost difference percentage: " << (_currCost - _initCost) / _initCost * 100 << "%" << std::endl;
+    if(calTime)
+    {
+        end = std::chrono::high_resolution_clock::now();
+        std::chrono::duration<double> elapsed = end - start;
+        _stateTimes.push_back(elapsed.count());
+        std::cout << "Fine tuning time: " << elapsed.count() << "s" << std::endl;
+    }
+
+    if(calTime)
+    {
+        end = std::chrono::high_resolution_clock::now();
+        std::chrono::duration<double> elapsed = end - start;
+        _stateTimes.push_back(elapsed.count());
+        std::cout << "Fine tuning time: " << elapsed.count() << "s" << std::endl;
+    }
+
+    std::cout << "\nCost after solving: " << _currCost << "\n";
+    std::cout << "Cost difference: " << _currCost - _initCost << "\n";
+    std::cout << "Cost difference percentage: " << (_currCost - _initCost) / _initCost * 100 << "%\n";
 }
 
 /*
@@ -1693,10 +1738,6 @@ double Solver::cal_banking_gain(FF* ff1, FF* ff2, LibCell* targetFF)
         Pin* faninPin = inPin->getFaninPin();
         if (faninPin->getType() != PinType::INPUT && (faninPin->getCell() == ff1 || faninPin->getCell() == ff2))
         {
-            if(faninPin->getCell() == workingFF)
-            {
-                continue;
-            }
             int fanin_ff_pin_idx = 0;
             for (auto p : faninPin->getCell()->getOutputPins())
             {
@@ -1734,10 +1775,10 @@ double Solver::cal_banking_gain(FF* ff1, FF* ff2, LibCell* targetFF)
             if (nextStagePin->getType() == PinType::FF_D)
             {
                 Pin* faninPin = nextStagePin->getFaninPin();
-                if (faninPin != nullptr && (faninPin->getCell() == ff1 || faninPin->getCell() == ff2))
+                if ((nextStagePin->getCell() == ff1 || nextStagePin->getCell() == ff2) && faninPin->getCell() == workingFF)
                 {
                     // already considered in the D pin
-                    break;
+                    continue;
                 }
                 else
                 {
