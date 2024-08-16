@@ -1,10 +1,9 @@
-set -x
-
 testcase="testcase1_0812"
 input="cases/$testcase.txt"
 output="out/$testcase.out"
 log="log/$testcase.log"
 sanity="sanity_20240801"
+time_f="time -f \"\nReal:\t%E\nUser:\t%U\nSys:\t%S\""
 
-./bin/RUN "$input" "$output" | tee "$log"
+$time_f ./bin/RUN "$input" "$output" | tee "$log"
 ./"$sanity" "$input" "$output" | tee -a "$log"
