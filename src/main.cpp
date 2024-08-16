@@ -15,12 +15,11 @@ int main(int argc, char* argv[])
     std::string output_file = argv[2];
     Solver* solver = new Solver();
 
-    solver->parse_input(input_file);
+    solver->parse_input(input_file); // take about 10 seconds
     solver->solve();
     solver->check();
     solver->report();
     solver->dump_best(output_file);
-    // solver->dump(output_file);
 
     Renderer* renderer = new Renderer(solver);
     renderer->render();

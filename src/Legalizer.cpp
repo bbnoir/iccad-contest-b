@@ -160,11 +160,11 @@ void Legalizer::legalize(){
             placeRow(_ffs[orphans[i]], best_subrow, false);
         else
             std::cout<<"There is no place for orphan "<<orphans[i]<<std::endl;
+        // TODO: Bank again to legalize
     }
 
     std::cout << "Legalizing done." << std::endl;
-    std::cout << "Total movement: " << totalMove << std::endl;
-    // std::cout << (orphans.size()/double(_ffs.size()))*100 << "% FFs are orphan." << std::endl;
+    std::cout << "Total movement: " << totalMove << std::endl;\
 }
 
 void Legalizer::placeOrphan(FF* ff)
@@ -174,7 +174,7 @@ void Legalizer::placeOrphan(FF* ff)
     int searchDistance = (DIE_UP_RIGHT_Y-DIE_LOW_LEFT_Y)/10;
     int min_distance = -1;
     int max_distance = searchDistance;
-    while(best_subrow == -1){
+    while(best_subrow == -1 && max_distance < (DIE_UP_RIGHT_Y-DIE_LOW_LEFT_Y)){
         std::vector<int> nearSubRows = getNearSubRows(ff, min_distance, max_distance);
         for(long unsigned int j = 0;j < nearSubRows.size();j++){
             double cost = placeRow(ff, nearSubRows[j], true);

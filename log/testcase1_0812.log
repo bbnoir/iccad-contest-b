@@ -1,0 +1,270 @@
+File parsed successfully
+------------- Cost Report -------------
+Alpha: 10 Beta: 2000 Gamma: 0.002 Lambda: 10000
+TNS: 657.883
+Power: 457.185
+Area: 4.62506e+11
+Num of bins violated: 1
+==> Initial cost: 9.25943e+08
+Initialization time: 0.290645s
+==> Cost after debanking: 8.10348e+08
+------------- Cost Report -------------
+Alpha: 10 Beta: 2000 Gamma: 0.002 Lambda: 10000
+TNS: 4628.25
+Power: 621.505
+Area: 4.04524e+11
+Num of bins violated: 0
+==> Cost after reset slack: 8.10338e+08
+Debanking time: 140.899s
+Start to force directed placement
+Lock threshold: 19879
+Iteration: 1, Lock/Total: 0/19879
+Iteration: 2, Lock/Total: 14/19879
+Iteration: 3, Lock/Total: 7417/19879
+Iteration: 4, Lock/Total: 11959/19879
+Iteration: 5, Lock/Total: 13462/19879
+Iteration: 6, Lock/Total: 14311/19879
+Iteration: 7, Lock/Total: 14986/19879
+Iteration: 8, Lock/Total: 15173/19879
+Iteration: 9, Lock/Total: 15283/19879
+Iteration: 10, Lock/Total: 15343/19879
+Iteration: 11, Lock/Total: 15384/19879
+Iteration: 12, Lock/Total: 15420/19879
+Iteration: 13, Lock/Total: 15443/19879
+Iteration: 14, Lock/Total: 15455/19879
+Iteration: 15, Lock/Total: 15475/19879
+Iteration: 16, Lock/Total: 15488/19879
+Iteration: 17, Lock/Total: 15508/19879
+Iteration: 18, Lock/Total: 15534/19879
+Iteration: 19, Lock/Total: 15536/19879
+Iteration: 20, Lock/Total: 15541/19879
+Iteration: 21, Lock/Total: 15543/19879
+Iteration: 22, Lock/Total: 15544/19879
+Iteration: 23, Lock/Total: 15546/19879
+Iteration: 24, Lock/Total: 15548/19879
+Iteration: 25, Lock/Total: 15548/19879
+Iteration: 26, Lock/Total: 15549/19879
+Iteration: 27, Lock/Total: 15549/19879
+Iteration: 28, Lock/Total: 15553/19879
+Iteration: 29, Lock/Total: 15555/19879
+Iteration: 30, Lock/Total: 15556/19879
+Iteration: 31, Lock/Total: 15558/19879
+Iteration: 32, Lock/Total: 15560/19879
+Iteration: 33, Lock/Total: 15565/19879
+Iteration: 34, Lock/Total: 15566/19879
+Iteration: 35, Lock/Total: 15572/19879
+Iteration: 36, Lock/Total: 15574/19879
+Iteration: 37, Lock/Total: 15578/19879
+Iteration: 38, Lock/Total: 15584/19879
+Iteration: 39, Lock/Total: 15587/19879
+Iteration: 40, Lock/Total: 15590/19879
+Iteration: 41, Lock/Total: 15592/19879
+Iteration: 42, Lock/Total: 15597/19879
+Iteration: 43, Lock/Total: 15600/19879
+Iteration: 44, Lock/Total: 15602/19879
+Iteration: 45, Lock/Total: 15605/19879
+Iteration: 46, Lock/Total: 15612/19879
+Iteration: 47, Lock/Total: 15617/19879
+Iteration: 48, Lock/Total: 15620/19879
+Iteration: 49, Lock/Total: 15622/19879
+Iteration: 50, Lock/Total: 15625/19879
+Iteration: 51, Lock/Total: 15627/19879
+Iteration: 52, Lock/Total: 15628/19879
+Iteration: 53, Lock/Total: 15630/19879
+Iteration: 54, Lock/Total: 15631/19879
+Iteration: 55, Lock/Total: 15631/19879
+Iteration: 56, Lock/Total: 15631/19879
+Iteration: 57, Lock/Total: 15631/19879
+Iteration: 58, Lock/Total: 15631/19879
+Iteration: 59, Lock/Total: 15631/19879
+Iteration: 60, Lock/Total: 15631/19879
+Iteration: 61, Lock/Total: 15631/19879
+Iteration: 62, Lock/Total: 15631/19879
+Iteration: 63, Lock/Total: 15631/19879
+Iteration: 64, Lock/Total: 15631/19879
+Iteration: 65, Lock/Total: 15631/19879
+Iteration: 66, Lock/Total: 15631/19879
+Iteration: 67, Lock/Total: 15631/19879
+Iteration: 68, Lock/Total: 15631/19879
+==> Cost after force directed placement: 8.12161e+08
+------------- Cost Report -------------
+Alpha: 10 Beta: 2000 Gamma: 0.002 Lambda: 10000
+TNS: 180539
+Power: 621.505
+Area: 4.04524e+11
+Num of bins violated: 250
+==> Cost after reset slack: 8.14597e+08
+Force directed placement time: 46.4384s
+Start clustering and banking
+FFs size: 19879
+FFs size after greedy banking: 17590
+FFs size after greedy banking: 17149
+FFs size after greedy banking: 17130
+FFs size after greedy banking: 17129
+FFs size after greedy banking: 17129
+==> Cost after clustering and banking: 8.00653e+08
+------------- Cost Report -------------
+Alpha: 10 Beta: 2000 Gamma: 0.002 Lambda: 10000
+TNS: 4.48203e+06
+Power: 538.965
+Area: 3.97687e+11
+Num of bins violated: 202
+==> Cost after reset slack: 8.43292e+08
+Clustering and banking time: 112.447s
+Start to force directed placement (second)
+Lock threshold: 17129
+Iteration: 1, Lock/Total: 0/17129
+Iteration: 2, Lock/Total: 4551/17129
+Iteration: 3, Lock/Total: 5172/17129
+Iteration: 4, Lock/Total: 10795/17129
+Iteration: 5, Lock/Total: 11706/17129
+Iteration: 6, Lock/Total: 12387/17129
+Iteration: 7, Lock/Total: 12672/17129
+Iteration: 8, Lock/Total: 12929/17129
+Iteration: 9, Lock/Total: 13002/17129
+Iteration: 10, Lock/Total: 13038/17129
+Iteration: 11, Lock/Total: 13066/17129
+Iteration: 12, Lock/Total: 13097/17129
+Iteration: 13, Lock/Total: 13118/17129
+Iteration: 14, Lock/Total: 13123/17129
+Iteration: 15, Lock/Total: 13125/17129
+Iteration: 16, Lock/Total: 13128/17129
+Iteration: 17, Lock/Total: 13130/17129
+Iteration: 18, Lock/Total: 13133/17129
+Iteration: 19, Lock/Total: 13133/17129
+Iteration: 20, Lock/Total: 13133/17129
+Iteration: 21, Lock/Total: 13135/17129
+Iteration: 22, Lock/Total: 13137/17129
+Iteration: 23, Lock/Total: 13137/17129
+Iteration: 24, Lock/Total: 13140/17129
+Iteration: 25, Lock/Total: 13141/17129
+Iteration: 26, Lock/Total: 13145/17129
+Iteration: 27, Lock/Total: 13150/17129
+Iteration: 28, Lock/Total: 13152/17129
+Iteration: 29, Lock/Total: 13152/17129
+Iteration: 30, Lock/Total: 13154/17129
+Iteration: 31, Lock/Total: 13155/17129
+Iteration: 32, Lock/Total: 13156/17129
+Iteration: 33, Lock/Total: 13156/17129
+Iteration: 34, Lock/Total: 13156/17129
+Iteration: 35, Lock/Total: 13156/17129
+Iteration: 36, Lock/Total: 13159/17129
+Iteration: 37, Lock/Total: 13159/17129
+Iteration: 38, Lock/Total: 13161/17129
+Iteration: 39, Lock/Total: 13163/17129
+Iteration: 40, Lock/Total: 13164/17129
+Iteration: 41, Lock/Total: 13164/17129
+Iteration: 42, Lock/Total: 13164/17129
+Iteration: 43, Lock/Total: 13164/17129
+Iteration: 44, Lock/Total: 13164/17129
+Iteration: 45, Lock/Total: 13164/17129
+Iteration: 46, Lock/Total: 13164/17129
+Iteration: 47, Lock/Total: 13164/17129
+Iteration: 48, Lock/Total: 13164/17129
+==> Cost after force directed placement (second): 8.00526e+08
+------------- Cost Report -------------
+Alpha: 10 Beta: 2000 Gamma: 0.002 Lambda: 10000
+TNS: 194436
+Power: 538.965
+Area: 3.97687e+11
+Num of bins violated: 242
+==> Cost after reset slack: 8.00816e+08
+Force directed placement (second) time: 37.2026s
+Start to legalize
+Legalizing...
+Legalizing done.
+Total movement: 4.65099e+08
+------------- Cost Report -------------
+Alpha: 10 Beta: 2000 Gamma: 0.002 Lambda: 10000
+TNS: 364829
+Power: 538.965
+Area: 3.97687e+11
+Num of bins violated: 1
+==> Cost after reset slack: 8.0011e+08
+Legalization time: 79.3768s
+Start to fine tune
+Fine tuning...
+Bin Grid: 45x45
+Fine tuning: 0/41
+Fine tuning: 1/41
+Fine tuning: 2/41
+Fine tuning: 3/41
+Fine tuning: 4/41
+Fine tuning: 5/41
+Fine tuning: 6/41
+Fine tuning: 7/41
+Fine tuning: 8/41
+Fine tuning: 9/41
+Fine tuning: 10/41
+Fine tuning: 11/41
+Fine tuning: 12/41
+Fine tuning: 13/41
+Fine tuning: 14/41
+Fine tuning: 15/41
+Fine tuning: 16/41
+Fine tuning: 17/41
+Fine tuning: 18/41
+Fine tuning: 19/41
+Fine tuning: 20/41
+Fine tuning: 21/41
+Fine tuning: 22/41
+Fine tuning: 23/41
+Fine tuning: 24/41
+Fine tuning: 25/41
+Fine tuning: 26/41
+Fine tuning: 27/41
+Fine tuning: 28/41
+Fine tuning: 29/41
+Fine tuning: 30/41
+Fine tuning: 31/41
+Fine tuning: 32/41
+Fine tuning: 33/41
+Fine tuning: 34/41
+Fine tuning: 35/41
+Fine tuning: 36/41
+Fine tuning: 37/41
+Fine tuning: 38/41
+Fine tuning: 39/41
+Fine tuning: 40/41
+Cost difference: -12253.3
+------------- Cost Report -------------
+Alpha: 10 Beta: 2000 Gamma: 0.002 Lambda: 10000
+TNS: 364603
+Power: 538.965
+Area: 3.97687e+11
+Num of bins violated: 0
+==> Cost after reset slack: 8.00098e+08
+Fine tuning time: 30.7161s
+Cost after solving: 8.00098e+08
+Cost difference: -1.25845e+08
+Cost difference percentage: -13.591%
+============= Start checking =============
+Check FF in Die
+Check FF on Site
+Check Overlap
+================= Success ================
+
+------------------------------------------------------------------
+----------------------------- Report -----------------------------
+------------------------------------------------------------------
+Initial          		 9.259429e+08	100.00%	0.29s
+Debank           		 8.103377e+08	87.51%	140.90s
+ForceDirected    		 8.145968e+08	87.97%	46.44s
+Banking          		 8.432921e+08	91.07%	112.45s
+ForceDirected2   		 8.008162e+08	86.49%	37.20s
+Legalize         		 8.001101e+08	86.41%	79.38s
+FineTune         		 8.000978e+08	86.41%	30.72s *
+----------------------------------------------------------
+Renderer closed
+Read testcase...
+Read output...
+Check Inst <name> <libcell> <x> <y> format...
+Check From/pin map To/pin  format...
+Start checking...
+check libType
+check pins are in design
+check pins are correct connected
+check same CLK for banking
+check netlist... step1
+check netlist... step2
+Checking pass!

@@ -1,2 +1,0 @@
-set -x
-./sanity_20240801 cases/sampleCase2 out/sampleOut2

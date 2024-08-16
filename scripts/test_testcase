@@ -1,2 +1,0 @@
-set -x
-./sanity_20240801 cases/testcase1_0614.txt out/testcase1_out.txt

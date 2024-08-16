@@ -382,6 +382,7 @@ double Solver::calCost()
         power += ff->getPower();
         area += ff->getArea();
     }
+    std::cout<<"------------- Cost Report -------------"<<std::endl;
     std::cout<<"Alpha: "<<ALPHA<<" ";
     std::cout<<"Beta: "<<BETA<<" ";
     std::cout<<"Gamma: "<<GAMMA<<" ";
@@ -908,7 +909,7 @@ void Solver::bankFFs(FF* ff1, FF* ff2, LibCell* targetFF)
 
 std::string Solver::makeUniqueName()
 {
-    std::string newName = "A" + std::to_string(uniqueNameCounter++);
+    std::string newName = "APPLEBUSTER" + std::to_string(uniqueNameCounter++);
     return newName;
 }
 
@@ -1002,37 +1003,6 @@ void Solver::debankAll()
         placeCell(ff);
     }
 }
-
-void Solver::forceDirectedPlaceFF(FF* ff)
-{
-    // calculate the force
-    double x_sum = 0.0;
-    double y_sum = 0.0;
-    int num_pins = 0;
-    for (auto inPin : ff->getInputPins())
-    {
-        Pin* fanin = inPin->getFaninPin();
-        x_sum += fanin->getGlobalX();
-        y_sum += fanin->getGlobalY();
-        num_pins++;
-    }
-    for (auto outPin : ff->getOutputPins())
-    {
-        for (auto fanout : outPin->getFanoutPins())
-        {
-            x_sum += fanout->getGlobalX();
-            y_sum += fanout->getGlobalY();
-            num_pins++;            
-        }
-    }
-    int x_avg = x_sum / num_pins;
-    int y_avg = y_sum / num_pins;
-    // adjust it to fit the placement rows
-    Site* nearest_site = _siteMap->getNearestSite(x_avg, y_avg);
-    // move the ff
-    moveCell(ff, nearest_site->getX(), nearest_site->getY());
-}
-
 /*
 Calculate the cost difference given the old and new slack, the return value should be "added" to the current cost
 */
@@ -1264,6 +1234,10 @@ void Solver::fineTune()
 
 void Solver::solve()
 {
+    bool calTime = true;
+    auto start = std::chrono::high_resolution_clock::now();
+    auto end = std::chrono::high_resolution_clock::now();
+
     init_placement();
     
     _initCost = calCost();
@@ -1271,6 +1245,15 @@ void Solver::solve()
     std::cout << "==> Initial cost: " << _initCost << std::endl;
     saveState("Initial");
 
+    if(calTime)
+    {
+        end = std::chrono::high_resolution_clock::now();
+        std::chrono::duration<double> elapsed = end - start;
+        _stateTimes.push_back(elapsed.count());
+        std::cout << "Initialization time: " << elapsed.count() << "s" << std::endl;
+        start = std::chrono::high_resolution_clock::now();
+    }
+    
     debankAll();
     std::cout << "==> Cost after debanking: " << _currCost << std::endl;
     resetSlack();
@@ -1278,21 +1261,15 @@ void Solver::solve()
     std::cout << "==> Cost after reset slack: " << _currCost << std::endl;
     saveState("Debank");
 
-    // _legalizer->legalize();
-    // resetSlack();
-    // _currCost = calCost();
-    // std::cout << "==> Cost after legalize: " << _currCost << std::endl;
-    // saveState("DebankLegalized", true);
+    if(calTime)
+    {
+        end = std::chrono::high_resolution_clock::now();
+        std::chrono::duration<double> elapsed = end - start;
+        _stateTimes.push_back(elapsed.count());
+        std::cout << "Debanking time: " << elapsed.count() << "s" << std::endl;
+        start = std::chrono::high_resolution_clock::now();
+    }
 
-    // std::cout<<"Start to fine tune"<<std::endl;
-    // fineTune();
-    // resetSlack();
-    // _currCost = calCost();
-    // std::cout << "==> Cost after fine tune: " << _currCost << std::endl;
-    // saveState("DebankFineTuned", true);
-
-    std::cout << _binMap->getNumOverMaxUtilBinsByComb() << " of them are over utilized by Combs." << std::endl;
-    
     std::cout<<"Start to force directed placement"<<std::endl;
     forceDirectedPlacement();
     std::cout << "==> Cost after force directed placement: " << _currCost << std::endl;
@@ -1300,6 +1277,15 @@ void Solver::solve()
     _currCost = calCost();
     std::cout << "==> Cost after reset slack: " << _currCost << std::endl;
     saveState("ForceDirected");
+
+    if(calTime)
+    {
+        end = std::chrono::high_resolution_clock::now();
+        std::chrono::duration<double> elapsed = end - start;
+        _stateTimes.push_back(elapsed.count());
+        std::cout << "Force directed placement time: " << elapsed.count() << "s" << std::endl;
+        start = std::chrono::high_resolution_clock::now();
+    }
     
     std::cout << "Start clustering and banking" << std::endl;
     size_t prev_ffs_size;
@@ -1321,7 +1307,16 @@ void Solver::solve()
     _currCost = calCost();
     std::cout << "==> Cost after reset slack: " << _currCost << std::endl;
     saveState("Banking");
-    
+
+    if(calTime)
+    {
+        end = std::chrono::high_resolution_clock::now();
+        std::chrono::duration<double> elapsed = end - start;
+        _stateTimes.push_back(elapsed.count());
+        std::cout << "Clustering and banking time: " << elapsed.count() << "s" << std::endl;
+        start = std::chrono::high_resolution_clock::now();
+    }
+
     std::cout << "Start to force directed placement (second)" << std::endl;
     forceDirectedPlacement();
     std::cout << "==> Cost after force directed placement (second): " << _currCost << std::endl;
@@ -1330,6 +1325,15 @@ void Solver::solve()
     std::cout << "==> Cost after reset slack: " << _currCost << std::endl;
     saveState("ForceDirected2");
     
+    if(calTime)
+    {
+        end = std::chrono::high_resolution_clock::now();
+        std::chrono::duration<double> elapsed = end - start;
+        _stateTimes.push_back(elapsed.count());
+        std::cout << "Force directed placement (second) time: " << elapsed.count() << "s" << std::endl;
+        start = std::chrono::high_resolution_clock::now();
+    }
+
     std::cout<<"Start to legalize"<<std::endl;
     _legalizer->legalize();
     resetSlack();
@@ -1337,12 +1341,29 @@ void Solver::solve()
     std::cout << "==> Cost after reset slack: " << _currCost << std::endl;
     saveState("Legalize", true);
 
+    if(calTime)
+    {
+        end = std::chrono::high_resolution_clock::now();
+        std::chrono::duration<double> elapsed = end - start;
+        _stateTimes.push_back(elapsed.count());
+        std::cout << "Legalization time: " << elapsed.count() << "s" << std::endl;
+        start = std::chrono::high_resolution_clock::now();
+    }
+
     std::cout<<"Start to fine tune"<<std::endl;
     fineTune();
     resetSlack();
     _currCost = calCost();
     std::cout << "==> Cost after reset slack: " << _currCost << std::endl;
     saveState("FineTune", true);
+
+    if(calTime)
+    {
+        end = std::chrono::high_resolution_clock::now();
+        std::chrono::duration<double> elapsed = end - start;
+        _stateTimes.push_back(elapsed.count());
+        std::cout << "Fine tuning time: " << elapsed.count() << "s" << std::endl;
+    }
 
     std::cout << "Cost after solving: " << _currCost << std::endl;
     std::cout << "Cost difference: " << _currCost - _initCost << std::endl;
@@ -1531,21 +1552,20 @@ std::vector<std::vector<FF*>> Solver::clusteringFFs(size_t clkdomain_idx)
             int idx = neighbors[j];
             if (visited[idx])
                 continue;
-            if(!visited[idx])
+            
+            visited[idx] = true;
+            std::vector<int> new_neighbors = regionQuery(FFs, idx, (DIE_UP_RIGHT_X - DIE_LOW_LEFT_X) / 1000);
+            if(new_neighbors.size() >= 2)
             {
-                visited[idx] = true;
-                std::vector<int> new_neighbors = regionQuery(FFs, idx, (DIE_UP_RIGHT_X - DIE_LOW_LEFT_X) / 1000);
-                if(new_neighbors.size() >= 2)
+                for(size_t k = 0; k < new_neighbors.size(); k++)
                 {
-                    for(size_t k = 0; k < new_neighbors.size(); k++)
+                    if(std::find(neighbors.begin(), neighbors.end(), new_neighbors[k]) == neighbors.end())
                     {
-                        if(std::find(neighbors.begin(), neighbors.end(), new_neighbors[k]) == neighbors.end())
-                        {
-                            neighbors.push_back(new_neighbors[k]);
-                        }
+                        neighbors.push_back(new_neighbors[k]);
                     }
                 }
             }
+        
             if(std::find(cluster.begin(), cluster.end(), FFs[idx]) == cluster.end())
             {
                 cluster.push_back(FFs[idx]);
@@ -1981,21 +2001,25 @@ void Solver::saveState(std::string stateName, bool legal)
 void Solver::report()
 {
     std::cout << std::endl;
-    std::cout << "----------------------------------------------------------" << std::endl;
-    std::cout << "------------------------- Report -------------------------" << std::endl;
-    std::cout << "----------------------------------------------------------" << std::endl;
+    std::cout << "------------------------------------------------------------------" << std::endl;
+    std::cout << "----------------------------- Report -----------------------------" << std::endl;
+    std::cout << "------------------------------------------------------------------" << std::endl;
     double firstCost = _stateCosts[0];
     for (size_t i = 0; i < _stateNames.size(); i++)
     {
         std::cout << std::setw(16) << std::left << _stateNames[i] << " \t\t " << std::right << std::scientific << std::setprecision(6) << _stateCosts[i];
         std::cout << "\t" << std::fixed << std::setprecision(2) << _stateCosts[i] / firstCost * 100 << "%";
+        if(_stateTimes.size() > i)
+        {
+            std::cout << "\t" << std::fixed << std::setprecision(2) << _stateTimes[i] << "s";
+        }
         if (_bestStateIdx == i)
         {
             std::cout << " *";
         }
         std::cout << std::endl;
     }
-    std::cout << "----------------------------------------------------------" << std::endl;
+    std::cout << "------------------------------------------------------------------" << std::endl;
 }
 
 void Solver::dump_best(std::string filename) const

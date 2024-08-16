@@ -9,6 +9,7 @@
 #include <cmath>
 #include <climits>
 #include <iomanip>
+#include <chrono>
 #include "param.h"
 #include "util.h"
 
@@ -127,7 +128,6 @@ class Solver
         // 1. Debank all FFs
         void debankAll();
         // 2. Force-directed placement
-        void forceDirectedPlaceFF(FF* ff);
         void forceDirectedPlaceFFLock(const int ff_idx, std::vector<bool>& locked, std::vector<char>& lock_cnt, int& lock_num);
         void forceDirectedPlacement();
         void findForceDirectedPlacementBankingFFs(FF* ff1, FF* ff2, int& result_x, int& result_y);
@@ -144,6 +144,7 @@ class Solver
         // State saving
         std::vector<std::string> _stateNames;
         std::vector<double> _stateCosts;
+        std::vector<double> _stateTimes;
         std::vector<std::vector<std::string>> _stateDumps;
         std::vector<bool> _stateLegal;
         size_t _bestStateIdx;

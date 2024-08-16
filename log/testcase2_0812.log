@@ -1,0 +1,78 @@
+File parsed successfully
+------------- Cost Report -------------
+Alpha: 10 Beta: 400 Gamma: 8e-07 Lambda: 10000
+TNS: 84.2457
+Power: 2116.4
+Area: 1.03471e+12
+Num of bins violated: 0
+==> Initial cost: 1.67517e+06
+Initialization time: 0.586938s
+==> Cost after debanking: 1.46092e+06
+------------- Cost Report -------------
+Alpha: 10 Beta: 400 Gamma: 8e-07 Lambda: 10000
+TNS: 1084.7
+Power: 2116.4
+Area: 7.54397e+11
+Num of bins violated: 0
+==> Cost after reset slack: 1.46092e+06
+Debanking time: 144.363s
+Start to force directed placement
+Lock threshold: 21164
+Iteration: 1, Lock/Total: 0/21164
+Iteration: 2, Lock/Total: 9/21164
+Iteration: 3, Lock/Total: 5495/21164
+Iteration: 4, Lock/Total: 10901/21164
+Iteration: 5, Lock/Total: 12132/21164
+Iteration: 6, Lock/Total: 12481/21164
+Iteration: 7, Lock/Total: 12694/21164
+Iteration: 8, Lock/Total: 12827/21164
+Iteration: 9, Lock/Total: 12918/21164
+Iteration: 10, Lock/Total: 12956/21164
+Iteration: 11, Lock/Total: 13000/21164
+Iteration: 12, Lock/Total: 13027/21164
+Iteration: 13, Lock/Total: 13039/21164
+Iteration: 14, Lock/Total: 13046/21164
+Iteration: 15, Lock/Total: 13060/21164
+Iteration: 16, Lock/Total: 13070/21164
+Iteration: 17, Lock/Total: 13074/21164
+Iteration: 18, Lock/Total: 13076/21164
+Iteration: 19, Lock/Total: 13081/21164
+Iteration: 20, Lock/Total: 13084/21164
+Iteration: 21, Lock/Total: 13087/21164
+Iteration: 22, Lock/Total: 13087/21164
+Iteration: 23, Lock/Total: 13090/21164
+Iteration: 24, Lock/Total: 13091/21164
+Iteration: 25, Lock/Total: 13097/21164
+Iteration: 26, Lock/Total: 13099/21164
+Iteration: 27, Lock/Total: 13101/21164
+Iteration: 28, Lock/Total: 13104/21164
+Iteration: 29, Lock/Total: 13106/21164
+Iteration: 30, Lock/Total: 13107/21164
+Iteration: 31, Lock/Total: 13108/21164
+Iteration: 32, Lock/Total: 13108/21164
+Iteration: 33, Lock/Total: 13109/21164
+Iteration: 34, Lock/Total: 13109/21164
+Iteration: 35, Lock/Total: 13109/21164
+Iteration: 36, Lock/Total: 13109/21164
+Iteration: 37, Lock/Total: 13111/21164
+Iteration: 38, Lock/Total: 13112/21164
+Iteration: 39, Lock/Total: 13112/21164
+Iteration: 40, Lock/Total: 13112/21164
+Iteration: 41, Lock/Total: 13115/21164
+Iteration: 42, Lock/Total: 13117/21164
+Iteration: 43, Lock/Total: 13118/21164
+Iteration: 44, Lock/Total: 13118/21164
+Iteration: 45, Lock/Total: 13118/21164
+Iteration: 46, Lock/Total: 13118/21164
+==> Cost after force directed placement: 2.19224e+06
+------------- Cost Report -------------
+Alpha: 10 Beta: 400 Gamma: 8e-07 Lambda: 10000
+TNS: 68646.4
+Power: 2116.4
+Area: 7.54397e+11
+Num of bins violated: 477
+==> Cost after reset slack: 6.90654e+06
+Force directed placement time: 30.1604s
+Start clustering and banking
+FFs size: 21164
+FFs size after greedy banking: 14091
