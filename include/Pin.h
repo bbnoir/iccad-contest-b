@@ -61,7 +61,7 @@ class Pin
         void addPrevStagePin(Pin* pin, std::vector<Pin*> path);
         void addNextStagePin(Pin* pin, std::vector<Pin*> path);
         void initArrivalTime();
-        void resetArrivalTime();
+        void resetArrivalTime(bool check = false);
         std::vector<int> getPathIndex(Pin* prevStagePin);
         double calSlack(Pin* movedPrevStagePin, int sourceX, int sourceY, int targetX, int targetY);
         double calSlackQ(Pin* changeQPin, double diffQDelay);

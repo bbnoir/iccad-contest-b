@@ -117,8 +117,13 @@ void Pin::initArrivalTime()
 /*
 Reset the arrival time of all paths from previous stage pins to this pin
 */
-void Pin::resetArrivalTime()
+void Pin::resetArrivalTime(bool check)
 {
+    std::vector<double> tempArrivalTimes;
+    if (check)
+    {
+        tempArrivalTimes = _arrivalTimes;
+    }
     _arrivalTimes.clear();
     const size_t numPaths = _prevStagePins.size();
     for (size_t i = 0; i < numPaths; i++)
@@ -142,6 +147,31 @@ void Pin::resetArrivalTime()
     for (auto arrival_time : _arrivalTimes)
     {
         _currCriticalArrivalTime = std::max(_currCriticalArrivalTime, arrival_time);
+    }
+    if (check)
+    {
+        for (size_t i = 0; i < tempArrivalTimes.size(); i++)
+        {
+            if (std::abs(tempArrivalTimes.at(i) - _arrivalTimes.at(i)) > 1e-6)
+            {
+                std::cout << "=== Warning: arrival time after reset is not the same as before" << std::endl;
+                std::cout << "Pin: " << this->getCell()->getInstName() << "/" << this->getName() << " (" << this->getOriginalName() << ")" << std::endl;
+                std::cout << "Path: ";
+                for (Pin* pin : _pathToPrevStagePins.at(i))
+                {
+                    if (pin->getCell() != nullptr)
+                    {
+                        std::cout << pin->getCell()->getInstName() << "/";
+                    }
+                    std::cout << pin->getName() << "(" << pin->getOriginalName() << ")(" << pin->getGlobalX() << "," << pin->getGlobalY() << ") <- ";
+                }
+                std::cout << std::endl;
+                std::cout << "Old arrival time: " << tempArrivalTimes.at(i) << std::endl;
+                std::cout << "New arrival time: " << _arrivalTimes.at(i) << std::endl;
+                std::cout << "Difference: " << tempArrivalTimes.at(i) - _arrivalTimes.at(i) << std::endl;
+                exit(1);
+            }
+        }
     }
 }
 
@@ -219,6 +249,39 @@ double Pin::updateSlack(Pin* movedPrevStagePin, int sourceX, int sourceY, int ta
         const double old_arrival_time = _arrivalTimes.at(index);
         const double diff_arrival_time = (abs(sourceX - secondLastPinX) + abs(sourceY - secondLastPinY) - abs(targetX - secondLastPinX) - abs(targetY - secondLastPinY)) * DISP_DELAY;
         const double new_arrival_time = old_arrival_time - diff_arrival_time;
+        if (new_arrival_time < 0)
+        {
+            std::cout << "==== Error: negative arrival time" << std::endl;
+            std::cout << "New arrival time: " << new_arrival_time << std::endl;
+            for (size_t i = 0; i < _arrivalTimes.size(); i++)
+            {
+                std::cout << "Path: ";
+                for (Pin* pin : _pathToPrevStagePins.at(i))
+                {
+                    if (pin->getCell() != nullptr)
+                    {
+                        std::cout << pin->getCell()->getInstName() << "/";
+                    }
+                    std::cout << pin->getName() << "(" << pin->getOriginalName() << ")(" << pin->getGlobalX() << "," << pin->getGlobalY() << ") <- ";
+                }
+                std::cout << "Arrival time: " << _arrivalTimes.at(i) << std::endl;
+            }
+            this->resetArrivalTime(true);
+            for (size_t i = 0; i < _arrivalTimes.size(); i++)
+            {
+                std::cout << "Path: ";
+                for (Pin* pin : _pathToPrevStagePins.at(i))
+                {
+                    if (pin->getCell() != nullptr)
+                    {
+                        std::cout << pin->getCell()->getInstName() << "/";
+                    }
+                    std::cout << pin->getName() << "(" << pin->getOriginalName() << ")(" << pin->getGlobalX() << "," << pin->getGlobalY() << ") <- ";
+                }
+                std::cout << "Arrival time: " << _arrivalTimes.at(i) << std::endl;
+            }
+            exit(1);
+        }
         _arrivalTimes.at(index) = new_arrival_time;
     }
     // update slack
@@ -299,21 +362,38 @@ void Pin::resetSlack(bool check)
     {
         if (!check)
         {
-            this->resetArrivalTime();
+            this->resetArrivalTime(false);
             _slack = _initSlack + (_initCriticalArrivalTime - _currCriticalArrivalTime);
         }
         else
         {
             double old_slack = _slack;
-            this->resetArrivalTime();
+            this->resetArrivalTime(true);
             _slack = _initSlack + (_initCriticalArrivalTime - _currCriticalArrivalTime);
             if (std::abs(old_slack - _slack) > 1e-6)
             {
-                std::cout << "Warning: slack after reset is not the same as before" << std::endl;
-                std::cout << "Pin: " << this->getCell()->getInstName() << "/" << this->getName() << std::endl;
+                std::cout << "=== Warning: slack after reset is not the same as before" << std::endl;
+                std::cout << "Pin: " << this->getCell()->getInstName() << "/" << this->getName() << " (" << this->getOriginalName() << ")" << std::endl;
+                std::cout << "Ini critical arrival time: " << _initCriticalArrivalTime << std::endl;
+                std::cout << "New critical arrival time: " << _currCriticalArrivalTime << std::endl;
+                std::cout << "Ini slack: " << _initSlack << std::endl;
                 std::cout << "Old slack: " << old_slack << std::endl;
                 std::cout << "New slack: " << _slack << std::endl;
                 std::cout << "Difference: " << old_slack - _slack << std::endl;
+                for (size_t i = 0; i < _arrivalTimes.size(); i++)
+                {
+                    std::cout << "Path: ";
+                    for (Pin* pin : _pathToPrevStagePins.at(i))
+                    {
+                        if (pin->getCell() != nullptr)
+                        {
+                            std::cout << pin->getCell()->getInstName() << "/";
+                        }
+                        std::cout << pin->getName() << "(" << pin->getOriginalName() << ")(" << pin->getGlobalX() << "," << pin->getGlobalY() << ") <- ";
+                    }
+                    std::cout << "Arrival time: " << _arrivalTimes.at(i) << std::endl;
+                }
+                exit(1);
             }
         }
     }
