@@ -8,7 +8,7 @@ Power: 2116.4
 Area: 1.03471e+12
 Num of bins violated: 0
 ==> Initial cost: 1.67517e+06
-Initialization time: 0.638874s
+Initialization time: 0.656863s
 
 Start to debank...
 --- Calculating cost ---
@@ -17,55 +17,191 @@ Power: 2116.4
 Area: 7.54397e+11
 Num of bins violated: 0
 ==> Cost after debanking: 1.46092e+06
-Debanking time: 47.8676s
+Debanking time: 48.2458s
 
 Start to force directed placement...
-Lock threshold: 21164
-Iteration: 1, Lock/Total: 0/21164
-Iteration: 2, Lock/Total: 9/21164
-Iteration: 3, Lock/Total: 5489/21164
-Iteration: 4, Lock/Total: 10888/21164
-Iteration: 5, Lock/Total: 12101/21164
-Iteration: 6, Lock/Total: 12459/21164
-Iteration: 7, Lock/Total: 12690/21164
-Iteration: 8, Lock/Total: 12809/21164
-Iteration: 9, Lock/Total: 12927/21164
-Iteration: 10, Lock/Total: 12969/21164
-Iteration: 11, Lock/Total: 12997/21164
-Iteration: 12, Lock/Total: 13021/21164
-Iteration: 13, Lock/Total: 13032/21164
-Iteration: 14, Lock/Total: 13042/21164
-Iteration: 15, Lock/Total: 13059/21164
-Iteration: 16, Lock/Total: 13071/21164
-Iteration: 17, Lock/Total: 13079/21164
-Iteration: 18, Lock/Total: 13085/21164
-Iteration: 19, Lock/Total: 13087/21164
-Iteration: 20, Lock/Total: 13093/21164
-Iteration: 21, Lock/Total: 13094/21164
-Iteration: 22, Lock/Total: 13096/21164
-Iteration: 23, Lock/Total: 13100/21164
-Iteration: 24, Lock/Total: 13100/21164
-Iteration: 25, Lock/Total: 13101/21164
-Iteration: 26, Lock/Total: 13101/21164
-Iteration: 27, Lock/Total: 13102/21164
-Iteration: 28, Lock/Total: 13104/21164
-Iteration: 29, Lock/Total: 13104/21164
-Iteration: 30, Lock/Total: 13105/21164
-Iteration: 31, Lock/Total: 13105/21164
-Iteration: 32, Lock/Total: 13105/21164
-Iteration: 33, Lock/Total: 13106/21164
-Iteration: 34, Lock/Total: 13107/21164
-Iteration: 35, Lock/Total: 13107/21164
-Iteration: 36, Lock/Total: 13107/21164
-Iteration: 37, Lock/Total: 13107/21164
-Iteration: 38, Lock/Total: 13107/21164
-Iteration: 39, Lock/Total: 13107/21164
-Iteration: 40, Lock/Total: 13107/21164
-Iteration: 41, Lock/Total: 13107/21164
 --- Calculating cost ---
-TNS: 72851.1
+TNS: 139.789
 Power: 2116.4
 Area: 7.54397e+11
-Num of bins violated: 474
-==> Cost after force directed placement: 6.91859e+06
-Force directed placement time: 30.2549s
+Num of bins violated: 0
+==> Cost after force directed placement: 1.45148e+06
+Force directed placement time: 34.0185s
+
+Start clustering and banking...
+Init FFs size: 21164
+FFs size after greedy banking: 16781
+FFs size after greedy banking: 15431
+FFs size after greedy banking: 15144
+FFs size after greedy banking: 15112
+FFs size after greedy banking: 15105
+FFs size after greedy banking: 15105
+--- Calculating cost ---
+TNS: 5893.35
+Power: 1282.1
+Area: 7.2797e+11
+Num of bins violated: 107
+==> Cost after clustering and banking: 2.22415e+06
+Clustering and banking time: 95.685s
+
+Start to force directed placement (second)...
+--- Calculating cost ---
+TNS: 3507
+Power: 1282.1
+Area: 7.2797e+11
+Num of bins violated: 78
+==> Cost after force directed placement (second): 1.91029e+06
+Force directed placement (second) time: 90.4443s
+
+Start to legalize...
+Legalizing done.
+Total movement: 1.06247e+08
+--- Calculating cost ---
+TNS: 11494.6
+Power: 1282.1
+Area: 7.2797e+11
+Num of bins violated: 0
+==> Cost after reset slack: 1.21016e+06
+Legalization time: 149.858s
+
+Start to fine tune...
+Fine tuning...
+Bin Grid: 100x100
+Fine tuning: 0/96
+Fine tuning: 1/96
+Fine tuning: 2/96
+Fine tuning: 3/96
+Fine tuning: 4/96
+Fine tuning: 5/96
+Fine tuning: 6/96
+Fine tuning: 7/96
+Fine tuning: 8/96
+Fine tuning: 9/96
+Fine tuning: 10/96
+Fine tuning: 11/96
+Fine tuning: 12/96
+Fine tuning: 13/96
+Fine tuning: 14/96
+Fine tuning: 15/96
+Fine tuning: 16/96
+Fine tuning: 17/96
+Fine tuning: 18/96
+Fine tuning: 19/96
+Fine tuning: 20/96
+Fine tuning: 21/96
+Fine tuning: 22/96
+Fine tuning: 23/96
+Fine tuning: 24/96
+Fine tuning: 25/96
+Fine tuning: 26/96
+Fine tuning: 27/96
+Fine tuning: 28/96
+Fine tuning: 29/96
+Fine tuning: 30/96
+Fine tuning: 31/96
+Fine tuning: 32/96
+Fine tuning: 33/96
+Fine tuning: 34/96
+Fine tuning: 35/96
+Fine tuning: 36/96
+Fine tuning: 37/96
+Fine tuning: 38/96
+Fine tuning: 39/96
+Fine tuning: 40/96
+Fine tuning: 41/96
+Fine tuning: 42/96
+Fine tuning: 43/96
+Fine tuning: 44/96
+Fine tuning: 45/96
+Fine tuning: 46/96
+Fine tuning: 47/96
+Fine tuning: 48/96
+Fine tuning: 49/96
+Fine tuning: 50/96
+Fine tuning: 51/96
+Fine tuning: 52/96
+Fine tuning: 53/96
+Fine tuning: 54/96
+Fine tuning: 55/96
+Fine tuning: 56/96
+Fine tuning: 57/96
+Fine tuning: 58/96
+Fine tuning: 59/96
+Fine tuning: 60/96
+Fine tuning: 61/96
+Fine tuning: 62/96
+Fine tuning: 63/96
+Fine tuning: 64/96
+Fine tuning: 65/96
+Fine tuning: 66/96
+Fine tuning: 67/96
+Fine tuning: 68/96
+Fine tuning: 69/96
+Fine tuning: 70/96
+Fine tuning: 71/96
+Fine tuning: 72/96
+Fine tuning: 73/96
+Fine tuning: 74/96
+Fine tuning: 75/96
+Fine tuning: 76/96
+Fine tuning: 77/96
+Fine tuning: 78/96
+Fine tuning: 79/96
+Fine tuning: 80/96
+Fine tuning: 81/96
+Fine tuning: 82/96
+Fine tuning: 83/96
+Fine tuning: 84/96
+Fine tuning: 85/96
+Fine tuning: 86/96
+Fine tuning: 87/96
+Fine tuning: 88/96
+Fine tuning: 89/96
+Fine tuning: 90/96
+Fine tuning: 91/96
+Fine tuning: 92/96
+Fine tuning: 93/96
+Fine tuning: 94/96
+Fine tuning: 95/96
+Cost difference: 0
+--- Calculating cost ---
+TNS: 11494.6
+Power: 1282.1
+Area: 7.2797e+11
+Num of bins violated: 0
+==> Cost after reset slack: 1.21016e+06
+Fine tuning time: 0.505802s
+
+Cost after solving: 1.21016e+06
+Cost difference: -465009
+Cost difference percentage: -27.7589%
+============= Start checking =============
+Check FF in Die
+Check FF on Site
+Check Overlap
+================= Success ================
+
+------------------------------------------------------------------
+----------------------------- Report -----------------------------
+------------------------------------------------------------------
+Initial          		 1.675172e+06	100.00%	0.66s
+Debank           		 1.460925e+06	87.21%	48.25s
+ForceDirected    		 1.451476e+06	86.65%	34.02s
+Banking          		 2.224150e+06	132.77%	95.69s
+ForceDirected2   		 1.910286e+06	114.04%	90.44s
+Legalize         		 1.210163e+06	72.24%	149.86s *
+FineTune         		 1.210163e+06	72.24%	0.51s
+------------------------------------------------------------------
+Renderer closed
+Read testcase...
+Read output...
+Check Inst <name> <libcell> <x> <y> format...
+Check From/pin map To/pin  format...
+Start checking...
+check libType
+check pins are in design
+check pins are correct connected
+check same CLK for banking
+check netlist... step1
+check netlist... step2
+Checking pass!

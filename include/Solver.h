@@ -4,6 +4,7 @@
 #include <sstream>
 #include <string>
 #include <vector>
+#include <queue>
 #include <map>
 #include <unordered_map>
 #include <cmath>
@@ -131,6 +132,7 @@ class Solver
         void forceDirectedPlaceFFLock(const int ff_idx, std::vector<bool>& locked, std::vector<char>& lock_cnt, int& lock_num);
         void forceDirectedPlacement();
         void findForceDirectedPlacementBankingFFs(FF* ff1, FF* ff2, int& result_x, int& result_y);
+        void iterativePlacement();
         // 3. Clustering in each clock domain
         std::vector<std::vector<FF*>> clusteringFFs(long unsigned int clkdomain_idx);
         // 4. Greedy banking

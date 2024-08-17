@@ -374,6 +374,55 @@ void Solver::parse_input(std::string filename)
     in.close();
 }
 
+void Solver::iterativePlacement()
+{
+    int searchDistance = 5000;
+    for(auto ff : _ffs)
+    {
+        if(ff->getTotalNegativeSlack() < 1e-1)
+            continue;
+        int leftDownX = ff->getX() - searchDistance;
+        int leftDownY = ff->getY() - searchDistance;
+        int rightUpX = ff->getX() + searchDistance;
+        int rightUpY = ff->getY() + searchDistance;
+        std::vector<Site*> nearSites = _siteMap->getSitesInBlock(leftDownX, leftDownY, rightUpX, rightUpY);
+        double cost_min = 0;
+        int best_site = -1;
+        for(size_t j = 0; j < nearSites.size(); j++)
+        {
+            
+            int original_x = ff->getX();
+            int original_y = ff->getY();
+            int trial_x = nearSites[j]->getX();
+            int trial_y = nearSites[j]->getY();
+            
+            // Bins cost difference when add and remove the cell
+            double removeCost = _binMap->removeCell(ff, true);
+            double addCost = 0;
+            ff->setXY(trial_x, trial_y);
+            addCost = _binMap->addCell(ff, true);
+            ff->setXY(original_x, original_y);        
+
+            double slackCost = calCostMoveFF(ff, original_x, original_y, trial_x, trial_y);
+
+            double cost = slackCost + removeCost + addCost;
+
+            if(cost < cost_min)
+            {
+                cost_min = cost;
+                best_site = j;
+            }
+        }
+        if(best_site != -1)
+        {
+            const int original_x = ff->getX();
+            const int original_y = ff->getY();
+            moveCell(ff, nearSites[best_site]->getX(), nearSites[best_site]->getY());
+            updateCostMoveFF(ff, original_x, original_y, nearSites[best_site]->getX(), nearSites[best_site]->getY());
+        }
+    }
+}
+
 double Solver::calCost()
 {
     std::cout<<"--- Calculating cost ---\n";
@@ -1060,7 +1109,14 @@ void Solver::forceDirectedPlaceFFLock(const int ff_idx, std::vector<bool>& locke
         }
         x_list.push_back(fanin->getGlobalX());
         y_list.push_back(fanin->getGlobalY());
-        slack_list.push_back(inPin->getSlack());
+        double slack_reducable = abs(inPin->getGlobalX() - fanin->getGlobalX()) + abs(inPin->getGlobalY() - fanin->getGlobalY()) + 1;
+        slack_reducable *= DISP_DELAY;
+        if(inPin->getSlack() < 0)
+        {
+            slack_list.push_back(std::min(-slack_reducable/inPin->getSlack(), 1.0));
+        }else{
+            slack_list.push_back(1/(inPin->getSlack()+1));
+        }
     }
     for (auto outPin : ff->getOutputPins())
     {
@@ -1070,7 +1126,14 @@ void Solver::forceDirectedPlaceFFLock(const int ff_idx, std::vector<bool>& locke
             x_list.push_back(fanout->getGlobalX());
             y_list.push_back(fanout->getGlobalY());
             Pin* nextStagePin = path.front();
-            slack_list.push_back(nextStagePin->getSlack());
+            double slack_reducable = abs(outPin->getGlobalX() - fanout->getGlobalX()) + abs(outPin->getGlobalY() - fanout->getGlobalY()) + 1;
+            slack_reducable *= DISP_DELAY;
+            if(nextStagePin->getSlack() < 0)
+            {
+                slack_list.push_back(std::min(-slack_reducable/nextStagePin->getSlack(), 1.0));
+            }else{
+                slack_list.push_back(1/(nextStagePin->getSlack()+1));
+            }
         }
     }
     if (slack_list.size() == 0)
@@ -1079,15 +1142,15 @@ void Solver::forceDirectedPlaceFFLock(const int ff_idx, std::vector<bool>& locke
     }
     else
     {
-        for (auto& slack : slack_list)
-        {
-            slack = (slack < 0) ? 20 : 1;
-            // slack = -slack;
-            // slack = -slack+min_slack;
-            // slack = -slack+min_slack+1;
-            // slack = std::exp(-slack);
-            // slack = std::exp(-0.001*slack);
-        }
+        // for (auto& slack : slack_list)
+        // {
+        //     slack = (slack < 0) ? 20 : 1;
+        //     // slack = -slack;
+        //     // slack = -slack+min_slack;
+        //     // slack = -slack+min_slack+1;
+        //     // slack = std::exp(-slack);
+        //     // slack = std::exp(-0.001*slack);
+        // }
         double x_sum = 0;
         double y_sum = 0;
         double total_slack = 0;
@@ -1120,6 +1183,60 @@ void Solver::forceDirectedPlaceFFLock(const int ff_idx, std::vector<bool>& locke
         if (lock_cnt[ff_idx] > 1)
         {
             locked[ff_idx] = true;
+            // also lock fanin and fanout
+            // for (auto inPin : ff->getInputPins())
+            // {
+            //     Pin* fanin = inPin->getFaninPin();
+            //     if(fanin == nullptr)
+            //         continue;
+            //     Cell* cell = fanin->getCell();
+            //     if(cell == nullptr)
+            //         continue;
+            //     if(cell->getCellType() == CellType::FF)
+            //     {
+            //         FF* faninFF = static_cast<FF*>(cell);
+            //         int fanin_idx = -1;
+            //         for (size_t i = 0; i < _ffs.size(); i++)
+            //         {
+            //             if (_ffs[i] == faninFF)
+            //             {
+            //                 fanin_idx = i;
+            //                 break;
+            //             }
+            //         }
+            //         if (fanin_idx != -1)
+            //         {
+            //             locked[fanin_idx] = true;
+            //         }
+            //     }
+            // }
+            // for (auto outPin : ff->getOutputPins())
+            // {
+            //     for (auto path : outPin->getPathToNextStagePins())
+            //     {
+            //         Pin* fanout = path.at(path.size()-2);
+            //         Cell* cell = fanout->getCell();
+            //         if(cell == nullptr)
+            //             continue;
+            //         if(cell->getCellType() == CellType::FF)
+            //         {
+            //             FF* fanoutFF = static_cast<FF*>(cell);
+            //             int fanout_idx = -1;
+            //             for (size_t i = 0; i < _ffs.size(); i++)
+            //             {
+            //                 if (_ffs[i] == fanoutFF)
+            //                 {
+            //                     fanout_idx = i;
+            //                     break;
+            //                 }
+            //             }
+            //             if (fanout_idx != -1)
+            //             {
+            //                 locked[fanout_idx] = true;
+            //             }
+            //         }
+            //     }
+            // }
         }
     }
     if (locked[ff_idx])
@@ -1240,8 +1357,10 @@ void Solver::fineTune()
                 if(best_site != -1)
                 {
                     cost_difference += cost_min;
+                    const int original_x = ff->getX();
+                    const int original_y = ff->getY();
                     moveCell(ff, sites[best_site]->getX(), sites[best_site]->getY());
-                    updateCostMoveFF(ff, ff->getX(), ff->getY(), sites[best_site]->getX(), sites[best_site]->getY());
+                    updateCostMoveFF(ff, original_x, original_y, sites[best_site]->getX(), sites[best_site]->getY());
                 }
             }
         }
@@ -1289,7 +1408,7 @@ void Solver::solve()
     }
 
     std::cout<<"\nStart to force directed placement...\n";
-    forceDirectedPlacement();
+    iterativePlacement();
     _currCost = calCost();
     std::cout << "==> Cost after force directed placement: " << _currCost << "\n";
     saveState("ForceDirected");
@@ -1331,7 +1450,7 @@ void Solver::solve()
     }
 
     std::cout << "\nStart to force directed placement (second)...\n";
-    forceDirectedPlacement();
+    iterativePlacement();
     _currCost = calCost();
     std::cout << "==> Cost after force directed placement (second): " << _currCost << "\n";
     saveState("ForceDirected2");
