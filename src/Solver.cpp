@@ -376,9 +376,11 @@ void Solver::parse_input(std::string filename)
 
 void Solver::iterativePlacement()
 {
-    int searchDistance = 5000;
-    for(auto ff : _ffs)
+    int searchDistance = _siteMap->getSites()[0]->getHeight()*2;
+    #pragma omp parallel for num_threads(NUM_THREADS)
+    for(size_t i = 0; i<_ffs.size();i++)
     {
+        FF* ff = _ffs[i];
         if(ff->getTotalNegativeSlack() < 1e-1)
             continue;
         int leftDownX = ff->getX() - searchDistance;
@@ -389,8 +391,7 @@ void Solver::iterativePlacement()
         double cost_min = 0;
         int best_site = -1;
         for(size_t j = 0; j < nearSites.size(); j++)
-        {
-            
+        {   
             int original_x = ff->getX();
             int original_y = ff->getY();
             int trial_x = nearSites[j]->getX();
@@ -413,6 +414,60 @@ void Solver::iterativePlacement()
                 best_site = j;
             }
         }
+        #pragma omp critical
+        if(best_site != -1)
+        {
+            const int original_x = ff->getX();
+            const int original_y = ff->getY();
+            moveCell(ff, nearSites[best_site]->getX(), nearSites[best_site]->getY());
+            updateCostMoveFF(ff, original_x, original_y, nearSites[best_site]->getX(), nearSites[best_site]->getY());
+        }
+    }
+}
+
+void Solver::iterativePlacementLegal()
+{
+    int searchDistance = _siteMap->getSites()[0]->getHeight()*2;
+    #pragma omp parallel for num_threads(NUM_THREADS)
+    for(size_t i = 0; i<_ffs.size();i++)
+    {
+        FF* ff = _ffs[i];
+        if(ff->getTotalNegativeSlack() < 1e-1)
+            continue;
+        int leftDownX = ff->getX() - searchDistance;
+        int leftDownY = ff->getY() - searchDistance;
+        int rightUpX = ff->getX() + searchDistance;
+        int rightUpY = ff->getY() + searchDistance;
+        std::vector<Site*> nearSites = _siteMap->getSitesInBlock(leftDownX, leftDownY, rightUpX, rightUpY);
+        double cost_min = 0;
+        int best_site = -1;
+        for(size_t j = 0; j < nearSites.size(); j++)
+        {   
+            if(!placeable(ff, nearSites[j]->getX(), nearSites[j]->getY()))
+                continue;
+            int original_x = ff->getX();
+            int original_y = ff->getY();
+            int trial_x = nearSites[j]->getX();
+            int trial_y = nearSites[j]->getY();
+            
+            // Bins cost difference when add and remove the cell
+            double removeCost = _binMap->removeCell(ff, true);
+            double addCost = 0;
+            ff->setXY(trial_x, trial_y);
+            addCost = _binMap->addCell(ff, true);
+            ff->setXY(original_x, original_y);        
+
+            double slackCost = calCostMoveFF(ff, original_x, original_y, trial_x, trial_y);
+
+            double cost = slackCost + removeCost + addCost;
+
+            if(cost < cost_min)
+            {
+                cost_min = cost;
+                best_site = j;
+            }
+        }
+        #pragma omp critical
         if(best_site != -1)
         {
             const int original_x = ff->getX();
@@ -522,6 +577,8 @@ bool Solver::placeable(Cell* cell)
     }
     for(auto c: cells)
     {
+        if(c == cell)
+            continue;
         if(isOverlap(cell, c))
         {
             return false;
@@ -557,6 +614,8 @@ bool Solver::placeable(Cell* cell, int x,int y)
     }
     for(auto c: cells)
     {
+        if(c == cell)
+            continue;
         if(isOverlap(x, y, cell, c))
         {
             return false;
@@ -595,6 +654,8 @@ bool Solver::placeable(Cell* cell, int x, int y, int& move_distance)
     int move = 0;
     for(auto c: cells)
     {
+        if(c == cell)
+            continue;
         if(isOverlap(x, y, cell, c))
         {
             overlap = true;
@@ -643,6 +704,10 @@ move the cell to (x, y), the current cost will be updated
 */
 void Solver::moveCell(Cell* cell, int x, int y)
 {
+    if(cell->getCellType() == CellType::COMB) {
+        std::cerr << "Error: moveCell for comb cell" << std::endl;
+        exit(1);
+    }
     removeCell(cell);
     cell->setX(x);
     cell->setY(y);
@@ -1432,6 +1497,13 @@ void Solver::solve()
         for(size_t i = 0; i < _ffs_clkdomains.size(); i++)
         {
             std::vector<std::vector<FF*>> cluster = clusteringFFs(i);
+            // int total = 0;
+            // for(auto c: cluster)
+            // {
+            //     total += c.size();
+            // }
+            // std::cout << "Average cluster size: " << 1.*total/cluster.size() << "\n";
+            // std::cout << "Number of clusters: " << cluster.size() << "\n";
             greedyBanking(cluster);
         }
         std::cout << "FFs size after greedy banking: " << _ffs.size() << "\n";
@@ -1477,6 +1549,21 @@ void Solver::solve()
         std::chrono::duration<double> elapsed = end - start;
         _stateTimes.push_back(elapsed.count());
         std::cout << "Legalization time: " << elapsed.count() << "s" << std::endl;
+        start = std::chrono::high_resolution_clock::now();
+    }
+
+    std::cout<<"\nStart to force directed placement (Legal)...\n";
+    iterativePlacementLegal();
+    _currCost = calCost();
+    std::cout << "==> Cost after force directed placement (Legal): " << _currCost << "\n";
+    saveState("ForceDirectedLegal", true);
+
+    if(calTime)
+    {
+        end = std::chrono::high_resolution_clock::now();
+        std::chrono::duration<double> elapsed = end - start;
+        _stateTimes.push_back(elapsed.count());
+        std::cout << "Force directed placement (Legal) time: " << elapsed.count() << "s" << std::endl;
         start = std::chrono::high_resolution_clock::now();
     }
 
@@ -1661,6 +1748,8 @@ std::vector<std::vector<FF*>> Solver::clusteringFFs(size_t clkdomain_idx)
     std::vector<FF*> FFs = _ffs_clkdomains[clkdomain_idx];
     std::vector<std::vector<FF*>> clusters;
     std::vector<bool> visited(FFs.size(), false);
+    std::vector<int> cluster_num(FFs.size(), -1);
+    size_t max_cluster_size = 50;
     // DBSCAN
     // TODO: optimize the algorithm or change to other clustering algorithm
     for(size_t i = 0; i < FFs.size(); i++)
@@ -1668,10 +1757,12 @@ std::vector<std::vector<FF*>> Solver::clusteringFFs(size_t clkdomain_idx)
         if(visited[i])
             continue;
         visited[i] = true;
+
         std::vector<FF*> cluster;
         cluster.push_back(FFs[i]);
-        std::vector<int> neighbors = regionQuery(FFs, i, (DIE_UP_RIGHT_X - DIE_LOW_LEFT_X) / 200);
-        if(neighbors.size() < 2)
+        cluster_num[i] = clusters.size();
+        std::vector<int> neighbors = regionQuery(FFs, i, (DIE_UP_RIGHT_X - DIE_LOW_LEFT_X) / 100);
+        if(neighbors.size() == 0)
         {
             // noise
             clusters.push_back(cluster);
@@ -1684,29 +1775,33 @@ std::vector<std::vector<FF*>> Solver::clusteringFFs(size_t clkdomain_idx)
                 continue;
             
             visited[idx] = true;
-            std::vector<int> new_neighbors = regionQuery(FFs, idx, (DIE_UP_RIGHT_X - DIE_LOW_LEFT_X) / 1000);
-            if(new_neighbors.size() >= 2)
-            {
-                for(size_t k = 0; k < new_neighbors.size(); k++)
-                {
-                    if(std::find(neighbors.begin(), neighbors.end(), new_neighbors[k]) == neighbors.end())
-                    {
-                        neighbors.push_back(new_neighbors[k]);
-                    }
-                }
-            }
+            cluster_num[idx] = clusters.size();
+            cluster.push_back(FFs[idx]);
+            // std::vector<int> new_neighbors = regionQuery(FFs, idx, BIN_WIDTH);
+            // if(new_neighbors.size() >= 2)
+            // {
+            //     for(size_t k = 0; k < new_neighbors.size(); k++)
+            //     {
+            //         if(std::find(neighbors.begin(), neighbors.end(), new_neighbors[k]) == neighbors.end())
+            //         {
+            //             neighbors.push_back(new_neighbors[k]);
+            //         }
+            //     }
+            // }
         
-            if(std::find(cluster.begin(), cluster.end(), FFs[idx]) == cluster.end())
-            {
-                cluster.push_back(FFs[idx]);
-            }
+            // if(std::find(cluster.begin(), cluster.end(), FFs[idx]) == cluster.end())
+            // {
+            //     cluster.push_back(FFs[idx]);
+            // }
+            if(cluster.size() >= max_cluster_size)
+                break;
         }
         clusters.push_back(cluster);
     }
 
     return clusters;
 }
-
+// TODO: find better position for banking FFs
 void Solver::findForceDirectedPlacementBankingFFs(FF* ff1, FF* ff2, int& result_x, int& result_y)
 {
     std::vector<double> x_list, y_list, slack_list;
@@ -1879,6 +1974,7 @@ double Solver::cal_banking_gain(FF* ff1, FF* ff2, LibCell* targetFF)
 
 void Solver::greedyBanking(std::vector<std::vector<FF*>> clusters)
 {
+    #pragma omp parallel for num_threads(NUM_THREADS)
     for(auto cluster : clusters)
     {
         if(cluster.size() < 2)
@@ -1914,6 +2010,7 @@ void Solver::greedyBanking(std::vector<std::vector<FF*>> clusters)
                     }
                 }
             }
+            #pragma omp critical
             if (maxGain > 0)
             {
                 bankFFs(bestFF1, bestFF2, targetFF);
