@@ -53,26 +53,6 @@ bool Site::removeCell(Cell* cell)
     return false;
 }
 
-bool Site::isOccupied()
-{
-    return !_cells.empty();
-}
-
-bool Site::isOverLapping()
-{
-    return _cells.size() > 1;
-}
-
-std::vector<Cell*> Site::getCell()
-{
-    return this->_cells;
-}
-
-int Site::getNumCells()
-{
-    return this->_cells.size();
-}
-
 SiteMap::SiteMap()
 {
 }

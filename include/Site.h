@@ -16,15 +16,15 @@ class Site
         void place(Cell* cell);
         bool removeCell(Cell* cell);
 
-        bool isOccupied();
-        bool isOverLapping();
-        std::vector<Cell*> getCell();
-        int getNumCells();
+        inline bool isOccupied() const { return !_cells.empty(); }
+        inline bool isOverLapping() const { return _cells.size() > 1; }
+        inline std::vector<Cell*> getCell() const { return _cells; }
+        inline int getNumCells() const { return _cells.size(); }
         
-        int getX() const { return _x; }
-        int getY() const { return _y; }
-        int getWidth() const { return _width; }
-        int getHeight() const { return _height; }
+        inline int getX() const { return _x; }
+        inline int getY() const { return _y; }
+        inline int getWidth() const { return _width; }
+        inline int getHeight() const { return _height; }
 
     private:
         int _x;
