@@ -59,17 +59,37 @@ SiteMap::SiteMap()
 
 SiteMap::SiteMap(std::vector<PlacementRows> placementRows)
 {
+    _hasMultiPlaceRow = false;
     _placementRows = placementRows;
     _sites.resize(placementRows.size());
     _x2col.resize(placementRows.size());
     const int nPlacementRows = placementRows.size();
     for (int i = 0; i < nPlacementRows; i++)
     {
-        const PlacementRows& row = placementRows[i];
+        PlacementRows& row = placementRows[i];
         int siteX = row.startX;
-        _y2row[row.startY] = i;
+        // set y2row to the first row with the same y
+        if (_y2row.find(row.startY) == _y2row.end())
+        {
+            _y2row[row.startY] = i;
+        }
+        else
+        {
+            _hasMultiPlaceRow = true;
+        }
         for (int j = 0; j < row.numSites; j++)
         {
+            // prune the sites that are out of the die boundary
+            if (siteX < DIE_LOW_LEFT_X)
+            {
+                siteX += row.siteWidth;
+                continue;
+            }
+            else if (siteX > DIE_UP_RIGHT_X)
+            {
+                row.numSites = j;
+                break;
+            }
             Site* site = new Site(siteX, row.startY, row.siteWidth, row.siteHeight);
             _x2col[i][siteX] = j;
             _sites[i].push_back(site);
@@ -91,28 +111,21 @@ std::vector<Site*> SiteMap::getSites()
     return sites;
 }
 
-std::vector<Site*> SiteMap::getSites(int leftDownX, int leftDownY, int rightUpX, int rightUpY)
+std::vector<Site*> SiteMap::getSitesOfCell(int leftDownX, int leftDownY, int rightUpX, int rightUpY)
 {
-    if (leftDownX < DIE_LOW_LEFT_X || leftDownY < DIE_LOW_LEFT_Y || rightUpX > DIE_UP_RIGHT_X || rightUpY > DIE_UP_RIGHT_Y)
+    if (!onSite(leftDownX, leftDownY) || rightUpX > DIE_UP_RIGHT_X || rightUpY > DIE_UP_RIGHT_Y)
     {
-        // std::cerr << "Error: SiteMap::getSites() - out of die boundary" << std::endl;
         return std::vector<Site*>();    
-    }
-    if (_y2row.find(leftDownY) == _y2row.end())
-    {
-        // std::cerr << "Error: SiteMap::getSites() - not on site" << std::endl;
-        return std::vector<Site*>();    
-    }
-    if (_x2col[_y2row[leftDownY]].find(leftDownX) == _x2col[_y2row[leftDownY]].end())
-    {
-        // std::cerr << "Error: SiteMap::getSites() - not on site" << std::endl;
-        return std::vector<Site*>();
     }
     std::vector<Site*> sites;
     const int startRow = _y2row[leftDownY];
     const int endRow = getFirstLargerRow(rightUpY);
     for (int row = startRow; row < endRow; row++)
     {
+        if (leftDownX > _placementRows[row].startX + _placementRows[row].siteWidth * _placementRows[row].numSites || rightUpX < _placementRows[row].startX)
+        {
+            continue;
+        }
         const int startCol = getFirstLargerColInRow(row, leftDownX);
         int endCol = getFirstLargerColInRow(row, rightUpX);
         if(rightUpX > _placementRows[row].startX + _placementRows[row].siteWidth * _placementRows[row].numSites)
@@ -220,6 +233,17 @@ Site* SiteMap::getNearestSite(int x, int y)
     //TODO: rows with same y
     int topRow = getFirstLargerRow(y);
     int botRow = (topRow - 1)>=0?topRow - 1:0;
+    if (_hasMultiPlaceRow)
+    {
+        while (x > _placementRows[topRow].startX + _placementRows[topRow].siteWidth * _placementRows[topRow].numSites && topRow+1 < int(_placementRows.size()) && _placementRows[topRow].startY == _placementRows[topRow+1].startY)
+        {
+            topRow++;
+        }
+        while (x < _placementRows[botRow].startX && botRow-1 >= 0 && _placementRows[botRow].startY == _placementRows[botRow-1].startY)
+        {
+            botRow--;
+        }
+    }
     int toprightCol = getFirstLargerColInRow(topRow, x);
     int topleftCol = toprightCol - 1;
     int botrightCol = getFirstLargerColInRow(botRow, x);
@@ -276,7 +300,7 @@ void SiteMap::place(Cell* cell)
     const int cellY = cell->getY();
     const int cellRightX = cellX + cellWidth;
     const int cellUpY = cellY + cellHeight;
-    std::vector<Site*> sites = getSites(cellX, cellY, cellRightX, cellUpY);
+    std::vector<Site*> sites = getSitesOfCell(cellX, cellY, cellRightX, cellUpY);
         
     for (Site* site : sites)
     {
@@ -293,7 +317,7 @@ void SiteMap::removeCell(Cell* cell)
     const int cellY = cell->getY();
     const int cellRightX = cellX + cellWidth;
     const int cellUpY = cellY + cellHeight;
-    std::vector<Site*> sites = getSites(cellX, cellY, cellRightX, cellUpY);
+    std::vector<Site*> sites = getSitesOfCell(cellX, cellY, cellRightX, cellUpY);
     for (Site* site : sites)
     {
         if(site->removeCell(cell))
@@ -315,8 +339,21 @@ bool SiteMap::onSite(int x, int y)
     {
         return false;
     }
-    if (_x2col[_y2row[y]].find(x) == _x2col[_y2row[y]].end())
+    int siteRow = _y2row[y];
+    if (_x2col[siteRow].find(x) == _x2col[siteRow].end())
     {
+        if (_hasMultiPlaceRow)
+        {
+            siteRow++;
+            while (siteRow < int(_placementRows.size()) && _placementRows[siteRow].startY == y)
+            {
+                if (_x2col[siteRow].find(x) != _x2col[siteRow].end())
+                {
+                    return true;
+                }
+                siteRow++;
+            }
+        }
         return false;
     }
     return true;

@@ -41,7 +41,7 @@ class SiteMap
         SiteMap(std::vector<PlacementRows> placementRows);
 
         std::vector<Site*> getSites();
-        std::vector<Site*> getSites(int leftDownX, int leftDownY, int rightUpX, int rightUpY);
+        std::vector<Site*> getSitesOfCell(int leftDownX, int leftDownY, int rightUpX, int rightUpY);
         std::vector<Site*> getSitesInBlock(int leftDownX, int leftDownY, int rightUpX, int rightUpY);
         std::vector<std::vector<Site*>> getSiteRows();
 
@@ -52,6 +52,7 @@ class SiteMap
 
         bool onSite(int x, int y);
     private:
+        bool _hasMultiPlaceRow;
         std::vector<PlacementRows> _placementRows;
         std::vector<std::vector<Site*>> _sites;
         std::unordered_map<int, int> _y2row;
