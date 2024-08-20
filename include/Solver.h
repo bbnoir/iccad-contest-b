@@ -84,15 +84,11 @@ class Solver
         double _initCost;
         double _currCost;
         double calDiffCost(double oldSlack, double newSlack);
-        double calCostMoveD(Pin* movedDPin, int sourceX, int sourceY, int targetX, int targetY);
-        double calCostMoveQ(Pin* movedQPin, int sourceX, int sourceY, int targetX, int targetY);
-        double calCostChangeQDelay(Pin* changedQPin, double diffQDelay);
-        double calCostMoveFF(FF* movedFF, int sourceX, int sourceY, int targetX, int targetY);
-        double updateCostMoveD(Pin* movedDPin, int sourceX, int sourceY, int targetX, int targetY);
-        double updateCostMoveQ(Pin* movedQPin, int sourceX, int sourceY, int targetX, int targetY);
-        double updateCostChangeQDelay(Pin* changedQPin, double diffQDelay);
-        double updateCostMoveFF(FF* movedFF, int sourceX, int sourceY, int targetX, int targetY);
-        double updateCostBankFF(FF* ff1, FF* ff2, LibCell* targetFF, int targetX, int targetY);
+        double calCostMoveD(Pin* movedDPin, int sourceX, int sourceY, int targetX, int targetY, bool update);
+        double calCostMoveQ(Pin* movedQPin, int sourceX, int sourceY, int targetX, int targetY, bool update);
+        double calCostChangeQDelay(Pin* changedQPin, double diffQDelay, bool update);
+        double calCostMoveFF(FF* movedFF, int sourceX, int sourceY, int targetX, int targetY, bool update);
+        double calCostBankFF(FF* ff1, FF* ff2, LibCell* targetFF, int targetX, int targetY, bool update);
         void resetSlack(bool check = false);
         
         // Modify Cell
