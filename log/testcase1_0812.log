@@ -1,0 +1,151 @@
+File parsed successfully
+Alpha: 10 Beta: 2000 Gamma: 0.002 Lambda: 10000
+
+Start initial placement...
+--- Calculating cost ---
+TNS: 657.883
+Power: 457.185
+Area: 4.62506e+11
+Num of bins violated: 1
+==> Initial cost: 9.25943e+08
+Initialization time: 0.36105s
+============= Start checking =============
+Check FF in Die
+Check FF on Site
+Check Overlap
+================= Success ================
+Legal: 1
+
+Start to debank...
+--- Calculating cost ---
+TNS: 2148.89
+Power: 487.902
+Area: 4.40388e+11
+Num of bins violated: 0
+==> Cost after debanking: 8.81773e+08
+Debanking time: 25.3297s
+============= Start checking =============
+Check FF in Die
+Check FF on Site
+Check Overlap
+================= Success ================
+Legal: 1
+
+Start to force directed placement...
+--- Calculating cost ---
+TNS: 1277.94
+Power: 487.902
+Area: 4.40388e+11
+Num of bins violated: 0
+==> Cost after force directed placement: 8.81764e+08
+Force directed placement time: 2.05508s
+============= Start checking =============
+Check FF in Die
+Check FF on Site
+Check Overlap
+================= Success ================
+Legal: 1
+
+Start clustering and banking...
+Init FFs size: 19879
+FFs size after greedy banking: 15177
+FFs size after greedy banking: 14211
+FFs size after greedy banking: 14041
+FFs size after greedy banking: 14026
+FFs size after greedy banking: 14026
+--- Calculating cost ---
+TNS: 3919.58
+Power: 389.961
+Area: 4.10491e+11
+Num of bins violated: 0
+==> Cost after clustering and banking: 8.21801e+08
+Clustering and banking time: 177.606s
+============= Start checking =============
+Check FF in Die
+Check FF on Site
+Check Overlap
+================= Success ================
+Legal: 1
+
+Start to force directed placement (second)...
+--- Calculating cost ---
+TNS: 3236.03
+Power: 389.961
+Area: 4.10491e+11
+Num of bins violated: 0
+==> Cost after force directed placement (second): 8.21794e+08
+Force directed placement (second) time: 1.7062s
+============= Start checking =============
+Check FF in Die
+Check FF on Site
+Check Overlap
+================= Success ================
+Legal: 1
+
+Start clustering and banking...
+Init FFs size: 14026
+FFs size after greedy banking: 13983
+FFs size after greedy banking: 13978
+FFs size after greedy banking: 13978
+--- Calculating cost ---
+TNS: 3336.23
+Power: 388.95
+Area: 4.10242e+11
+Num of bins violated: 0
+==> Cost after clustering and banking: 8.21296e+08
+Clustering and banking time: 5.94381s
+============= Start checking =============
+Check FF in Die
+Check FF on Site
+Check Overlap
+================= Success ================
+Legal: 1
+
+Start to force directed placement (second)...
+--- Calculating cost ---
+TNS: 3251.2
+Power: 388.95
+Area: 4.10242e+11
+Num of bins violated: 0
+==> Cost after force directed placement (second): 8.21295e+08
+Force directed placement (second) time: 1.2718s
+============= Start checking =============
+Check FF in Die
+Check FF on Site
+Check Overlap
+================= Success ================
+Legal: 1
+
+Cost after solving: 8.21295e+08
+Cost difference: -1.04648e+08
+Cost difference percentage: -11.3018%
+============= Start checking =============
+Check FF in Die
+Check FF on Site
+Check Overlap
+================= Success ================
+
+------------------------------------------------------------------
+----------------------------- Report -----------------------------
+------------------------------------------------------------------
+Initial          		 9.259429e+08	100.00%	0.36s *
+Debank           		 8.817727e+08	95.23%	25.33s
+ForceDirected    		 8.817640e+08	95.23%	2.06s
+Banking          		 8.218006e+08	88.75%	177.61s
+ForceDirected2   		 8.217938e+08	88.75%	1.71s
+Banking          		 8.212958e+08	88.70%	5.94s
+ForceDirected2   		 8.212949e+08	88.70%	1.27s
+------------------------------------------------------------------
+Renderer closed
+Read testcase...
+Read output...
+Check Inst <name> <libcell> <x> <y> format...
+Check From/pin map To/pin  format...
+Start checking...
+check libType
+check pins are in design
+check pins are correct connected
+check same CLK for banking
+check netlist... step1
+check netlist... step2
+Checking pass!

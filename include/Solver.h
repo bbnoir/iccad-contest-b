@@ -43,7 +43,7 @@ class Solver
         void parse_input(std::string filename);
         void init_placement();
         void solve();
-        void check();
+        bool check();
         void dump(std::string filename) const;
         void dump(std::vector<std::string>& vecStr) const;
         void dump_best(std::string filename) const;
@@ -106,7 +106,7 @@ class Solver
         
         void addFF(FF* ff);
         void deleteFF(FF* ff);
-        void bankFFs(FF* ff1, FF* ff2, LibCell* targetFF);
+        void bankFFs(FF* ff1, FF* ff2, LibCell* targetFF, int x, int y);
         
         // Trivial
         
@@ -120,6 +120,7 @@ class Solver
         bool isOverlap(int x1, int y1, int w1, int h1, Cell* cell2);
         bool placeable(Cell* cell);
         bool placeable(Cell* cell, int x, int y);
+        bool placeable(LibCell* libCell, int x, int y);
         bool placeable(Cell* cell, int x, int y, int& move_distance);
         void constructFFsCLKDomain();
         std::vector<int> regionQuery(std::vector<FF*> ffs, long unsigned int idx, int radius);
@@ -137,7 +138,7 @@ class Solver
         std::vector<std::vector<FF*>> clusteringFFs(long unsigned int clkdomain_idx);
         // 4. Greedy banking
         void greedyBanking(std::vector<std::vector<FF*>> clusters);
-        double cal_banking_gain(FF* ff1, FF* ff2, LibCell* targetFF);
+        double cal_banking_gain(FF* ff1, FF* ff2, LibCell* targetFF, int& result_x, int& result_y);
         // 5. Legalization
         Legalizer* _legalizer;
         void iterativePlacementLegal();
