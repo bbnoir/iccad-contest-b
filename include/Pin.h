@@ -64,10 +64,8 @@ class Pin
         void resetArrivalTime(bool check = false);
         void modArrivalTime(double delay); // only for FF_D in debug mode
         std::vector<int> getPathIndex(Pin* prevStagePin);
-        double calSlack(Pin* movedPrevStagePin, int sourceX, int sourceY, int targetX, int targetY);
-        double calSlackQ(Pin* changeQPin, double diffQDelay);
-        double updateSlack(Pin* movedPrevStagePin, int sourceX, int sourceY, int targetX, int targetY);
-        double updateSlackQ(Pin* changeQPin, double diffQDelay);
+        double calSlack(Pin* movedPrevStagePin, int sourceX, int sourceY, int targetX, int targetY, bool update = false);
+        double calSlackQ(Pin* changeQPin, double diffQDelay, bool update = false);
         void resetSlack(bool check = false);
         bool checkCritical();
 
