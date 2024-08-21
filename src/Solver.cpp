@@ -1956,7 +1956,7 @@ double Solver::cal_banking_gain(FF* ff1, FF* ff2, LibCell* targetFF, int& result
     double min_gain = -INFINITY;
 
     #pragma omp parallel for num_threads(NUM_THREADS)
-    for(size_t i=0;i<sites.size();i++) {
+    for(size_t i=0;i<sites.size();i+=16){
         int target_x = sites[i]->getX();
         int target_y = sites[i]->getY();
 
