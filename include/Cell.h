@@ -88,6 +88,8 @@ public:
     void removeSite(Site* site);
     void removeBin(Bin* bin);
 
+    void deletePins();
+
     bool checkOverlap();
 
 protected:

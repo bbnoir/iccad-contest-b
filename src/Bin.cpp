@@ -283,6 +283,16 @@ double BinMap::addCell(Cell* cell, bool trial)
     return causedCost;
 }
 
+double BinMap::trialLibCell(LibCell* libCell, int x, int y)
+{
+    Cell* cell = new Cell(x, y, "TEST", libCell);
+    double causedCost = addCell(cell, true);
+    cell->deletePins();
+    delete cell;
+    return causedCost;
+}
+
+
 double BinMap::removeCell(Cell* cell, bool trial)
 {
     int leftDownX = cell->getX();

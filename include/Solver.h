@@ -4,6 +4,7 @@
 #include <sstream>
 #include <string>
 #include <vector>
+#include <queue>
 #include <map>
 #include <unordered_map>
 #include <cmath>
@@ -42,7 +43,7 @@ class Solver
         void parse_input(std::string filename);
         void init_placement();
         void solve();
-        void check();
+        bool check();
         void dump(std::string filename) const;
         void dump(std::vector<std::string>& vecStr) const;
         void dump_best(std::string filename) const;
@@ -83,15 +84,11 @@ class Solver
         double _initCost;
         double _currCost;
         double calDiffCost(double oldSlack, double newSlack);
-        double calCostMoveD(Pin* movedDPin, int sourceX, int sourceY, int targetX, int targetY);
-        double calCostMoveQ(Pin* movedQPin, int sourceX, int sourceY, int targetX, int targetY);
-        double calCostChangeQDelay(Pin* changedQPin, double diffQDelay);
-        double calCostMoveFF(FF* movedFF, int sourceX, int sourceY, int targetX, int targetY);
-        double updateCostMoveD(Pin* movedDPin, int sourceX, int sourceY, int targetX, int targetY);
-        double updateCostMoveQ(Pin* movedQPin, int sourceX, int sourceY, int targetX, int targetY);
-        double updateCostChangeQDelay(Pin* changedQPin, double diffQDelay);
-        double updateCostMoveFF(FF* movedFF, int sourceX, int sourceY, int targetX, int targetY);
-        double updateCostBankFF(FF* ff1, FF* ff2, LibCell* targetFF, int targetX, int targetY);
+        double calCostMoveD(Pin* movedDPin, int sourceX, int sourceY, int targetX, int targetY, bool update);
+        double calCostMoveQ(Pin* movedQPin, int sourceX, int sourceY, int targetX, int targetY, bool update);
+        double calCostChangeQDelay(Pin* changedQPin, double diffQDelay, bool update);
+        double calCostMoveFF(FF* movedFF, int sourceX, int sourceY, int targetX, int targetY, bool update);
+        double calCostBankFF(FF* ff1, FF* ff2, LibCell* targetFF, int targetX, int targetY, bool update);
         void resetSlack(bool check = false);
         
         // Modify Cell
@@ -105,7 +102,7 @@ class Solver
         
         void addFF(FF* ff);
         void deleteFF(FF* ff);
-        void bankFFs(FF* ff1, FF* ff2, LibCell* targetFF);
+        void bankFFs(FF* ff1, FF* ff2, LibCell* targetFF, int x, int y);
         
         // Trivial
         
@@ -119,6 +116,7 @@ class Solver
         bool isOverlap(int x1, int y1, int w1, int h1, Cell* cell2);
         bool placeable(Cell* cell);
         bool placeable(Cell* cell, int x, int y);
+        bool placeable(LibCell* libCell, int x, int y);
         bool placeable(Cell* cell, int x, int y, int& move_distance);
         void constructFFsCLKDomain();
         std::vector<int> regionQuery(std::vector<FF*> ffs, long unsigned int idx, int radius);
@@ -131,13 +129,15 @@ class Solver
         void forceDirectedPlaceFFLock(const int ff_idx, std::vector<bool>& locked, std::vector<char>& lock_cnt, int& lock_num);
         void forceDirectedPlacement();
         void findForceDirectedPlacementBankingFFs(FF* ff1, FF* ff2, int& result_x, int& result_y);
+        void iterativePlacement();
         // 3. Clustering in each clock domain
         std::vector<std::vector<FF*>> clusteringFFs(long unsigned int clkdomain_idx);
         // 4. Greedy banking
         void greedyBanking(std::vector<std::vector<FF*>> clusters);
-        double cal_banking_gain(FF* ff1, FF* ff2, LibCell* targetFF);
+        double cal_banking_gain(FF* ff1, FF* ff2, LibCell* targetFF, int& result_x, int& result_y);
         // 5. Legalization
         Legalizer* _legalizer;
+        void iterativePlacementLegal();
         // 6. Fine-tuning
         void fineTune();
 

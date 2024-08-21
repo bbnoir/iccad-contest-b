@@ -8,205 +8,117 @@ Power: 457.185
 Area: 4.62506e+11
 Num of bins violated: 1
 ==> Initial cost: 9.25943e+08
-Initialization time: 0.296502s
+Initialization time: 0.343138s
+============= Start checking =============
+Check FF in Die
+Check FF on Site
+Check Overlap
+================= Success ================
+Legal: 1
 
 Start to debank...
 --- Calculating cost ---
-TNS: 4628.25
-Power: 621.505
-Area: 4.04524e+11
+TNS: 2148.89
+Power: 487.902
+Area: 4.40388e+11
 Num of bins violated: 0
-==> Cost after debanking: 8.10338e+08
-Debanking time: 40.2311s
-Start to force directed placement
-Lock threshold: 19879
-Iteration: 1, Lock/Total: 0/19879
-Iteration: 2, Lock/Total: 14/19879
-Iteration: 3, Lock/Total: 7416/19879
-Iteration: 4, Lock/Total: 11966/19879
-Iteration: 5, Lock/Total: 13469/19879
-Iteration: 6, Lock/Total: 14305/19879
-Iteration: 7, Lock/Total: 14956/19879
-Iteration: 8, Lock/Total: 15136/19879
-Iteration: 9, Lock/Total: 15250/19879
-Iteration: 10, Lock/Total: 15304/19879
-Iteration: 11, Lock/Total: 15338/19879
-Iteration: 12, Lock/Total: 15371/19879
-Iteration: 13, Lock/Total: 15393/19879
-Iteration: 14, Lock/Total: 15408/19879
-Iteration: 15, Lock/Total: 15428/19879
-Iteration: 16, Lock/Total: 15439/19879
-Iteration: 17, Lock/Total: 15464/19879
-Iteration: 18, Lock/Total: 15486/19879
-Iteration: 19, Lock/Total: 15486/19879
-Iteration: 20, Lock/Total: 15492/19879
-Iteration: 21, Lock/Total: 15494/19879
-Iteration: 22, Lock/Total: 15495/19879
-Iteration: 23, Lock/Total: 15498/19879
-Iteration: 24, Lock/Total: 15501/19879
-Iteration: 25, Lock/Total: 15504/19879
-Iteration: 26, Lock/Total: 15506/19879
-Iteration: 27, Lock/Total: 15508/19879
-Iteration: 28, Lock/Total: 15512/19879
-Iteration: 29, Lock/Total: 15515/19879
-Iteration: 30, Lock/Total: 15519/19879
-Iteration: 31, Lock/Total: 15523/19879
-Iteration: 32, Lock/Total: 15526/19879
-Iteration: 33, Lock/Total: 15532/19879
-Iteration: 34, Lock/Total: 15536/19879
-Iteration: 35, Lock/Total: 15543/19879
-Iteration: 36, Lock/Total: 15546/19879
-Iteration: 37, Lock/Total: 15550/19879
-Iteration: 38, Lock/Total: 15554/19879
-Iteration: 39, Lock/Total: 15557/19879
-Iteration: 40, Lock/Total: 15560/19879
-Iteration: 41, Lock/Total: 15561/19879
-Iteration: 42, Lock/Total: 15563/19879
-Iteration: 43, Lock/Total: 15565/19879
-Iteration: 44, Lock/Total: 15566/19879
-Iteration: 45, Lock/Total: 15569/19879
-Iteration: 46, Lock/Total: 15573/19879
-Iteration: 47, Lock/Total: 15576/19879
-Iteration: 48, Lock/Total: 15578/19879
-Iteration: 49, Lock/Total: 15580/19879
-Iteration: 50, Lock/Total: 15582/19879
-Iteration: 51, Lock/Total: 15583/19879
-Iteration: 52, Lock/Total: 15584/19879
-Iteration: 53, Lock/Total: 15586/19879
-Iteration: 54, Lock/Total: 15587/19879
-Iteration: 55, Lock/Total: 15587/19879
-Iteration: 56, Lock/Total: 15587/19879
+==> Cost after debanking: 8.81773e+08
+Debanking time: 25.9183s
+============= Start checking =============
+Check FF in Die
+Check FF on Site
+Check Overlap
+================= Success ================
+Legal: 1
+
+Start to force directed placement...
 --- Calculating cost ---
-TNS: 182281
-Power: 621.505
-Area: 4.04524e+11
-Num of bins violated: 249
-==> Cost after force directed placement: 8.14604e+08
-Force directed placement time: 38.8981s
+TNS: 1277.11
+Power: 487.902
+Area: 4.40388e+11
+Num of bins violated: 0
+==> Cost after force directed placement: 8.81764e+08
+Force directed placement time: 2.09407s
+============= Start checking =============
+Check FF in Die
+Check FF on Site
+Check Overlap
+================= Success ================
+Legal: 1
 
 Start clustering and banking...
 Init FFs size: 19879
-FFs size after greedy banking: 17588
-FFs size after greedy banking: 17187
-FFs size after greedy banking: 17150
-FFs size after greedy banking: 17150
+FFs size after greedy banking: 15160
+FFs size after greedy banking: 14202
+FFs size after greedy banking: 14018
+FFs size after greedy banking: 13998
+FFs size after greedy banking: 13998
 --- Calculating cost ---
-TNS: 183691
-Power: 541.384
-Area: 3.98019e+11
-Num of bins violated: 244
-==> Cost after clustering and banking: 8.01398e+08
-Clustering and banking time: 85.8469s
-Start to force directed placement (second)
-Lock threshold: 17150
-Iteration: 1, Lock/Total: 0/17150
-Iteration: 2, Lock/Total: 11284/17150
-Iteration: 3, Lock/Total: 11777/17150
-Iteration: 4, Lock/Total: 12167/17150
-Iteration: 5, Lock/Total: 12264/17150
-Iteration: 6, Lock/Total: 12461/17150
-Iteration: 7, Lock/Total: 12529/17150
-Iteration: 8, Lock/Total: 12561/17150
-Iteration: 9, Lock/Total: 12578/17150
-Iteration: 10, Lock/Total: 12595/17150
-Iteration: 11, Lock/Total: 12610/17150
-Iteration: 12, Lock/Total: 12634/17150
-Iteration: 13, Lock/Total: 12644/17150
-Iteration: 14, Lock/Total: 12647/17150
-Iteration: 15, Lock/Total: 12649/17150
-Iteration: 16, Lock/Total: 12650/17150
-Iteration: 17, Lock/Total: 12653/17150
-Iteration: 18, Lock/Total: 12655/17150
-Iteration: 19, Lock/Total: 12656/17150
-Iteration: 20, Lock/Total: 12656/17150
-Iteration: 21, Lock/Total: 12656/17150
-Iteration: 22, Lock/Total: 12656/17150
-Iteration: 23, Lock/Total: 12656/17150
-Iteration: 24, Lock/Total: 12656/17150
-Iteration: 25, Lock/Total: 12656/17150
-Iteration: 26, Lock/Total: 12656/17150
-Iteration: 27, Lock/Total: 12658/17150
-Iteration: 28, Lock/Total: 12659/17150
-Iteration: 29, Lock/Total: 12659/17150
-Iteration: 30, Lock/Total: 12659/17150
-Iteration: 31, Lock/Total: 12659/17150
-Iteration: 32, Lock/Total: 12660/17150
-Iteration: 33, Lock/Total: 12660/17150
-Iteration: 34, Lock/Total: 12660/17150
---- Calculating cost ---
-TNS: 184442
-Power: 541.384
-Area: 3.98019e+11
-Num of bins violated: 238
-==> Cost after force directed placement (second): 8.01345e+08
-Force directed placement (second) time: 21.6132s
-Start to legalize
-Legalizing done.
-Total movement: 4.64611e+08
---- Calculating cost ---
-TNS: 351996
-Power: 541.384
-Area: 3.98019e+11
-Num of bins violated: 1
-==> Cost after reset slack: 8.00651e+08
-Legalization time: 75.4202s
-
-Start to fine tune...
-Fine tuning...
-Bin Grid: 45x45
-Fine tuning: 0/41
-Fine tuning: 1/41
-Fine tuning: 2/41
-Fine tuning: 3/41
-Fine tuning: 4/41
-Fine tuning: 5/41
-Fine tuning: 6/41
-Fine tuning: 7/41
-Fine tuning: 8/41
-Fine tuning: 9/41
-Fine tuning: 10/41
-Fine tuning: 11/41
-Fine tuning: 12/41
-Fine tuning: 13/41
-Fine tuning: 14/41
-Fine tuning: 15/41
-Fine tuning: 16/41
-Fine tuning: 17/41
-Fine tuning: 18/41
-Fine tuning: 19/41
-Fine tuning: 20/41
-Fine tuning: 21/41
-Fine tuning: 22/41
-Fine tuning: 23/41
-Fine tuning: 24/41
-Fine tuning: 25/41
-Fine tuning: 26/41
-Fine tuning: 27/41
-Fine tuning: 28/41
-Fine tuning: 29/41
-Fine tuning: 30/41
-Fine tuning: 31/41
-Fine tuning: 32/41
-Fine tuning: 33/41
-Fine tuning: 34/41
-Fine tuning: 35/41
-Fine tuning: 36/41
-Fine tuning: 37/41
-Fine tuning: 38/41
-Fine tuning: 39/41
-Fine tuning: 40/41
-Cost difference: -12316.9
---- Calculating cost ---
-TNS: 351764
-Power: 541.384
-Area: 3.98019e+11
+TNS: 3951.13
+Power: 389.652
+Area: 4.10304e+11
 Num of bins violated: 0
-==> Cost after reset slack: 8.00638e+08
-Fine tuning time: 26.2917s
+==> Cost after clustering and banking: 8.21428e+08
+Clustering and banking time: 149.969s
+============= Start checking =============
+Check FF in Die
+Check FF on Site
+Check Overlap
+================= Success ================
+Legal: 1
 
-Cost after solving: 8.00638e+08
-Cost difference: -1.25305e+08
-Cost difference percentage: -13.5327%
+Start to force directed placement (second)...
+--- Calculating cost ---
+TNS: 3259.1
+Power: 389.652
+Area: 4.10304e+11
+Num of bins violated: 0
+==> Cost after force directed placement (second): 8.21421e+08
+Force directed placement (second) time: 1.63095s
+============= Start checking =============
+Check FF in Die
+Check FF on Site
+Check Overlap
+================= Success ================
+Legal: 1
+
+Start clustering and banking...
+Init FFs size: 13998
+FFs size after greedy banking: 13958
+FFs size after greedy banking: 13954
+FFs size after greedy banking: 13954
+--- Calculating cost ---
+TNS: 3329.85
+Power: 388.713
+Area: 4.10076e+11
+Num of bins violated: 0
+==> Cost after clustering and banking: 8.20963e+08
+Clustering and banking time: 5.60114s
+============= Start checking =============
+Check FF in Die
+Check FF on Site
+Check Overlap
+================= Success ================
+Legal: 1
+
+Start to force directed placement (second)...
+--- Calculating cost ---
+TNS: 3243.56
+Power: 388.713
+Area: 4.10076e+11
+Num of bins violated: 0
+==> Cost after force directed placement (second): 8.20962e+08
+Force directed placement (second) time: 1.31149s
+============= Start checking =============
+Check FF in Die
+Check FF on Site
+Check Overlap
+================= Success ================
+Legal: 1
+
+Cost after solving: 8.20962e+08
+Cost difference: -1.04981e+08
+Cost difference percentage: -11.3377%
 ============= Start checking =============
 Check FF in Die
 Check FF on Site
@@ -216,13 +128,13 @@ Check Overlap
 ------------------------------------------------------------------
 ----------------------------- Report -----------------------------
 ------------------------------------------------------------------
-Initial          		 9.259429e+08	100.00%	0.30s
-Debank           		 8.103377e+08	87.51%	40.23s
-ForceDirected    		 8.146042e+08	87.98%	38.90s
-Banking          		 8.013976e+08	86.55%	85.85s
-ForceDirected2   		 8.013451e+08	86.54%	21.61s
-Legalize         		 8.006506e+08	86.47%	75.42s
-FineTune         		 8.006383e+08	86.47%	26.29s *
+Initial          		 9.259429e+08	100.00%	0.34s *
+Debank           		 8.817727e+08	95.23%	25.92s
+ForceDirected    		 8.817640e+08	95.23%	2.09s
+Banking          		 8.214276e+08	88.71%	149.97s
+ForceDirected2   		 8.214207e+08	88.71%	1.63s
+Banking          		 8.209632e+08	88.66%	5.60s
+ForceDirected2   		 8.209624e+08	88.66%	1.31s
 ------------------------------------------------------------------
 Renderer closed
 Read testcase...

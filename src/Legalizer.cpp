@@ -105,7 +105,6 @@ void Legalizer::legalize(){
     _ffs = _solver->_ffs;
     double totalMove = 0;
     removeAllFFs();
-    generateSubRows();
     // Sort FFs by x
     std::sort(_ffs.begin(), _ffs.end(), [](FF* a, FF* b){
         if(a->getX() == b->getX())
@@ -115,12 +114,13 @@ void Legalizer::legalize(){
     });
 
     std::vector<int> orphans;
-    int searchDistance = (DIE_UP_RIGHT_Y-DIE_LOW_LEFT_Y)/10;
+    int searchDistance = (DIE_UP_RIGHT_Y-DIE_LOW_LEFT_Y)/50;
 
     for(long unsigned int i = 0;i < _ffs.size();i++){
         double cost_min = INFINITY;
         int best_subrow = -1;
         std::vector<int> nearSubRows = getNearSubRows(_ffs[i], -1, searchDistance);
+
         for(long unsigned int j = 0;j < nearSubRows.size();j++){
             double cost = placeRow(_ffs[i], nearSubRows[j], true);
             if(cost < cost_min){
@@ -140,11 +140,13 @@ void Legalizer::legalize(){
         double cost_min = INFINITY;
         int best_subrow = -1;
         int min_distance = searchDistance;
-        int max_distance = 2*searchDistance;
+        int max_distance = 3*searchDistance;
         while(best_subrow == -1 && max_distance < (DIE_UP_RIGHT_Y-DIE_LOW_LEFT_Y)){
             std::vector<int> nearSubRows = getNearSubRows(_ffs[orphans[i]], min_distance, max_distance);
+            #pragma omp parallel for num_threads(4)
             for(long unsigned int j = 0;j < nearSubRows.size();j++){
                 double cost = placeRow(_ffs[orphans[i]], nearSubRows[j], true);
+                #pragma omp critical
                 if(cost < cost_min){
                     cost_min = cost;
                     best_subrow = nearSubRows[j];
@@ -152,7 +154,7 @@ void Legalizer::legalize(){
             }
             // Increase search distance
             min_distance = max_distance;
-            max_distance += searchDistance;
+            max_distance += 2*searchDistance;
         }
         totalMove += cost_min;
         if(best_subrow != -1)

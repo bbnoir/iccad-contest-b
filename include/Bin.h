@@ -4,6 +4,7 @@
 
 class Cell;
 class FF;
+struct LibCell;
 
 class Bin
 {
@@ -53,6 +54,7 @@ class BinMap
         int getNumOverMaxUtilBinsByComb();
 
         double addCell(Cell* cell, bool trial = false);
+        double trialLibCell(LibCell* libCell, int x, int y);
         double removeCell(Cell* cell, bool trial = false);
 
     private:

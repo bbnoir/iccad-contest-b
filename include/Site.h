@@ -16,15 +16,15 @@ class Site
         void place(Cell* cell);
         bool removeCell(Cell* cell);
 
-        bool isOccupied();
-        bool isOverLapping();
-        std::vector<Cell*> getCell();
-        int getNumCells();
+        inline bool isOccupied() const { return !_cells.empty(); }
+        inline bool isOverLapping() const { return _cells.size() > 1; }
+        inline std::vector<Cell*> getCell() const { return _cells; }
+        inline int getNumCells() const { return _cells.size(); }
         
-        int getX() const { return _x; }
-        int getY() const { return _y; }
-        int getWidth() const { return _width; }
-        int getHeight() const { return _height; }
+        inline int getX() const { return _x; }
+        inline int getY() const { return _y; }
+        inline int getWidth() const { return _width; }
+        inline int getHeight() const { return _height; }
 
     private:
         int _x;
@@ -41,7 +41,7 @@ class SiteMap
         SiteMap(std::vector<PlacementRows> placementRows);
 
         std::vector<Site*> getSites();
-        std::vector<Site*> getSites(int leftDownX, int leftDownY, int rightUpX, int rightUpY);
+        std::vector<Site*> getSitesOfCell(int leftDownX, int leftDownY, int rightUpX, int rightUpY);
         std::vector<Site*> getSitesInBlock(int leftDownX, int leftDownY, int rightUpX, int rightUpY);
         std::vector<std::vector<Site*>> getSiteRows();
 
@@ -52,6 +52,7 @@ class SiteMap
 
         bool onSite(int x, int y);
     private:
+        bool _hasMultiPlaceRow;
         std::vector<PlacementRows> _placementRows;
         std::vector<std::vector<Site*>> _sites;
         std::unordered_map<int, int> _y2row;

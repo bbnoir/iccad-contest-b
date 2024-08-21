@@ -1,0 +1,161 @@
+File parsed successfully
+Alpha: 10 Beta: 2000 Gamma: 0.002 Lambda: 10000
+
+Start initial placement...
+--- Calculating cost ---
+TNS: 657.883
+Power: 457.185
+Area: 4.62506e+11
+Num of bins violated: 1
+==> Initial cost: 9.25943e+08
+Initialization time: 0.304138s
+
+Start to debank...
+--- Calculating cost ---
+TNS: 4628.25
+Power: 621.505
+Area: 4.04524e+11
+Num of bins violated: 0
+==> Cost after debanking: 8.10338e+08
+Debanking time: 45.4873s
+
+Start to force directed placement...
+--- Calculating cost ---
+TNS: 474.986
+Power: 621.505
+Area: 4.04524e+11
+Num of bins violated: 0
+==> Cost after force directed placement: 8.10296e+08
+Force directed placement time: 14.5099s
+
+Start clustering and banking...
+Init FFs size: 19879
+FFs size after greedy banking: 12974
+FFs size after greedy banking: 11049
+FFs size after greedy banking: 10811
+FFs size after greedy banking: 10806
+FFs size after greedy banking: 10806
+--- Calculating cost ---
+TNS: 144793
+Power: 347.248
+Area: 3.81398e+11
+Num of bins violated: 142
+==> Cost after clustering and banking: 7.66359e+08
+Clustering and banking time: 99.4723s
+
+Start to force directed placement (second)...
+--- Calculating cost ---
+TNS: 124612
+Power: 347.248
+Area: 3.81398e+11
+Num of bins violated: 127
+==> Cost after force directed placement (second): 7.66007e+08
+Force directed placement (second) time: 39.1954s
+
+Start to legalize...
+Legalizing done.
+Total movement: 3.05983e+08
+--- Calculating cost ---
+TNS: 1.37792e+06
+Power: 347.248
+Area: 3.81398e+11
+Num of bins violated: 1
+==> Cost after reset slack: 7.7728e+08
+Legalization time: 72.6546s
+
+Start to force directed placement (Legal)...
+--- Calculating cost ---
+TNS: 1.36162e+06
+Power: 347.248
+Area: 3.81398e+11
+Num of bins violated: 1
+==> Cost after force directed placement (Legal): 7.77117e+08
+Force directed placement (Legal) time: 5.33957s
+
+Start to fine tune...
+Fine tuning...
+Bin Grid: 45x45
+Fine tuning: 0/41
+Fine tuning: 1/41
+Fine tuning: 2/41
+Fine tuning: 3/41
+Fine tuning: 4/41
+Fine tuning: 5/41
+Fine tuning: 6/41
+Fine tuning: 7/41
+Fine tuning: 8/41
+Fine tuning: 9/41
+Fine tuning: 10/41
+Fine tuning: 11/41
+Fine tuning: 12/41
+Fine tuning: 13/41
+Fine tuning: 14/41
+Fine tuning: 15/41
+Fine tuning: 16/41
+Fine tuning: 17/41
+Fine tuning: 18/41
+Fine tuning: 19/41
+Fine tuning: 20/41
+Fine tuning: 21/41
+Fine tuning: 22/41
+Fine tuning: 23/41
+Fine tuning: 24/41
+Fine tuning: 25/41
+Fine tuning: 26/41
+Fine tuning: 27/41
+Fine tuning: 28/41
+Fine tuning: 29/41
+Fine tuning: 30/41
+Fine tuning: 31/41
+Fine tuning: 32/41
+Fine tuning: 33/41
+Fine tuning: 34/41
+Fine tuning: 35/41
+Fine tuning: 36/41
+Fine tuning: 37/41
+Fine tuning: 38/41
+Fine tuning: 39/41
+Fine tuning: 40/41
+Cost difference: -135467
+--- Calculating cost ---
+TNS: 1.36007e+06
+Power: 347.248
+Area: 3.81398e+11
+Num of bins violated: 0
+==> Cost after reset slack: 7.77091e+08
+Fine tuning time: 12.797s
+
+Cost after solving: 7.77091e+08
+Cost difference: -1.48852e+08
+Cost difference percentage: -16.0757%
+============= Start checking =============
+Check FF in Die
+Check FF on Site
+Check Overlap
+================= Success ================
+
+------------------------------------------------------------------
+----------------------------- Report -----------------------------
+------------------------------------------------------------------
+Initial          		 9.259429e+08	100.00%	0.30s
+Debank           		 8.103377e+08	87.51%	45.49s
+ForceDirected    		 8.102962e+08	87.51%	14.51s
+Banking          		 7.663586e+08	82.77%	99.47s
+ForceDirected2   		 7.660068e+08	82.73%	39.20s
+Legalize         		 7.772798e+08	83.94%	72.65s
+ForceDirectedLegal 		 7.771169e+08	83.93%	5.34s
+FineTune         		 7.770914e+08	83.92%	12.80s *
+------------------------------------------------------------------
+Renderer closed
+Read testcase...
+Read output...
+Check Inst <name> <libcell> <x> <y> format...
+Check From/pin map To/pin  format...
+Start checking...
+check libType
+check pins are in design
+check pins are correct connected
+check same CLK for banking
+check netlist... step1
+check netlist... step2
+Checking pass!
