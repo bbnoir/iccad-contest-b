@@ -1955,8 +1955,9 @@ double Solver::cal_banking_gain(FF* ff1, FF* ff2, LibCell* targetFF, int& result
     std::vector<Site*> sites = _siteMap->getSitesInBlock(leftDownX, leftDownY, rightUpX, rightUpY);
     double min_gain = -INFINITY;
 
+    const size_t stride = std::max(sites.size() / 10, (size_t)1);
     #pragma omp parallel for num_threads(NUM_THREADS)
-    for(size_t i=0;i<sites.size();i+=16){
+    for(size_t i=0;i<sites.size();i+=stride){
         int target_x = sites[i]->getX();
         int target_y = sites[i]->getY();
 

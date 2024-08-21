@@ -149,7 +149,7 @@ class Solver
         std::vector<bool> _stateLegal;
         size_t _bestStateIdx;
         double _bestCost = -1;
-        void saveState(std::string stateName, bool legal = false);
+        void saveState(std::string stateName, bool legal = true);
 
         // Checker
         bool checkOverlap();
