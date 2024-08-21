@@ -548,6 +548,8 @@ void Solver::init_placement()
     {
         placeCell(comb);
     }
+
+    _legalizer->generateSubRows();
 }
 
 /*
@@ -617,6 +619,41 @@ bool Solver::placeable(Cell* cell, int x,int y)
         if(c == cell)
             continue;
         if(isOverlap(x, y, cell, c))
+        {
+            return false;
+        }
+    }
+    return true;
+}
+
+/*
+check the proposed cell(LibCell) is placeable on the site at (x,y) (on site and not overlap)
+Call before placing the cell if considering overlap
+*/
+bool Solver::placeable(LibCell* libCell, int x, int y)
+{
+    // check the cell is on site
+    if(!_siteMap->onSite(x, y))
+    {
+        // std::cerr << "Cell not placed on site: " << cell->getInstName() << std::endl;
+        return false;
+    }
+    // check the cell in the die
+    if(x < DIE_LOW_LEFT_X || x+libCell->width > DIE_UP_RIGHT_X || y < DIE_LOW_LEFT_Y || y+libCell->height > DIE_UP_RIGHT_Y)
+    {
+        // std::cerr << "Cell not in die: " << cell->getInstName() << std::endl;
+        return false;
+    }
+    // check the cell will not overlap with other cells in the bin
+    std::vector<Bin*> bins = _binMap->getBins(x, y, x+libCell->width, y+libCell->height);
+    std::vector<Cell*> cells;
+    for(auto bin: bins)
+    {
+        cells.insert(cells.end(), bin->getCells().begin(), bin->getCells().end());
+    }
+    for(auto c: cells)
+    {
+        if(isOverlap(x, y, libCell->width, libCell->height, c))
         {
             return false;
         }
@@ -924,7 +961,7 @@ void Solver::deleteFF(FF* ff)
     delete ff;
 }
 
-void Solver::bankFFs(FF* ff1, FF* ff2, LibCell* targetFF)
+void Solver::bankFFs(FF* ff1, FF* ff2, LibCell* targetFF, int x, int y)
 {
     if (ff1->getClkDomain() != ff2->getClkDomain())
     {
@@ -946,7 +983,8 @@ void Solver::bankFFs(FF* ff1, FF* ff2, LibCell* targetFF)
     clkPins.push_back(ff2->getClkPin());
     // place the banked FF
     int target_x, target_y;
-    findForceDirectedPlacementBankingFFs(ff1, ff2, target_x, target_y);
+    target_x = x;
+    target_y = y;
     calCostBankFF(ff1, ff2, targetFF, target_x, target_y, true);
     FF* bankedFF = new FF(target_x, target_y, makeUniqueName(), targetFF, dqPairs, clkPins);
     bankedFF->setClkDomain(ff1->getClkDomain());
@@ -966,10 +1004,10 @@ std::string Solver::makeUniqueName()
 void Solver::debankAll()
 {
     std::vector<FF*> debankedFFs;
-    for (auto ff : _ffs)
-    {
-        removeCell(ff);
-    }
+    // for (auto ff : _ffs)
+    // {
+    //     removeCell(ff);
+    // }
 
     std::vector<LibCell*> oneBitFFs;
     for (auto ff : _ffsLibList)
@@ -982,6 +1020,7 @@ void Solver::debankAll()
 
     for (auto ff : _ffs)
     {
+        removeCell(ff);
         // Choose a 1 bit FF that fits the best
         double minCost = 0;
         LibCell* bestFF = ff->getLibCell();
@@ -995,6 +1034,10 @@ void Solver::debankAll()
         #pragma omp parallel for num_threads(NUM_THREADS)
         for(auto oneBitFF: oneBitFFs)
         {
+            // check if the FF can be placed
+            // TODO: Multi-bit FF debanking
+            if(!placeable(oneBitFF, x, y))
+                continue;
             // calculate the cost difference if the FF is replaced by the 1 bit FF at the same position
             const int d_x = x + oneBitFF->inputPins[0]->getX();
             const int d_y = y + oneBitFF->inputPins[0]->getY();
@@ -1058,6 +1101,7 @@ void Solver::debankAll()
             FF* newFF = new FF(x, y, makeUniqueName(), bestFF, dq, clkPin);
             newFF->setClkDomain(clkDomain);
             debankedFFs.push_back(newFF);
+            placeCell(newFF);
         }
         delete clkPin;
     }
@@ -1070,7 +1114,6 @@ void Solver::debankAll()
     for (auto ff : debankedFFs)
     {
         addFF(ff);
-        placeCell(ff);
     }
 }
 /*
@@ -1395,6 +1438,9 @@ void Solver::solve()
         std::cout << "Initialization time: " << elapsed.count() << "s" << std::endl;
         start = std::chrono::high_resolution_clock::now();
     }
+
+    bool legal = check();
+    std::cout << "Legal: " << legal << "\n";
     
     std::cout << "\nStart to debank...\n";
     debankAll();
@@ -1411,8 +1457,11 @@ void Solver::solve()
         start = std::chrono::high_resolution_clock::now();
     }
 
+    legal = check();
+    std::cout << "Legal: " << legal << "\n";
+    
     std::cout<<"\nStart to force directed placement...\n";
-    iterativePlacement();
+    iterativePlacementLegal();
     _currCost = calCost();
     std::cout << "==> Cost after force directed placement: " << _currCost << "\n";
     saveState("ForceDirected");
@@ -1425,7 +1474,10 @@ void Solver::solve()
         std::cout << "Force directed placement time: " << elapsed.count() << "s" << std::endl;
         start = std::chrono::high_resolution_clock::now();
     }
-    
+
+    legal = check();
+    std::cout << "Legal: " << legal << "\n";
+
     std::cout << "\nStart clustering and banking...\n";
     size_t prev_ffs_size;
     std::cout << "Init FFs size: " << _ffs.size() << "\n";
@@ -1436,13 +1488,6 @@ void Solver::solve()
         for(size_t i = 0; i < _ffs_clkdomains.size(); i++)
         {
             std::vector<std::vector<FF*>> cluster = clusteringFFs(i);
-            // int total = 0;
-            // for(auto c: cluster)
-            // {
-            //     total += c.size();
-            // }
-            // std::cout << "Average cluster size: " << 1.*total/cluster.size() << "\n";
-            // std::cout << "Number of clusters: " << cluster.size() << "\n";
             greedyBanking(cluster);
         }
         std::cout << "FFs size after greedy banking: " << _ffs.size() << "\n";
@@ -1460,8 +1505,11 @@ void Solver::solve()
         start = std::chrono::high_resolution_clock::now();
     }
 
+    legal = check();
+    std::cout << "Legal: " << legal << "\n";
+
     std::cout << "\nStart to force directed placement (second)...\n";
-    iterativePlacement();
+    iterativePlacementLegal();
     _currCost = calCost();
     std::cout << "==> Cost after force directed placement (second): " << _currCost << "\n";
     saveState("ForceDirected2");
@@ -1475,51 +1523,101 @@ void Solver::solve()
         start = std::chrono::high_resolution_clock::now();
     }
 
-    std::cout<<"\nStart to legalize...\n";
-    _legalizer->legalize();
-    resetSlack();
+    legal = check();
+    std::cout << "Legal: " << legal << "\n";
+
+    std::cout << "\nStart clustering and banking...\n";
+    std::cout << "Init FFs size: " << _ffs.size() << "\n";
+    do
+    {
+        constructFFsCLKDomain();
+        prev_ffs_size = _ffs.size();
+        for(size_t i = 0; i < _ffs_clkdomains.size(); i++)
+        {
+            std::vector<std::vector<FF*>> cluster = clusteringFFs(i);
+            greedyBanking(cluster);
+        }
+        std::cout << "FFs size after greedy banking: " << _ffs.size() << "\n";
+    } while (prev_ffs_size != _ffs.size());
     _currCost = calCost();
-    std::cout << "==> Cost after reset slack: " << _currCost << "\n";
-    saveState("Legalize", true);
+    std::cout << "==> Cost after clustering and banking: " << _currCost << "\n";
+    saveState("Banking");
 
     if(calTime)
     {
         end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> elapsed = end - start;
         _stateTimes.push_back(elapsed.count());
-        std::cout << "Legalization time: " << elapsed.count() << "s" << std::endl;
+        std::cout << "Clustering and banking time: " << elapsed.count() << "s" << std::endl;
         start = std::chrono::high_resolution_clock::now();
     }
 
-    std::cout<<"\nStart to force directed placement (Legal)...\n";
+    legal = check();
+    std::cout << "Legal: " << legal << "\n";
+
+    std::cout << "\nStart to force directed placement (second)...\n";
     iterativePlacementLegal();
     _currCost = calCost();
-    std::cout << "==> Cost after force directed placement (Legal): " << _currCost << "\n";
-    saveState("ForceDirectedLegal", true);
-
+    std::cout << "==> Cost after force directed placement (second): " << _currCost << "\n";
+    saveState("ForceDirected2");
+    
     if(calTime)
     {
         end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> elapsed = end - start;
         _stateTimes.push_back(elapsed.count());
-        std::cout << "Force directed placement (Legal) time: " << elapsed.count() << "s" << std::endl;
+        std::cout << "Force directed placement (second) time: " << elapsed.count() << "s" << std::endl;
         start = std::chrono::high_resolution_clock::now();
     }
 
-    std::cout<<"\nStart to fine tune...\n";
-    fineTune();
-    resetSlack();
-    _currCost = calCost();
-    std::cout << "==> Cost after reset slack: " << _currCost << "\n";
-    saveState("FineTune", true);
+    legal = check();
+    std::cout << "Legal: " << legal << "\n";
+    
+    // // std::cout<<"\nStart to legalize...\n";
+    // // _legalizer->legalize();
+    // // resetSlack();
+    // // _currCost = calCost();
+    // // std::cout << "==> Cost after reset slack: " << _currCost << "\n";
+    // // saveState("Legalize", true);
 
-    if(calTime)
-    {
-        end = std::chrono::high_resolution_clock::now();
-        std::chrono::duration<double> elapsed = end - start;
-        _stateTimes.push_back(elapsed.count());
-        std::cout << "Fine tuning time: " << elapsed.count() << "s" << std::endl;
-    }
+    // // if(calTime)
+    // // {
+    // //     end = std::chrono::high_resolution_clock::now();
+    // //     std::chrono::duration<double> elapsed = end - start;
+    // //     _stateTimes.push_back(elapsed.count());
+    // //     std::cout << "Legalization time: " << elapsed.count() << "s" << std::endl;
+    // //     start = std::chrono::high_resolution_clock::now();
+    // // }
+
+    // std::cout<<"\nStart to force directed placement (Legal)...\n";
+    // iterativePlacementLegal();
+    // _currCost = calCost();
+    // std::cout << "==> Cost after force directed placement (Legal): " << _currCost << "\n";
+    // saveState("ForceDirectedLegal", true);
+
+    // if(calTime)
+    // {
+    //     end = std::chrono::high_resolution_clock::now();
+    //     std::chrono::duration<double> elapsed = end - start;
+    //     _stateTimes.push_back(elapsed.count());
+    //     std::cout << "Force directed placement (Legal) time: " << elapsed.count() << "s" << std::endl;
+    //     start = std::chrono::high_resolution_clock::now();
+    // }
+
+    // std::cout<<"\nStart to fine tune...\n";
+    // fineTune();
+    // resetSlack();
+    // _currCost = calCost();
+    // std::cout << "==> Cost after reset slack: " << _currCost << "\n";
+    // saveState("FineTune", true);
+
+    // if(calTime)
+    // {
+    //     end = std::chrono::high_resolution_clock::now();
+    //     std::chrono::duration<double> elapsed = end - start;
+    //     _stateTimes.push_back(elapsed.count());
+    //     std::cout << "Fine tuning time: " << elapsed.count() << "s" << std::endl;
+    // }
 
     std::cout << "\nCost after solving: " << _currCost << "\n";
     std::cout << "Cost difference: " << _currCost - _initCost << "\n";
@@ -1529,7 +1627,7 @@ void Solver::solve()
 /*
 Check for FFs in Die, FFs on Site, and Overlap
 */
-void Solver::check()
+bool Solver::check()
 {
     std::cout << "============= Start checking =============" << std::endl;
     std::cout << "Check FF in Die" << std::endl;
@@ -1557,6 +1655,9 @@ void Solver::check()
     if(inDie && onSite && !overlap)
     {
         std::cout << "================= Success ================" << std::endl;
+        return true;
+    }else{
+        return false;
     }
 }
 
@@ -1833,21 +1934,56 @@ void Solver::findForceDirectedPlacementBankingFFs(FF* ff1, FF* ff2, int& result_
     }
 }
 
-double Solver::cal_banking_gain(FF* ff1, FF* ff2, LibCell* targetFF)
+double Solver::cal_banking_gain(FF* ff1, FF* ff2, LibCell* targetFF, int& result_x, int& result_y)
 {
     if(ff1->getBit()+ff2->getBit()!=targetFF->bit){
         std::cout << "Invalid target FF" << std::endl;
         return -INT_MAX;
     }
-    int target_x, target_y;
-    findForceDirectedPlacementBankingFFs(ff1, ff2, target_x, target_y);
-    const double gain = -calCostBankFF(ff1, ff2, targetFF, target_x, target_y, false);
-    return gain;
+    
+    double remove_gain = 0;
+    remove_gain -= _binMap->removeCell(ff1,true);
+    remove_gain -= _binMap->removeCell(ff2,true);
+    
+    removeCell(ff1);
+    removeCell(ff2);
+
+    int leftDownX = std::min(ff1->getX(), ff2->getX());
+    int leftDownY = std::min(ff1->getY(), ff2->getY());
+    int rightUpX = std::max(ff1->getX() + ff1->getWidth(), ff2->getX() + ff2->getWidth());
+    int rightUpY = std::max(ff1->getY() + ff1->getHeight(), ff2->getY() + ff2->getHeight());
+    std::vector<Site*> sites = _siteMap->getSitesInBlock(leftDownX, leftDownY, rightUpX, rightUpY);
+    double min_gain = -INFINITY;
+
+    #pragma omp parallel for num_threads(NUM_THREADS)
+    for(size_t i=0;i<sites.size();i++) {
+        int target_x = sites[i]->getX();
+        int target_y = sites[i]->getY();
+
+        if(!placeable(targetFF, target_x, target_y))
+            continue;
+        
+        double gain = -calCostBankFF(ff1, ff2, targetFF, target_x, target_y, false);
+        gain -= _binMap->trialLibCell(targetFF, target_x, target_y);
+
+        #pragma omp critical
+        if(gain > min_gain)
+        {
+            min_gain = gain;
+            result_x = target_x;
+            result_y = target_y;
+        }
+    }
+
+    placeCell(ff1);
+    placeCell(ff2);
+    
+    return min_gain + remove_gain;
 }
 
 void Solver::greedyBanking(std::vector<std::vector<FF*>> clusters)
 {
-    #pragma omp parallel for num_threads(NUM_THREADS)
+    // #pragma omp parallel for num_threads(NUM_THREADS)
     for(auto cluster : clusters)
     {
         if(cluster.size() < 2)
@@ -1858,6 +1994,8 @@ void Solver::greedyBanking(std::vector<std::vector<FF*>> clusters)
         do
         {
             maxGain = 0.0;
+            int result_x = 0;
+            int result_y = 0;
             FF* bestFF1 = nullptr;
             FF* bestFF2 = nullptr;
             LibCell* targetFF = nullptr;
@@ -1871,22 +2009,25 @@ void Solver::greedyBanking(std::vector<std::vector<FF*>> clusters)
                     {
                         if(ff->bit == ff1->getBit() + ff2->getBit())
                         {
-                            double gain = cal_banking_gain(ff1, ff2, ff);
+                            int x, y;
+                            double gain = cal_banking_gain(ff1, ff2, ff, x, y);
                             if(gain > maxGain || bestFF1 == nullptr)
                             {
                                 maxGain = gain;
                                 bestFF1 = ff1;
                                 bestFF2 = ff2;
                                 targetFF = ff;
+                                result_x = x;
+                                result_y = y;
                             }
                         }
                     }
                 }
             }
-            #pragma omp critical
+            // #pragma omp critical
             if (maxGain > 0)
             {
-                bankFFs(bestFF1, bestFF2, targetFF);
+                bankFFs(bestFF1, bestFF2, targetFF, result_x, result_y);
                 cluster.erase(std::remove(cluster.begin(), cluster.end(), bestFF1), cluster.end());
                 cluster.erase(std::remove(cluster.begin(), cluster.end(), bestFF2), cluster.end());
             }

@@ -188,3 +188,14 @@ double Cell::getQDelay()
 {
     return _lib_cell->qDelay;
 }
+
+void Cell::deletePins()
+{
+    for (auto pin : _pins)
+    {
+        delete pin;
+    }
+    _pins.clear();
+    _inputPins.clear();
+    _outputPins.clear();
+}

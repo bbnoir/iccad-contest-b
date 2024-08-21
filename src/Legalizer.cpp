@@ -105,7 +105,6 @@ void Legalizer::legalize(){
     _ffs = _solver->_ffs;
     double totalMove = 0;
     removeAllFFs();
-    generateSubRows();
     // Sort FFs by x
     std::sort(_ffs.begin(), _ffs.end(), [](FF* a, FF* b){
         if(a->getX() == b->getX())
