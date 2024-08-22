@@ -29,6 +29,7 @@ struct LibCell
     std::vector<Pin*> inputPins;
     std::vector<Pin*> outputPins;
     Pin* clkPin;
+    double costPA;
 
     LibCell()
     {

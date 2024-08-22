@@ -17,6 +17,8 @@ class FF : public Cell
         double getPower();
         double getTotalNegativeSlack();
         double getTotalSlack();
+        double getCostPA();
+        int getNSPinCount();
         Pin* getClkPin();
         std::vector<std::pair<Pin*, Pin*>> getDQpairs();
         int getClkDomain();
