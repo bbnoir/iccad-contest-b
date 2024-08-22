@@ -2065,6 +2065,7 @@ void Solver::greedyBanking(std::vector<std::vector<FF*>> clusters)
         // }
 
         std::unordered_map<FF*, bool> locked;
+        std::vector<bool> pair_lock(pair_scores.size(), false);
         for (auto ff : cluster)
         {
             locked[ff] = false;
@@ -2080,17 +2081,21 @@ void Solver::greedyBanking(std::vector<std::vector<FF*>> clusters)
             LibCell* targetFF = nullptr;
             for (auto ps : pair_scores)
             {
+                if (pair_lock[ps.first])
+                    continue;
                 const std::pair<FF*, FF*>& p = pairs[ps.first];
                 FF* ff1 = p.first;
                 FF* ff2 = p.second;
                 if (locked[ff1] || locked[ff2])
                     continue;
+                double pair_max_gain = 0.0;
                 for(auto ff : _ffsLibList)
                 {
                     if(ff->bit == ff1->getBit() + ff2->getBit())
                     {
                         int x, y;
                         double gain = cal_banking_gain(ff1, ff2, ff, x, y);
+                        pair_max_gain = std::max(pair_max_gain, gain);
                         if(gain > maxGain || bestFF1 == nullptr)
                         {
                             maxGain = gain;
@@ -2101,6 +2106,10 @@ void Solver::greedyBanking(std::vector<std::vector<FF*>> clusters)
                             result_y = y;
                         }
                     }
+                }
+                if (pair_max_gain == 0)
+                {
+                    pair_lock[ps.first] = true;
                 }
             }
             // #pragma omp critical
