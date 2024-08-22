@@ -1952,13 +1952,29 @@ double Solver::cal_banking_gain(FF* ff1, FF* ff2, LibCell* targetFF, int& result
     int leftDownY = std::min(ff1->getY(), ff2->getY());
     int rightUpX = std::max(ff1->getX() + ff1->getWidth(), ff2->getX() + ff2->getWidth());
     int rightUpY = std::max(ff1->getY() + ff1->getHeight(), ff2->getY() + ff2->getHeight());
-    std::vector<Site*> sites = _siteMap->getSitesInBlock(leftDownX, leftDownY, rightUpX, rightUpY);
     double min_gain = -INFINITY;
 
+    // set candidates
+    std::vector<std::pair<int, int>> candidates;
+    const int div = 4;
+    const double x_stride = double(rightUpX - leftDownX) / div;
+    const double y_stride = double(rightUpY - leftDownY) / div;
+    for(int i = 0; i < div; i++)
+    {
+        for(int j = 0; j < div; j++)
+        {
+            double x = leftDownX + i * x_stride;
+            double y = leftDownY + j * y_stride;
+            candidates.push_back(std::make_pair(int(x), int(y)));
+        }
+    }
+
     #pragma omp parallel for num_threads(NUM_THREADS)
-    for(size_t i=0;i<sites.size();i+=16){
-        int target_x = sites[i]->getX();
-        int target_y = sites[i]->getY();
+    for(size_t i=0;i<candidates.size();i++)
+    {
+        Site* targetSite = _siteMap->getNearestSite(candidates[i].first, candidates[i].second);
+        const int target_x = targetSite->getX();
+        const int target_y = targetSite->getY();
 
         if(!placeable(targetFF, target_x, target_y))
             continue;
