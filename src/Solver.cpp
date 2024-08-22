@@ -931,6 +931,68 @@ double Solver::calCostBankFF(FF* ff1, FF* ff2, LibCell* targetFF, int targetX, i
     return diff_cost;
 }
 
+double Solver::calCostDebankFF(FF* ff, LibCell* targetFF, std::vector<int>& targetX, std::vector<int>& targetY, bool update)
+{
+    std::vector<std::pair<Pin*, Pin*>> dqPairs = ff->getDQpairs();
+    const int x = ff->getX();
+    const int y = ff->getY();
+    
+    // TODO: multi-bits
+    double areaDiff = GAMMA*(targetFF->width * targetFF->height - ff->getArea());
+    double powerDiff = BETA*(targetFF->power - ff->getPower());
+
+    if(update)
+    {
+        _currCost += areaDiff + powerDiff;
+    }
+
+    double slackDiff = 0;
+    const double diffQDelay = targetFF->qDelay - ff->getQDelay();
+
+    // if(dqPairs.size() != targetX.size() || dqPairs.size() != targetY.size())
+    // {
+    //     std::cerr << "Error: Debank FF target size mismatch" << std::endl;
+    //     exit(1);
+    // }
+
+    for (size_t i=0;i<dqPairs.size();i++)
+    {
+        std::pair<Pin*, Pin*> dq = dqPairs[i];
+        Pin *d = dq.first, *q = dq.second;
+
+        const int original_dx = x + d->getX();
+        const int original_dy = y + d->getY();
+        const int original_qx = x + q->getX();
+        const int original_qy = y + q->getY();
+
+        const int target_dx = targetX[i] + targetFF->inputPins[i]->getX();
+        const int target_dy = targetY[i] + targetFF->inputPins[i]->getY();
+        const int target_qx = targetX[i] + targetFF->outputPins[i]->getX();
+        const int target_qy = targetY[i] + targetFF->outputPins[i]->getY();
+
+        slackDiff += calCostMoveD(d, original_dx, original_dy, target_dx, target_dy, update);
+        slackDiff += calCostMoveQ(q, original_qx, original_qy, target_qx, target_qy, update);
+        slackDiff += calCostChangeQDelay(q, diffQDelay, update);
+        if (d->getFaninPin() == q)
+        {
+            // loop
+            const double old_slack = d->getSlack();
+            const double diff_dist = abs(target_dx - target_qx) + abs(target_dx - target_qy) - abs(original_dx - original_qx) - abs(original_dy - original_qy);
+            const double new_slack = old_slack - DISP_DELAY * diff_dist;
+            if(update)
+            {
+                d->modArrivalTime(DISP_DELAY * diff_dist);
+                d->setSlack(new_slack);
+                _currCost += calDiffCost(old_slack, new_slack);
+            }
+            slackDiff += calDiffCost(old_slack, new_slack);
+        }
+    }
+    double diff_cost = areaDiff + powerDiff + slackDiff;
+
+    return diff_cost;
+}
+
 void Solver::resetSlack(bool check)
 {
     for (auto ff : _ffs)
@@ -1004,11 +1066,6 @@ std::string Solver::makeUniqueName()
 void Solver::debankAll()
 {
     std::vector<FF*> debankedFFs;
-    // for (auto ff : _ffs)
-    // {
-    //     removeCell(ff);
-    // }
-
     std::vector<LibCell*> oneBitFFs;
     for (auto ff : _ffsLibList)
     {
@@ -1021,90 +1078,63 @@ void Solver::debankAll()
     for (auto ff : _ffs)
     {
         removeCell(ff);
-        // Choose a 1 bit FF that fits the best
-        double minCost = 0;
-        LibCell* bestFF = ff->getLibCell();
-        
+
         std::vector<std::pair<Pin*, Pin*>> dqPairs = ff->getDQpairs();
         Pin* clkPin = ff->getClkPin();
         const int x = ff->getX();
         const int y = ff->getY();
         const int clkDomain = ff->getClkDomain();
 
+        double minCost = 0;
+        LibCell* bestFF = ff->getLibCell();
+        std::vector<int> bestX = {x};
+        std::vector<int> bestY = {y};
+
         #pragma omp parallel for num_threads(NUM_THREADS)
         for(auto oneBitFF: oneBitFFs)
         {
             // check if the FF can be placed
-            // TODO: Multi-bit FF debanking
             if(!placeable(oneBitFF, x, y))
                 continue;
-            // calculate the cost difference if the FF is replaced by the 1 bit FF at the same position
-            const int d_x = x + oneBitFF->inputPins[0]->getX();
-            const int d_y = y + oneBitFF->inputPins[0]->getY();
-            const int q_x = x + oneBitFF->outputPins[0]->getX();
-            const int q_y = y + oneBitFF->outputPins[0]->getY();
-            const double diffQDelay = oneBitFF->qDelay - ff->getQDelay();
-                
-            double areaDiff = GAMMA*(oneBitFF->width * oneBitFF->height - ff->getArea());
-            double powerDiff = BETA*(oneBitFF->power - ff->getPower());
-            double slackDiff = 0;
-            for (auto dq : dqPairs)
-            {
-                Pin *d = dq.first, *q = dq.second;
-                slackDiff += calCostMoveD(d, x + d->getX(), y + d->getY(), d_x, d_y, false);
-                slackDiff += calCostMoveQ(q, x + q->getX(), y + q->getY(), q_x, q_y, false);
-                slackDiff += calCostChangeQDelay(q, diffQDelay, false);
-                if (d->getFaninPin() == q)
-                {
-                    // loop
-                    const double old_slack = d->getSlack();
-                    const double diff_dist = abs(d_x - q_x) + abs(d_y - q_y) - abs(x + d->getX() - x - q->getX()) - abs(y + d->getY() - y - q->getY());
-                    const double new_slack = old_slack - DISP_DELAY * diff_dist;
-                    slackDiff += calDiffCost(old_slack, new_slack);
-                }
-            }
-            double costDiff = areaDiff + powerDiff + slackDiff;
+            std::vector<int> target_X, target_Y;
+            // TODO: multi-bits
+            target_X.push_back(x);
+            target_Y.push_back(y);
+
+            double costDiff = calCostDebankFF(ff, oneBitFF, target_X, target_Y, false);
             #pragma omp critical
             if (costDiff < minCost)
             {
                 minCost = costDiff;
+                bestX = target_X;
+                bestY = target_Y;
                 bestFF = oneBitFF;
             }
         }
 
-        double areaDiff = GAMMA*(bestFF->width * bestFF->height - ff->getArea());
-        double powerDiff = BETA*(bestFF->power - ff->getPower());
-        _currCost += areaDiff + powerDiff;
-
-        const int d_x = x + bestFF->inputPins[0]->getX();
-        const int d_y = y + bestFF->inputPins[0]->getY();
-        const int q_x = x + bestFF->outputPins[0]->getX();
-        const int q_y = y + bestFF->outputPins[0]->getY();
-        const double diffQDelay = bestFF->qDelay - ff->getQDelay();
-
-        for (auto dq : dqPairs)
+        if(minCost == 0)
         {
-            Pin *d = dq.first, *q = dq.second;
-            calCostMoveD(d, x + d->getX(), y + d->getY(), d_x, d_y, true);
-            calCostMoveQ(q, x + q->getX(), y + q->getY(), q_x, q_y, true);
-            calCostChangeQDelay(q, diffQDelay, true);
-            if (d->getFaninPin() == q)
-            {
-                // loop
-                const double old_slack = d->getSlack();
-                const double diff_dist = abs(d_x - q_x) + abs(d_y - q_y) - abs(x + d->getX() - x - q->getX()) - abs(y + d->getY() - y - q->getY());
-                const double new_slack = old_slack - DISP_DELAY * diff_dist;
-                d->modArrivalTime(DISP_DELAY * diff_dist);
-                d->setSlack(new_slack);
-                _currCost += calDiffCost(old_slack, new_slack);
-            }
-            FF* newFF = new FF(x, y, makeUniqueName(), bestFF, dq, clkPin);
+            // no better FF found
+            FF* cloneFF = new FF(x, y, makeUniqueName(), bestFF, dqPairs, clkPin);
+            cloneFF->setClkDomain(clkDomain);
+            debankedFFs.push_back(cloneFF);
+            placeCell(cloneFF);
+            delete clkPin;
+            continue;
+        }
+
+        calCostDebankFF(ff, bestFF, bestX, bestY, true);
+
+        for(size_t i=0;i<dqPairs.size();i++)
+        {
+            FF* newFF = new FF(bestX[i], bestY[i], makeUniqueName(), bestFF, dqPairs[i], clkPin);
             newFF->setClkDomain(clkDomain);
             debankedFFs.push_back(newFF);
             placeCell(newFF);
         }
         delete clkPin;
     }
+
     for(size_t i=0;i<_ffs.size();i++)
     {
         delete _ffs[i];
