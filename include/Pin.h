@@ -63,11 +63,12 @@ class Pin
         void initArrivalTime();
         void resetArrivalTime(bool check = false);
         void modArrivalTime(double delay); // only for FF_D in debug mode
-        std::vector<int> getPathIndex(Pin* prevStagePin);
+        std::vector<int>* getPathIndex(Pin* prevStagePin);
         double calSlack(Pin* movedPrevStagePin, int sourceX, int sourceY, int targetX, int targetY, bool update = false);
         double calSlackQ(Pin* changeQPin, double diffQDelay, bool update = false);
         void resetSlack(bool check = false);
         bool checkCritical();
+        void initPathMaps();
 
         void connect(Net* net);
         void copyConnection(Pin* pin);
@@ -101,4 +102,5 @@ class Pin
         std::vector<std::vector<Pin*>> _pathToPrevStagePins;
         std::vector<std::vector<Pin*>> _pathToNextStagePins;
         std::vector<double> _arrivalTimes;
+        std::unordered_map<Pin*, std::vector<int>*> _prevPathIndexListMap;
 };

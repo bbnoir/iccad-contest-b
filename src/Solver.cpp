@@ -369,6 +369,13 @@ void Solver::parse_input(std::string filename)
             inPin->initArrivalTime();
         }
     }
+    for (auto ff : _ffs)
+    {
+        for (auto inPin : ff->getInputPins())
+        {
+            inPin->initPathMaps();
+        }
+    }
 
     // set up ff lib costPA
     for (auto ff : _ffsLibList)
@@ -904,6 +911,7 @@ double Solver::calCostBankFF(FF* ff1, FF* ff2, LibCell* targetFF, int targetX, i
             const double d_cost = calDiffCost(old_slack, new_slack);
             if (update)
             {
+                inPin->modArrivalTime(DISP_DELAY * diff_dist);
                 inPin->setSlack(new_slack);
                 _currCost += d_cost;
             }
@@ -1000,11 +1008,8 @@ void Solver::bankFFs(FF* ff1, FF* ff2, LibCell* targetFF, int x, int y)
     clkPins.push_back(ff1->getClkPin());
     clkPins.push_back(ff2->getClkPin());
     // place the banked FF
-    int target_x, target_y;
-    target_x = x;
-    target_y = y;
-    calCostBankFF(ff1, ff2, targetFF, target_x, target_y, true);
-    FF* bankedFF = new FF(target_x, target_y, makeUniqueName(), targetFF, dqPairs, clkPins);
+    calCostBankFF(ff1, ff2, targetFF, x, y, true);
+    FF* bankedFF = new FF(x, y, makeUniqueName(), targetFF, dqPairs, clkPins);
     bankedFF->setClkDomain(ff1->getClkDomain());
     addFF(bankedFF);
     placeCell(bankedFF);

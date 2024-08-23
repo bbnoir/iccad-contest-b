@@ -15,6 +15,10 @@ Pin::Pin(PinType type, int x, int y, std::string name, Cell* cell)
 
 Pin::~Pin()
 {
+    for (auto pathIndexList : _prevPathIndexListMap)
+    {
+        delete pathIndexList.second;
+    }
 }
 
 int Pin::getGlobalX() const
@@ -178,18 +182,9 @@ void Pin::resetArrivalTime(bool check)
 /*
 Get the index of the path from previous stage pin to this pin
 */
-std::vector<int> Pin::getPathIndex(Pin* prevStagePin)
+std::vector<int>* Pin::getPathIndex(Pin* prevStagePin)
 {
-    // TODO: change to unordered_map if it's slow
-    std::vector<int> index;
-    for (size_t i = 0; i < _prevStagePins.size(); i++)
-    {
-        if (_prevStagePins.at(i) == prevStagePin)
-        {
-            index.push_back(i);
-        }
-    }
-    return index;
+    return _prevPathIndexListMap[prevStagePin];
 }
 
 /*
@@ -209,8 +204,8 @@ double Pin::calSlack(Pin* movedPrevStagePin, int sourceX, int sourceY, int targe
     }
     std::vector<double>* tempArrivalTimes = (update) ? &_arrivalTimes : new std::vector<double>(_arrivalTimes);
     // update the arrival time and re-sort the critical index
-    std::vector<int> indexList = getPathIndex(movedPrevStagePin);
-    for (int index : indexList)
+    std::vector<int>* indexList = getPathIndex(movedPrevStagePin);
+    for (int index : *indexList)
     {
         std::vector<Pin*> path = _pathToPrevStagePins.at(index);
         Pin* secondLastPin = path.at(path.size()-2);
@@ -254,8 +249,8 @@ double Pin::calSlackQ(Pin* changeQPin, double diffQDelay, bool update)
         return 0;
     }
     std::vector<double>* tempArrivalTimes = (update) ? &_arrivalTimes : new std::vector<double>(_arrivalTimes);
-    std::vector<int> indexList = getPathIndex(changeQPin);
-    for (int index : indexList)
+    std::vector<int>* indexList = getPathIndex(changeQPin);
+    for (int index : *indexList)
     {
         tempArrivalTimes->at(index) += diffQDelay;
     }
@@ -340,6 +335,19 @@ bool Pin::checkCritical()
         max_arrival_time = std::max(max_arrival_time, arrival_time);
     }
     return max_arrival_time == _currCriticalArrivalTime;
+}
+
+void Pin::initPathMaps()
+{
+    for (size_t i = 0; i < _pathToPrevStagePins.size(); i++)
+    {
+        Pin* prevPin = _prevStagePins.at(i);
+        if (_prevPathIndexListMap.find(prevPin) == _prevPathIndexListMap.end())
+        {
+            _prevPathIndexListMap[prevPin] = new std::vector<int>();
+        }
+        _prevPathIndexListMap[prevPin]->push_back(i);
+    }
 }
 
 void Pin::modArrivalTime(double delay)
