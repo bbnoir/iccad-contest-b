@@ -119,6 +119,7 @@ class Solver
         bool placeable(Cell* cell, int x, int y);
         bool placeable(LibCell* libCell, int x, int y);
         bool placeable(Cell* cell, int x, int y, int& move_distance);
+        bool placeable(LibCell* libCell, int x, int y, int& move_distance);
         void constructFFsCLKDomain();
         std::vector<int> regionQuery(std::vector<FF*> ffs, long unsigned int idx, int radius);
         double calCost();

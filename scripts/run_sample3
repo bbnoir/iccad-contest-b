@@ -5,6 +5,8 @@ input="cases/$testcase"
 output="out/$testcase.out"
 log="log/$testcase.log"
 sanity="sanity_20240801"
+eval="preliminary-evaluator"
 
 ./bin/RUN "$input" "$output" | tee "$log"
 ./"$sanity" "$input" "$output" | tee -a "$log"
+./"$eval" "$input" "$output" | tee -a "$log"
