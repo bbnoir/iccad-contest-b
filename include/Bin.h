@@ -53,9 +53,11 @@ class BinMap
         int getNumOverMaxUtilBins();
         int getNumOverMaxUtilBinsByComb();
 
-        double addCell(Cell* cell, bool trial = false);
         double trialLibCell(LibCell* libCell, int x, int y);
+        double addCell(Cell* cell, bool trial = false);
+        double addCell(Cell* cell, int x, int y, bool trial = false);
         double removeCell(Cell* cell, bool trial = false);
+        double moveCell(Cell* cell, int x, int y, bool trial = false);
 
     private:
         int _dieLowerLeftX;

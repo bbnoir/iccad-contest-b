@@ -16,6 +16,10 @@ Cell::Cell(int x, int y, std::string inst_name, LibCell* lib_cell)
     _lib_cell = lib_cell;
     // copy pins and set cell
 
+    if(inst_name == "dumb"){
+        return;
+    }
+
     for (Pin* pin : lib_cell->inputPins)
     {
         Pin* newPin = new Pin(*pin);
