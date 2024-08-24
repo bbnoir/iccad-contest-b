@@ -398,15 +398,10 @@ void Solver::iterativePlacement()
             int trial_y = nearSites[j]->getY();
             
             // Bins cost difference when add and remove the cell
-            double removeCost = _binMap->removeCell(ff, true);
-            double addCost = 0;
-            ff->setXY(trial_x, trial_y);
-            addCost = _binMap->addCell(ff, true);
-            ff->setXY(original_x, original_y);        
-
+            double binCost = _binMap->moveCell(ff, trial_x, trial_y, true);
             double slackCost = calCostMoveFF(ff, original_x, original_y, trial_x, trial_y, false);
 
-            double cost = slackCost + removeCost + addCost;
+            double cost = slackCost + binCost;
 
             if(cost < cost_min)
             {
@@ -438,8 +433,8 @@ void Solver::iterativePlacementLegal()
         std::vector<Site*> nearSites = _siteMap->getSitesInBlock(leftDownX, leftDownY, rightUpX, rightUpY);
         double cost_min = 0;
         int best_site = -1;
-        // TODO: parallelize this loop
-        // #pragma omp parallel for num_threads(NUM_THREADS)
+
+        #pragma omp parallel for num_threads(NUM_THREADS)
         for(size_t j = 0; j < nearSites.size(); j++)
         {   
             if(!placeable(ff, nearSites[j]->getX(), nearSites[j]->getY()))
@@ -450,16 +445,11 @@ void Solver::iterativePlacementLegal()
             int trial_y = nearSites[j]->getY();
             
             // Bins cost difference when add and remove the cell
-            double removeCost = _binMap->removeCell(ff, true);
-            double addCost = 0;
-            ff->setXY(trial_x, trial_y);
-            addCost = _binMap->addCell(ff, true);
-            ff->setXY(original_x, original_y);        
-
+            double binCost = _binMap->moveCell(ff, trial_x, trial_y, true);
             double slackCost = calCostMoveFF(ff, original_x, original_y, trial_x, trial_y, false);
 
-            double cost = slackCost + removeCost + addCost;
-            // #pragma omp critical
+            double cost = slackCost + binCost;
+            #pragma omp critical
             if(cost < cost_min)
             {
                 cost_min = cost;
@@ -578,7 +568,7 @@ bool Solver::placeable(Cell* cell)
     }
     for(auto c: cells)
     {
-        if(c == cell)
+        if(c == cell || c->getInstName() == "dumb")
             continue;
         if(isOverlap(cell, c))
         {
@@ -615,7 +605,7 @@ bool Solver::placeable(Cell* cell, int x,int y)
     }
     for(auto c: cells)
     {
-        if(c == cell)
+        if(c == cell || c->getInstName() == "dumb")
             continue;
         if(isOverlap(x, y, cell, c))
         {
@@ -652,6 +642,8 @@ bool Solver::placeable(LibCell* libCell, int x, int y)
     }
     for(auto c: cells)
     {
+        if(c->getInstName() == "dumb")
+            continue;
         if(isOverlap(x, y, libCell->width, libCell->height, c))
         {
             return false;
@@ -690,7 +682,7 @@ bool Solver::placeable(Cell* cell, int x, int y, int& move_distance)
     int move = 0;
     for(auto c: cells)
     {
-        if(c == cell)
+        if(c == cell || c->getInstName() == "dumb")
             continue;
         if(isOverlap(x, y, cell, c))
         {
@@ -727,6 +719,8 @@ bool Solver::placeable(LibCell* libCell, int x, int y, int& move_distance)
     int move = 0;
     for(auto c: cells)
     {
+        if(c->getInstName() == "dumb")
+            continue;
         if(isOverlap(x, y, libCell->width, libCell->height, c))
         {
             overlap = true;
@@ -1148,7 +1142,8 @@ void Solver::debankAll()
             for(auto dumbCell: dumbCells)
             {
                 removeCell(dumbCell);
-                delete dumbCell;
+                if(dumbCell != nullptr)
+                    delete dumbCell;
             }
 
             if(found < ff->getBit())
@@ -1469,15 +1464,10 @@ void Solver::fineTune()
                     int trial_y = sites[j]->getY();
                     
                     // Bins cost difference when add and remove the cell
-                    double removeCost = _binMap->removeCell(ff, true);
-                    double addCost = 0;
-                    ff->setXY(trial_x, trial_y);
-                    addCost = _binMap->addCell(ff, true);
-                    ff->setXY(original_x, original_y);        
-
+                    double binCost = _binMap->moveCell(ff, trial_x, trial_y, true);
                     double slackCost = calCostMoveFF(ff, original_x, original_y, trial_x, trial_y, false);
 
-                    double cost = slackCost + removeCost + addCost;
+                    double cost = slackCost + binCost;
 
                     if(cost < cost_min)
                     {
