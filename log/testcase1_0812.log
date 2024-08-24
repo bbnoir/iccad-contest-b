@@ -1,5 +1,8 @@
 File parsed successfully
 Alpha: 10 Beta: 2000 Gamma: 0.002 Lambda: 10000
+One bit FFs: 19879
+Two bit FFs: 0
+Four bit FFs: 0
 
 Start initial placement...
 --- Calculating cost ---
@@ -8,7 +11,7 @@ Power: 457.185
 Area: 4.62506e+11
 Num of bins violated: 1
 ==> Initial cost: 9.25943e+08
-Initialization time: 0.331537s
+Initialization time: 0.333863s
 ============= Start checking =============
 Check FF in Die
 Check FF on Site
@@ -18,12 +21,15 @@ Legal: 1
 
 Start to debank...
 --- Calculating cost ---
-TNS: 2271.24
-Power: 489.424
-Area: 4.3998e+11
+TNS: 4207.62
+Power: 579.77
+Area: 4.15738e+11
 Num of bins violated: 0
-==> Cost after debanking: 8.80961e+08
-Debanking time: 43.8012s
+==> Cost after debanking: 8.32677e+08
+Debanking time: 46.6812s
+One bit FFs: 19879
+Two bit FFs: 0
+Four bit FFs: 0
 ============= Start checking =============
 Check FF in Die
 Check FF on Site
@@ -33,12 +39,12 @@ Legal: 1
 
 Start to force directed placement...
 --- Calculating cost ---
-TNS: 827.647
-Power: 489.424
-Area: 4.3998e+11
+TNS: 1372.01
+Power: 579.77
+Area: 4.15738e+11
 Num of bins violated: 0
-==> Cost after force directed placement: 8.80946e+08
-Force directed placement time: 20.6379s
+==> Cost after force directed placement: 8.32648e+08
+Force directed placement time: 22.1373s
 ============= Start checking =============
 Check FF in Die
 Check FF on Site
@@ -48,19 +54,20 @@ Legal: 1
 
 Start clustering and banking...
 Init FFs size: 19879
-FFs size after greedy banking: 15471
-FFs size after greedy banking: 14631
-FFs size after greedy banking: 14465
-FFs size after greedy banking: 14444
-FFs size after greedy banking: 14442
-FFs size after greedy banking: 14442
+FFs size after greedy banking: 15802
+FFs size after greedy banking: 15012
+FFs size after greedy banking: 14843
+FFs size after greedy banking: 14813
+FFs size after greedy banking: 14807
+FFs size after greedy banking: 14806
+FFs size after greedy banking: 14806
 --- Calculating cost ---
-TNS: 3480.74
-Power: 402.59
-Area: 4.11616e+11
+TNS: 3264.32
+Power: 452.925
+Area: 3.99303e+11
 Num of bins violated: 0
-==> Cost after clustering and banking: 8.24073e+08
-Clustering and banking time: 27.2629s
+==> Cost after clustering and banking: 7.99545e+08
+Clustering and banking time: 32.2216s
 ============= Start checking =============
 Check FF in Die
 Check FF on Site
@@ -70,12 +77,12 @@ Legal: 1
 
 Start to force directed placement (second)...
 --- Calculating cost ---
-TNS: 2080.96
-Power: 402.59
-Area: 4.11616e+11
+TNS: 1974.77
+Power: 452.925
+Area: 3.99303e+11
 Num of bins violated: 0
-==> Cost after force directed placement (second): 8.24059e+08
-Force directed placement (second) time: 21.7023s
+==> Cost after force directed placement (second): 7.99532e+08
+Force directed placement (second) time: 20.9983s
 ============= Start checking =============
 Check FF in Die
 Check FF on Site
@@ -84,18 +91,18 @@ Check Overlap
 Legal: 1
 
 Start clustering and banking...
-Init FFs size: 14442
-FFs size after greedy banking: 14398
-FFs size after greedy banking: 14391
-FFs size after greedy banking: 14390
-FFs size after greedy banking: 14390
+Init FFs size: 14806
+FFs size after greedy banking: 14771
+FFs size after greedy banking: 14765
+FFs size after greedy banking: 14764
+FFs size after greedy banking: 14764
 --- Calculating cost ---
-TNS: 2256.95
-Power: 401.318
-Area: 4.11372e+11
+TNS: 2331.19
+Power: 451.595
+Area: 3.99151e+11
 Num of bins violated: 0
-==> Cost after clustering and banking: 8.2357e+08
-Clustering and banking time: 1.81616s
+==> Cost after clustering and banking: 7.99228e+08
+Clustering and banking time: 3.35949s
 ============= Start checking =============
 Check FF in Die
 Check FF on Site
@@ -103,14 +110,14 @@ Check Overlap
 ================= Success ================
 Legal: 1
 
-Start to force directed placement (second)...
+Start to force directed placement (third)...
 --- Calculating cost ---
-TNS: 2076.95
-Power: 401.318
-Area: 4.11372e+11
+TNS: 2075.74
+Power: 451.595
+Area: 3.99151e+11
 Num of bins violated: 0
-==> Cost after force directed placement (second): 8.23568e+08
-Force directed placement (second) time: 20.9029s
+==> Cost after force directed placement (third): 7.99226e+08
+Force directed placement (third) time: 20.4182s
 ============= Start checking =============
 Check FF in Die
 Check FF on Site
@@ -118,9 +125,9 @@ Check Overlap
 ================= Success ================
 Legal: 1
 
-Cost after solving: 8.23568e+08
-Cost difference: -1.02375e+08
-Cost difference percentage: -11.0563%
+Cost after solving: 7.99226e+08
+Cost difference: -1.26717e+08
+Cost difference percentage: -13.6852%
 ============= Start checking =============
 Check FF in Die
 Check FF on Site
@@ -131,12 +138,12 @@ Check Overlap
 ----------------------------- Report -----------------------------
 ------------------------------------------------------------------
 Initial          		 9.259429e+08	100.00%	0.33s
-Debank           		 8.809609e+08	95.14%	43.80s
-ForceDirected    		 8.809464e+08	95.14%	20.64s
-Banking          		 8.240727e+08	89.00%	27.26s
-ForceDirected2   		 8.240587e+08	89.00%	21.70s
-Banking          		 8.235695e+08	88.94%	1.82s
-ForceDirected2   		 8.235677e+08	88.94%	20.90s *
+Debank           		 8.326768e+08	89.93%	46.68s
+ForceDirected    		 8.326484e+08	89.92%	22.14s
+Banking          		 7.995446e+08	86.35%	32.22s
+ForceDirected2   		 7.995317e+08	86.35%	21.00s
+Banking          		 7.992285e+08	86.32%	3.36s
+ForceDirected3   		 7.992259e+08	86.31%	20.42s *
 ------------------------------------------------------------------
 Renderer closed
 Read testcase...
@@ -165,4 +172,4 @@ check netlist... step1
 check netlist... step2
 update timing...
 Check pass! Scoring...
-Final score:823583711.14847
+Final score:799242201.248652

@@ -500,6 +500,25 @@ void Solver::checkCLKDomain()
     std::cout<<"Sum from list: "<<_ffs.size()<<std::endl;
 }
 
+void Solver::checkFFsBitDistribution()
+{
+    int oneBit = 0;
+    int twoBit = 0;
+    int fourBit = 0;
+    for(auto ff: _ffs)
+    {
+        if(ff->getBit() == 1)
+            oneBit++;
+        else if(ff->getBit() == 2)
+            twoBit++;
+        else if(ff->getBit() == 4)
+            fourBit++;
+    }
+    std::cout<<"One bit FFs: "<<oneBit<<std::endl;
+    std::cout<<"Two bit FFs: "<<twoBit<<std::endl;
+    std::cout<<"Four bit FFs: "<<fourBit<<std::endl;
+}
+
 void Solver::constructFFsCLKDomain()
 {
     _ffs_clkdomains.clear();
@@ -1107,12 +1126,13 @@ void Solver::debankAll()
         std::vector<int> bestX = {x};
         std::vector<int> bestY = {y};
 
-        // #pragma omp parallel for num_threads(NUM_THREADS)
+        #pragma omp parallel for num_threads(NUM_THREADS)
         for(auto oneBitFF: oneBitFFs)
         {
             std::vector<int> target_X, target_Y;
             // TODO: search distance should be a parameter
-            int searchDistance = 1000;
+            int searchDistance = ff->getWidth();
+            
             int leftDownX = ff->getX() - searchDistance;
             int leftDownY = ff->getY() - searchDistance;
             int rightUpX = ff->getX() + searchDistance;
@@ -1124,26 +1144,36 @@ void Solver::debankAll()
             });
 
             int found = 0;
-            std::vector<Cell*> dumbCells;
+            std::vector<Cell*> candidates;
 
             for(size_t j = 0; j < nearSites.size(); j++)
             {   
                 if(!placeable(oneBitFF, nearSites[j]->getX(), nearSites[j]->getY()))
                     continue;
+                // check if overlap with other candidate FF
+                bool overlap = false;
+                for(auto candidate: candidates)
+                {
+                    if(isOverlap(nearSites[j]->getX(), nearSites[j]->getY(), oneBitFF->width, oneBitFF->height, candidate))
+                    {
+                        overlap = true;
+                        break;
+                    }
+                }
+                if(overlap)
+                    continue;
                 found++;
                 target_X.push_back(nearSites[j]->getX());
                 target_Y.push_back(nearSites[j]->getY());
-                dumbCells.push_back(new Cell(nearSites[j]->getX(), nearSites[j]->getY(), "dumb", oneBitFF));
-                placeCell(dumbCells.back());
+                candidates.push_back(new Cell(nearSites[j]->getX(), nearSites[j]->getY(), "dumb", oneBitFF));
                 if(found == ff->getBit())
                     break;
             }
             
-            for(auto dumbCell: dumbCells)
+            for(auto candidate: candidates)
             {
-                removeCell(dumbCell);
-                if(dumbCell != nullptr)
-                    delete dumbCell;
+                if(candidate != nullptr)
+                    delete candidate;
             }
 
             if(found < ff->getBit())
@@ -1151,7 +1181,7 @@ void Solver::debankAll()
 
             double costDiff = calCostDebankFF(ff, oneBitFF, target_X, target_Y, false);
 
-            // #pragma omp critical
+            #pragma omp critical
             if (costDiff < minCost)
             {
                 minCost = costDiff;
@@ -1496,6 +1526,7 @@ void Solver::solve()
     auto end = std::chrono::high_resolution_clock::now();
 
     std::cout<<"Alpha: "<<ALPHA<<" Beta: "<<BETA<<" Gamma: "<<GAMMA<<" Lambda: "<<LAMBDA<<"\n";
+    checkFFsBitDistribution();
 
     std::cout << "\nStart initial placement...\n";
     init_placement();
@@ -1530,6 +1561,8 @@ void Solver::solve()
         std::cout << "Debanking time: " << elapsed.count() << "s" << std::endl;
         start = std::chrono::high_resolution_clock::now();
     }
+
+    checkFFsBitDistribution();
 
     legal = check();
     std::cout << "Legal: " << legal << "\n";
@@ -1629,18 +1662,18 @@ void Solver::solve()
     legal = check();
     std::cout << "Legal: " << legal << "\n";
 
-    std::cout << "\nStart to force directed placement (second)...\n";
+    std::cout << "\nStart to force directed placement (third)...\n";
     iterativePlacementLegal();
     _currCost = calCost();
-    std::cout << "==> Cost after force directed placement (second): " << _currCost << "\n";
-    saveState("ForceDirected2");
+    std::cout << "==> Cost after force directed placement (third): " << _currCost << "\n";
+    saveState("ForceDirected3");
     
     if(calTime)
     {
         end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> elapsed = end - start;
         _stateTimes.push_back(elapsed.count());
-        std::cout << "Force directed placement (second) time: " << elapsed.count() << "s" << std::endl;
+        std::cout << "Force directed placement (third) time: " << elapsed.count() << "s" << std::endl;
         start = std::chrono::high_resolution_clock::now();
     }
 
@@ -1833,6 +1866,14 @@ bool Solver::isOverlap(int x1, int y1, int w1, int h1, Cell* cell2)
            x1 + w1 > cell2->getX() &&
            y1 < cell2->getY() + cell2->getHeight() &&
            y1 + h1 > cell2->getY();
+}
+
+bool Solver::isOverlap(int x1, int y1, int w1, int h1, int x2, int y2, int w2, int h2)
+{
+    return x1 < x2 + w2 &&
+           x1 + w1 > x2 &&
+           y1 < y2 + h2 &&
+           y1 + h1 > y2;
 }
 
 std::vector<int> Solver::regionQuery(std::vector<FF*> FFs, size_t idx, int eps)

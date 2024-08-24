@@ -109,12 +109,14 @@ class Solver
         
         std::string makeUniqueName();
         void checkCLKDomain();
+        void checkFFsBitDistribution();
         
         // Helper
         
         bool isOverlap(Cell* cell1, Cell* cell2);
         bool isOverlap(int x1, int y1, Cell* cell1, Cell* cell2);
         bool isOverlap(int x1, int y1, int w1, int h1, Cell* cell2);
+        bool isOverlap(int x1, int y1, int w1, int h1, int x2, int y2, int w2, int h2);
         bool placeable(Cell* cell);
         bool placeable(Cell* cell, int x, int y);
         bool placeable(LibCell* libCell, int x, int y);
