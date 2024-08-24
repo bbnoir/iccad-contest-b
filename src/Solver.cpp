@@ -369,6 +369,31 @@ void Solver::parse_input(std::string filename)
             inPin->initArrivalTime();
         }
     }
+    for (auto ff : _ffs)
+    {
+        for (auto inPin : ff->getInputPins())
+        {
+            inPin->initPathMaps();
+        }
+    }
+
+    // set up ff lib costPA
+    for (auto ff : _ffsLibList)
+    {
+        ff->costPA = BETA * ff->power + GAMMA * ff->height * ff->width;
+    }
+    // sort ff lib list by bits
+    sort(_ffsLibList.begin(), _ffsLibList.end(), [](LibCell* a, LibCell* b) -> bool { return a->bit < b->bit; });
+    // set up best costPA
+    for (auto ff : _ffsLibList)
+    {
+        const int bits = ff->bit;
+        if (_bestCostPAFFs[bits] == nullptr || ff->costPA < _bestCostPA[bits])
+        {
+            _bestCostPAFFs[bits] = ff;
+            _bestCostPA[bits] = ff->costPA;
+        }
+    }
 
     cout << "File parsed successfully" << endl;
     in.close();
@@ -928,6 +953,7 @@ double Solver::calCostBankFF(FF* ff1, FF* ff2, LibCell* targetFF, int targetX, i
             const double d_cost = calDiffCost(old_slack, new_slack);
             if (update)
             {
+                inPin->modArrivalTime(DISP_DELAY * diff_dist);
                 inPin->setSlack(new_slack);
                 _currCost += d_cost;
             }
@@ -1079,11 +1105,8 @@ void Solver::bankFFs(FF* ff1, FF* ff2, LibCell* targetFF, int x, int y)
     clkPins.push_back(ff1->getClkPin());
     clkPins.push_back(ff2->getClkPin());
     // place the banked FF
-    int target_x, target_y;
-    target_x = x;
-    target_y = y;
-    calCostBankFF(ff1, ff2, targetFF, target_x, target_y, true);
-    FF* bankedFF = new FF(target_x, target_y, makeUniqueName(), targetFF, dqPairs, clkPins);
+    calCostBankFF(ff1, ff2, targetFF, x, y, true);
+    FF* bankedFF = new FF(x, y, makeUniqueName(), targetFF, dqPairs, clkPins);
     bankedFF->setClkDomain(ff1->getClkDomain());
     addFF(bankedFF);
     placeCell(bankedFF);
@@ -1594,7 +1617,15 @@ void Solver::solve()
         prev_ffs_size = _ffs.size();
         for(size_t i = 0; i < _ffs_clkdomains.size(); i++)
         {
-            std::vector<std::vector<FF*>> cluster = clusteringFFs(i);
+            std::vector<std::vector<FF*>> cluster;
+            if (_ffs_clkdomains[i].size() > 1000)
+            {
+                cluster = clusteringFFs(i);
+            }
+            else
+            {
+                cluster.push_back(_ffs_clkdomains[i]);
+            }
             greedyBanking(cluster);
         }
         std::cout << "FFs size after greedy banking: " << _ffs.size() << "\n";
@@ -1641,14 +1672,22 @@ void Solver::solve()
         prev_ffs_size = _ffs.size();
         for(size_t i = 0; i < _ffs_clkdomains.size(); i++)
         {
-            std::vector<std::vector<FF*>> cluster = clusteringFFs(i);
+            std::vector<std::vector<FF*>> cluster;
+            if (_ffs_clkdomains[i].size() > 1000)
+            {
+                cluster = clusteringFFs(i);
+            }
+            else
+            {
+                cluster.push_back(_ffs_clkdomains[i]);
+            }
             greedyBanking(cluster);
         }
         std::cout << "FFs size after greedy banking: " << _ffs.size() << "\n";
     } while (prev_ffs_size != _ffs.size());
     _currCost = calCost();
     std::cout << "==> Cost after clustering and banking: " << _currCost << "\n";
-    saveState("Banking");
+    saveState("Banking2");
 
     if(calTime)
     {
@@ -2119,49 +2158,112 @@ void Solver::greedyBanking(std::vector<std::vector<FF*>> clusters)
     {
         if(cluster.size() < 2)
             continue;
-        // find the best pair to bank
-        double maxGain;
-        do
+        // prune pairs
+        std::vector<std::pair<FF*, FF*>> pairs;
+        std::vector<std::pair<int, double>> pair_scores;
+        int pair_count = 0;
+        #pragma omp parallel for num_threads(NUM_THREADS)
+        for (size_t i = 0; i < cluster.size(); i++)
         {
-            maxGain = 0.0;
-            int result_x = 0;
-            int result_y = 0;
-            FF* bestFF1 = nullptr;
-            FF* bestFF2 = nullptr;
-            LibCell* targetFF = nullptr;
-            for(size_t i = 0; i < cluster.size(); i++)
+            for (size_t j = i + 1; j < cluster.size(); j++)
             {
-                for(size_t j = i+1; j < cluster.size(); j++)
+                const int bit = cluster[i]->getBit() + cluster[j]->getBit();
+                if (_bestCostPAFFs[bit] == nullptr)
                 {
-                    FF* ff1 = cluster[i];
-                    FF* ff2 = cluster[j];
-                    for(auto ff : _ffsLibList)
+                    continue;
+                }
+                double score = cluster[i]->getCostPA() + cluster[j]->getCostPA() - _bestCostPA[bit];
+                if (score < 0)
+                {
+                    continue;
+                }
+                double dist = std::abs(cluster[i]->getX() - cluster[j]->getX()) + std::abs(cluster[i]->getY() - cluster[j]->getY());
+                int pin_count = cluster[i]->getNSPinCount() + cluster[j]->getNSPinCount();
+                score -= dist * DISP_DELAY * ALPHA * pin_count / 2;
+                if (score < 0)
+                {
+                    continue;
+                }
+                #pragma omp critical
+                {
+                    pairs.push_back(std::make_pair(cluster[i], cluster[j]));
+                    pair_scores.push_back(std::make_pair(pair_count++, score));
+                }
+            }
+        }
+        // sort pairs
+        std::sort(pair_scores.begin(), pair_scores.end(), [](const std::pair<int, double>& a, const std::pair<int, double>& b) {
+            return a.second > b.second;
+        });
+
+        std::vector<PairInfo> pair_infos;
+        for (auto ps : pair_scores)
+        {
+            const std::pair<FF*, FF*>& p = pairs[ps.first];
+            FF* ff1 = p.first;
+            FF* ff2 = p.second;
+            double pair_max_gain = 0.0;
+            int pair_result_x = 0;
+            int pair_result_y = 0;
+            LibCell* pair_targetFF = nullptr;
+            for(auto ff : _ffsLibList)
+            {
+                if(ff->bit == ff1->getBit() + ff2->getBit())
+                {
+                    int x, y;
+                    double gain = cal_banking_gain(ff1, ff2, ff, x, y);
+                    if (gain > pair_max_gain)
                     {
-                        if(ff->bit == ff1->getBit() + ff2->getBit())
-                        {
-                            int x, y;
-                            double gain = cal_banking_gain(ff1, ff2, ff, x, y);
-                            if(gain > maxGain || bestFF1 == nullptr)
-                            {
-                                maxGain = gain;
-                                bestFF1 = ff1;
-                                bestFF2 = ff2;
-                                targetFF = ff;
-                                result_x = x;
-                                result_y = y;
-                            }
-                        }
+                        pair_max_gain = gain;
+                        pair_result_x = x;
+                        pair_result_y = y;
+                        pair_targetFF = ff;
                     }
                 }
             }
-            // #pragma omp critical
-            if (maxGain > 0)
+            if (pair_max_gain > 0)
             {
-                bankFFs(bestFF1, bestFF2, targetFF, result_x, result_y);
-                cluster.erase(std::remove(cluster.begin(), cluster.end(), bestFF1), cluster.end());
-                cluster.erase(std::remove(cluster.begin(), cluster.end(), bestFF2), cluster.end());
+                pair_infos.push_back(PairInfo{ff1, ff2, pair_targetFF, pair_result_x, pair_result_y, pair_max_gain});
             }
-        } while (maxGain > 0);
+        }
+        std::sort(pair_infos.begin(), pair_infos.end(), [](const PairInfo& a, const PairInfo& b) {
+            return a.gain > b.gain;
+        });
+        std::unordered_map<PairInfo*, bool> locked;
+        for (auto pi : pair_infos)
+        {
+            locked[&pi] = false;
+        }
+        // std::cout << "Pair info size: " << pair_infos.size() << std::endl;
+        if (!pair_infos.empty() && pair_infos[0].gain > 0)
+        {
+            for (size_t i = 0; i < pair_infos.size(); i++)
+            {
+                PairInfo& pi = pair_infos[i];
+                if (locked[&pi])
+                    continue;
+                if (pi.gain > 0)
+                {
+                    removeCell(pi.ff1);
+                    removeCell(pi.ff2);
+                    bool isPlaceable = placeable(pi.targetFF, pi.targetX, pi.targetY);
+                    placeCell(pi.ff1);
+                    placeCell(pi.ff2);
+                    if (isPlaceable)
+                    {
+                        for (size_t j = i + 1; j < pair_infos.size(); j++)
+                        {
+                            PairInfo& pi2 = pair_infos[j];
+                            if (pi2.ff1 == pi.ff1 || pi2.ff1 == pi.ff2 || pi2.ff2 == pi.ff1 || pi2.ff2 == pi.ff2)
+                            {
+                                locked[&pi2] = true;
+                            }
+                        }
+                        bankFFs(pi.ff1, pi.ff2, pi.targetFF, pi.targetX, pi.targetY);
+                    }
+                }
+            }
+        }
     }
 }
 

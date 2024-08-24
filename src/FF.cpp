@@ -159,6 +159,34 @@ double FF::getTotalSlack()
     return totalSlack;
 }
 
+double FF::getCostPA()
+{
+    return _lib_cell->costPA;
+}
+
+int FF::getNSPinCount()
+{
+    int count = 0;
+    for (auto inPin : _inputPins)
+    {
+        if (inPin->getSlack() < 0)
+        {
+            count++;
+        }
+    }
+    for (auto outPin : _outputPins)
+    {
+        for (auto nextPin : outPin->getNextStagePins())
+        {
+            if (nextPin->getSlack() < 0)
+            {
+                count++;
+            }
+        }
+    }
+    return count;
+}
+
 Pin* FF::getClkPin()
 {
     return _clkPin;

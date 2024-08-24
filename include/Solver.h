@@ -34,6 +34,16 @@ struct PlacementRows
     int numSites;
 };
 
+struct PairInfo
+{
+    FF* ff1;
+    FF* ff2;
+    LibCell* targetFF;
+    int targetX;
+    int targetY;
+    double gain;
+};
+
 class Solver
 {
     public:
@@ -60,6 +70,9 @@ class Solver
         std::vector<LibCell*> _ffsLibList;
         std::unordered_map<std::string, LibCell*, CIHash, CIEqual> _combsLibMap;
         std::unordered_map<std::string, LibCell*, CIHash, CIEqual> _ffsLibMap;
+        // ff libs with best cost of power and area
+        std::unordered_map<int, LibCell*> _bestCostPAFFs;
+        std::unordered_map<int, double> _bestCostPA;
         // I/O
         std::vector<Pin*> _inputPins;
         std::vector<Pin*> _outputPins;
