@@ -34,6 +34,16 @@ struct PlacementRows
     int numSites;
 };
 
+struct PairInfo
+{
+    FF* ff1;
+    FF* ff2;
+    LibCell* targetFF;
+    int targetX;
+    int targetY;
+    double gain;
+};
+
 class Solver
 {
     public:

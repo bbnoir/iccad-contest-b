@@ -1510,7 +1510,15 @@ void Solver::solve()
         prev_ffs_size = _ffs.size();
         for(size_t i = 0; i < _ffs_clkdomains.size(); i++)
         {
-            std::vector<std::vector<FF*>> cluster = clusteringFFs(i);
+            std::vector<std::vector<FF*>> cluster;
+            if (_ffs_clkdomains[i].size() > 1000)
+            {
+                cluster = clusteringFFs(i);
+            }
+            else
+            {
+                cluster.push_back(_ffs_clkdomains[i]);
+            }
             greedyBanking(cluster);
         }
         std::cout << "FFs size after greedy banking: " << _ffs.size() << "\n";
@@ -1557,7 +1565,15 @@ void Solver::solve()
         prev_ffs_size = _ffs.size();
         for(size_t i = 0; i < _ffs_clkdomains.size(); i++)
         {
-            std::vector<std::vector<FF*>> cluster = clusteringFFs(i);
+            std::vector<std::vector<FF*>> cluster;
+            if (_ffs_clkdomains[i].size() > 1000)
+            {
+                cluster = clusteringFFs(i);
+            }
+            else
+            {
+                cluster.push_back(_ffs_clkdomains[i]);
+            }
             greedyBanking(cluster);
         }
         std::cout << "FFs size after greedy banking: " << _ffs.size() << "\n";
@@ -2047,8 +2063,8 @@ void Solver::greedyBanking(std::vector<std::vector<FF*>> clusters)
                     continue;
                 }
                 double dist = std::abs(cluster[i]->getX() - cluster[j]->getX()) + std::abs(cluster[i]->getY() - cluster[j]->getY());
-                // int pin_count = cluster[i]->getNSPinCount() + cluster[j]->getNSPinCount();
-                score -= dist * DISP_DELAY * ALPHA / 2;
+                int pin_count = cluster[i]->getNSPinCount() + cluster[j]->getNSPinCount();
+                score -= dist * DISP_DELAY * ALPHA * pin_count / 2;
                 if (score < 0)
                 {
                     continue;
@@ -2064,67 +2080,75 @@ void Solver::greedyBanking(std::vector<std::vector<FF*>> clusters)
         std::sort(pair_scores.begin(), pair_scores.end(), [](const std::pair<int, double>& a, const std::pair<int, double>& b) {
             return a.second > b.second;
         });
-        // if (pair_scores.size() > 100)
-        // {
-        //     pair_scores.resize(100);
-        // }
 
-        std::unordered_map<FF*, bool> locked;
-        std::vector<bool> pair_lock(pair_scores.size(), false);
-        for (auto ff : cluster)
+        std::vector<PairInfo> pair_infos;
+        for (auto ps : pair_scores)
         {
-            locked[ff] = false;
-        }
-        double maxGain;
-        do
-        {
-            maxGain = 0.0;
-            int result_x = 0;
-            int result_y = 0;
-            FF* bestFF1 = nullptr;
-            FF* bestFF2 = nullptr;
-            LibCell* targetFF = nullptr;
-            for (auto ps : pair_scores)
+            const std::pair<FF*, FF*>& p = pairs[ps.first];
+            FF* ff1 = p.first;
+            FF* ff2 = p.second;
+            double pair_max_gain = 0.0;
+            int pair_result_x = 0;
+            int pair_result_y = 0;
+            LibCell* pair_targetFF = nullptr;
+            for(auto ff : _ffsLibList)
             {
-                if (pair_lock[ps.first])
-                    continue;
-                const std::pair<FF*, FF*>& p = pairs[ps.first];
-                FF* ff1 = p.first;
-                FF* ff2 = p.second;
-                if (locked[ff1] || locked[ff2])
-                    continue;
-                double pair_max_gain = 0.0;
-                for(auto ff : _ffsLibList)
+                if(ff->bit == ff1->getBit() + ff2->getBit())
                 {
-                    if(ff->bit == ff1->getBit() + ff2->getBit())
+                    int x, y;
+                    double gain = cal_banking_gain(ff1, ff2, ff, x, y);
+                    if (gain > pair_max_gain)
                     {
-                        int x, y;
-                        double gain = cal_banking_gain(ff1, ff2, ff, x, y);
-                        pair_max_gain = std::max(pair_max_gain, gain);
-                        if(gain > maxGain || bestFF1 == nullptr)
-                        {
-                            maxGain = gain;
-                            bestFF1 = ff1;
-                            bestFF2 = ff2;
-                            targetFF = ff;
-                            result_x = x;
-                            result_y = y;
-                        }
+                        pair_max_gain = gain;
+                        pair_result_x = x;
+                        pair_result_y = y;
+                        pair_targetFF = ff;
                     }
                 }
-                if (pair_max_gain == 0)
+            }
+            if (pair_max_gain > 0)
+            {
+                pair_infos.push_back(PairInfo{ff1, ff2, pair_targetFF, pair_result_x, pair_result_y, pair_max_gain});
+            }
+        }
+        std::sort(pair_infos.begin(), pair_infos.end(), [](const PairInfo& a, const PairInfo& b) {
+            return a.gain > b.gain;
+        });
+        std::unordered_map<PairInfo*, bool> locked;
+        for (auto pi : pair_infos)
+        {
+            locked[&pi] = false;
+        }
+        // std::cout << "Pair info size: " << pair_infos.size() << std::endl;
+        if (!pair_infos.empty() && pair_infos[0].gain > 0)
+        {
+            for (size_t i = 0; i < pair_infos.size(); i++)
+            {
+                PairInfo& pi = pair_infos[i];
+                if (locked[&pi])
+                    continue;
+                if (pi.gain > 0)
                 {
-                    pair_lock[ps.first] = true;
+                    removeCell(pi.ff1);
+                    removeCell(pi.ff2);
+                    bool isPlaceable = placeable(pi.targetFF, pi.targetX, pi.targetY);
+                    placeCell(pi.ff1);
+                    placeCell(pi.ff2);
+                    if (isPlaceable)
+                    {
+                        for (size_t j = i + 1; j < pair_infos.size(); j++)
+                        {
+                            PairInfo& pi2 = pair_infos[j];
+                            if (pi2.ff1 == pi.ff1 || pi2.ff1 == pi.ff2 || pi2.ff2 == pi.ff1 || pi2.ff2 == pi.ff2)
+                            {
+                                locked[&pi2] = true;
+                            }
+                        }
+                        bankFFs(pi.ff1, pi.ff2, pi.targetFF, pi.targetX, pi.targetY);
+                    }
                 }
             }
-            // #pragma omp critical
-            if (maxGain > 0)
-            {
-                bankFFs(bestFF1, bestFF2, targetFF, result_x, result_y);
-                locked[bestFF1] = true;
-                locked[bestFF2] = true;
-            }
-        } while (maxGain > 0);
+        }
     }
 }
 
