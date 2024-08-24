@@ -1,6 +1,8 @@
 #include "FF.h"
 #include <iostream>
-
+/*
+Constructor for single bits
+*/
 FF::FF(int x, int y, std::string inst_name, LibCell* lib_cell, std::pair<Pin*, Pin*> dqpair, Pin* clk)
 {
     if (lib_cell->bit > 1)
@@ -32,6 +34,38 @@ FF::FF(int x, int y, std::string inst_name, LibCell* lib_cell, std::pair<Pin*, P
     newOutPin->setCell(this);
 }
 
+FF::FF(int x, int y, std::string inst_name, LibCell* lib_cell, std::vector<std::pair<Pin*, Pin*>> dqpairs, Pin* clk)
+{
+    _x = x;
+    _y = y;
+    _inst_name = inst_name;
+    _lib_cell = lib_cell;
+
+    // clk
+    Pin* libClkPin = lib_cell->clkPin;
+    _clkPin = new Pin(PinType::FF_CLK, libClkPin->getX(), libClkPin->getY(), libClkPin->getName(), this);
+    _clkPin->copyConnection(clk);
+    _clkPin->setOriginalName(clk->getOriginalName());
+
+    for(size_t i=0;i<dqpairs.size();i++)
+    {
+        // d
+        Pin* newInPin = dqpairs[i].first;
+        newInPin->transInfo(lib_cell->inputPins[i]);
+        this->_inputPins.push_back(newInPin);
+        newInPin->setCell(this);
+
+        // q
+        Pin* newOutPin = dqpairs[i].second;
+        newOutPin->transInfo(lib_cell->outputPins[i]);
+        this->_outputPins.push_back(newOutPin);
+        newOutPin->setCell(this);
+    }
+}
+
+/*
+Constructor for banking
+*/
 FF::FF(int x, int y, std::string inst_name, LibCell* lib_cell, std::vector<std::pair<Pin*, Pin*>> dqpairs, std::vector<Pin*> clks)
 {
     if (lib_cell->bit < int(dqpairs.size()))

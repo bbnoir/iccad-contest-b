@@ -283,15 +283,35 @@ double BinMap::addCell(Cell* cell, bool trial)
     return causedCost;
 }
 
-double BinMap::trialLibCell(LibCell* libCell, int x, int y)
+double BinMap::addCell(Cell* cell, int x, int y, bool trial)
 {
-    Cell* cell = new Cell(x, y, "TEST", libCell);
-    double causedCost = addCell(cell, true);
-    cell->deletePins();
-    delete cell;
+    int leftDownX = x;
+    int leftDownY = y;
+    int rightUpX = x + cell->getWidth();
+    int rightUpY = y + cell->getHeight();
+    std::vector<Bin*> bins = getBins(leftDownX, leftDownY, rightUpX, rightUpY);
+    double causedCost = 0;
+    if(!trial){
+        cell->setX(x);
+        cell->setY(y);
+    }
+    for (auto bin : bins)
+    {
+        double util = bin->getUtilization();
+        causedCost += ((bin->addCell(cell, trial) > BIN_MAX_UTIL) && (util <= BIN_MAX_UTIL))? LAMBDA : 0;
+        if(!trial)
+            cell->addBin(bin);
+    }
     return causedCost;
 }
 
+double BinMap::trialLibCell(LibCell* libCell, int x, int y)
+{
+    Cell* cell = new Cell(x, y, "dumb", libCell);
+    double causedCost = addCell(cell, true);
+    delete cell;
+    return causedCost;
+}
 
 double BinMap::removeCell(Cell* cell, bool trial)
 {
@@ -308,5 +328,13 @@ double BinMap::removeCell(Cell* cell, bool trial)
         if(!trial)
             cell->removeBin(bin);
     }
+    return causedCost;
+}
+
+double BinMap::moveCell(Cell* cell, int x, int y, bool trial)
+{
+    double causedCost = 0;
+    causedCost += removeCell(cell, trial);
+    causedCost += addCell(cell, x, y, trial);
     return causedCost;
 }

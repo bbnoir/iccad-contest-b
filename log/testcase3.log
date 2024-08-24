@@ -1,0 +1,173 @@
+File parsed successfully
+Alpha: 10 Beta: 10000 Gamma: 0.002 Lambda: 10000
+One bit FFs: 10001
+Two bit FFs: 1091
+Four bit FFs: 1924
+
+Start initial placement...
+--- Calculating cost ---
+TNS: 743.668
+Power: 316.172
+Area: 4.54052e+11
+Num of bins violated: 0
+==> Initial cost: 9.11272e+08
+Initialization time: 0.303903s
+============= Start checking =============
+Check FF in Die
+Check FF on Site
+Check Overlap
+================= Success ================
+Legal: 1
+
+Start to debank...
+--- Calculating cost ---
+TNS: 685.457
+Power: 409.846
+Area: 4.21449e+11
+Num of bins violated: 0
+==> Cost after debanking: 8.47004e+08
+Debanking time: 44.5907s
+One bit FFs: 11599
+Two bit FFs: 598
+Four bit FFs: 1771
+============= Start checking =============
+Check FF in Die
+Check FF on Site
+Check Overlap
+================= Success ================
+Legal: 1
+
+Start to force directed placement...
+--- Calculating cost ---
+TNS: 602.628
+Power: 409.846
+Area: 4.21449e+11
+Num of bins violated: 0
+==> Cost after force directed placement: 8.47003e+08
+Force directed placement time: 20.6703s
+============= Start checking =============
+Check FF in Die
+Check FF on Site
+Check Overlap
+================= Success ================
+Legal: 1
+
+Start clustering and banking...
+Init FFs size: 13968
+FFs size after greedy banking: 10526
+FFs size after greedy banking: 9730
+FFs size after greedy banking: 9562
+FFs size after greedy banking: 9542
+FFs size after greedy banking: 9541
+FFs size after greedy banking: 9541
+--- Calculating cost ---
+TNS: 1210.81
+Power: 289.904
+Area: 4.07165e+11
+Num of bins violated: 0
+==> Cost after clustering and banking: 8.17242e+08
+Clustering and banking time: 82.2949s
+============= Start checking =============
+Check FF in Die
+Check FF on Site
+Check Overlap
+================= Success ================
+Legal: 1
+
+Start to force directed placement (second)...
+--- Calculating cost ---
+TNS: 1117.45
+Power: 289.904
+Area: 4.07165e+11
+Num of bins violated: 0
+==> Cost after force directed placement (second): 8.17241e+08
+Force directed placement (second) time: 20.1651s
+============= Start checking =============
+Check FF in Die
+Check FF on Site
+Check Overlap
+================= Success ================
+Legal: 1
+
+Start clustering and banking...
+Init FFs size: 9541
+FFs size after greedy banking: 9518
+FFs size after greedy banking: 9516
+FFs size after greedy banking: 9516
+--- Calculating cost ---
+TNS: 1127.32
+Power: 289.073
+Area: 4.07064e+11
+Num of bins violated: 0
+==> Cost after clustering and banking: 8.17029e+08
+Clustering and banking time: 4.23403s
+============= Start checking =============
+Check FF in Die
+Check FF on Site
+Check Overlap
+================= Success ================
+Legal: 1
+
+Start to force directed placement (third)...
+--- Calculating cost ---
+TNS: 1115.6
+Power: 289.073
+Area: 4.07064e+11
+Num of bins violated: 0
+==> Cost after force directed placement (third): 8.17029e+08
+Force directed placement (third) time: 19.4369s
+============= Start checking =============
+Check FF in Die
+Check FF on Site
+Check Overlap
+================= Success ================
+Legal: 1
+
+Cost after solving: 8.17029e+08
+Cost difference: -9.42432e+07
+Cost difference percentage: -10.3419%
+============= Start checking =============
+Check FF in Die
+Check FF on Site
+Check Overlap
+================= Success ================
+
+------------------------------------------------------------------
+----------------------------- Report -----------------------------
+------------------------------------------------------------------
+Initial          		 9.112722e+08	100.00%	0.30s
+Debank           		 8.470037e+08	92.95%	44.59s
+ForceDirected    		 8.470029e+08	92.95%	20.67s
+Banking          		 8.172417e+08	89.68%	82.29s
+ForceDirected2   		 8.172408e+08	89.68%	20.17s
+Banking          		 8.170291e+08	89.66%	4.23s
+ForceDirected3   		 8.170290e+08	89.66%	19.44s *
+------------------------------------------------------------------
+Renderer closed
+Read testcase...
+Read output...
+Check Inst <name> <libcell> <x> <y> format...
+Check From/pin map To/pin  format...
+Start checking...
+check libType
+check pins are in design
+check pins are correct connected
+check same CLK for banking
+check netlist... step1
+check netlist... step2
+Checking pass!
+Read Input:
+Read output...
+Check Inst <name> <libcell> <x> <y> format...
+Check From/pin map To/pin  format...
+
+Start checking...
+check libType
+check pins are in design
+check pins are correct connected
+check same CLK for banking
+check netlist... step1
+check netlist... step2
+update timing...
+Check pass! Scoring...
+Final score:817031005.47661

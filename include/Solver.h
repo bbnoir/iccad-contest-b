@@ -102,6 +102,7 @@ class Solver
         double calCostChangeQDelay(Pin* changedQPin, double diffQDelay, bool update);
         double calCostMoveFF(FF* movedFF, int sourceX, int sourceY, int targetX, int targetY, bool update);
         double calCostBankFF(FF* ff1, FF* ff2, LibCell* targetFF, int targetX, int targetY, bool update);
+        double calCostDebankFF(FF* ff, LibCell* targetFF, std::vector<int>& targetX, std::vector<int>& targetY, bool update);
         void resetSlack(bool check = false);
         
         // Modify Cell
@@ -121,16 +122,19 @@ class Solver
         
         std::string makeUniqueName();
         void checkCLKDomain();
+        void checkFFsBitDistribution();
         
         // Helper
         
         bool isOverlap(Cell* cell1, Cell* cell2);
         bool isOverlap(int x1, int y1, Cell* cell1, Cell* cell2);
         bool isOverlap(int x1, int y1, int w1, int h1, Cell* cell2);
+        bool isOverlap(int x1, int y1, int w1, int h1, int x2, int y2, int w2, int h2);
         bool placeable(Cell* cell);
         bool placeable(Cell* cell, int x, int y);
         bool placeable(LibCell* libCell, int x, int y);
         bool placeable(Cell* cell, int x, int y, int& move_distance);
+        bool placeable(LibCell* libCell, int x, int y, int& move_distance);
         void constructFFsCLKDomain();
         std::vector<int> regionQuery(std::vector<FF*> ffs, long unsigned int idx, int radius);
         double calCost();
