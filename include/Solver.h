@@ -151,6 +151,7 @@ class Solver
         std::vector<std::vector<FF*>> clusteringFFs(long unsigned int clkdomain_idx);
         // 4. Greedy banking
         void greedyBanking(std::vector<std::vector<FF*>> clusters);
+        void annealingBanking(std::vector<std::vector<FF*>> clusters, double T);
         double cal_banking_gain(FF* ff1, FF* ff2, LibCell* targetFF, int& result_x, int& result_y);
         // 5. Legalization
         Legalizer* _legalizer;
