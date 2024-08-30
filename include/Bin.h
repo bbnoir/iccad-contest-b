@@ -1,6 +1,7 @@
 #pragma once
 #include <vector>
 #include <algorithm>
+#include "param.h"
 
 class Cell;
 class FF;
@@ -15,15 +16,14 @@ class Bin
 
         int getX() const { return _x; }
         int getY() const { return _y; }
-        double getUtilization();
-        bool isOverMaxUtil();
-        const std::vector<Cell*>& getCells();
+        double getUtilization() const { return _utilization; }
+        bool isOverMaxUtil() const { return _utilization >= BIN_MAX_UTIL; }
+        const std::vector<Cell*>& getCells() const { return _cells; }
 
         double addCell(Cell* cell, bool trial = false);
         double removeCell(Cell* cell, bool trial = false);
 
         bool totallyContains(Cell* cell);
-
 
         int calOverlapArea(Cell* cell);
     private:

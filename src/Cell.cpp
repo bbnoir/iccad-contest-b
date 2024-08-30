@@ -52,41 +52,6 @@ Cell::~Cell()
 {
 }
 
-int Cell::getArea()
-{
-    return _lib_cell->width * _lib_cell->height;
-}
-
-std::string Cell::getInstName()
-{
-    return _inst_name;
-}
-
-std::string Cell::getCellName()
-{
-    return _lib_cell->cell_name;
-}
-
-CellType Cell::getCellType()
-{
-    return _lib_cell->type;
-}
-
-std::vector<Pin*> Cell::getPins()
-{
-    return _pins;
-}
-
-std::vector<Pin*> Cell::getInputPins()
-{
-    return _inputPins;
-}
-
-std::vector<Pin*> Cell::getOutputPins()
-{
-    return _outputPins;
-}
-
 Pin* Cell::getPin(std::string pin_name)
 {
     for (auto pin : _pins)
@@ -97,21 +62,6 @@ Pin* Cell::getPin(std::string pin_name)
         }
     }
     return nullptr;
-}
-
-std::vector<Site*> Cell::getSites()
-{
-    return _sites;
-}
-
-std::vector<Bin*> Cell::getBins()
-{
-    return _bins;
-}
-
-LibCell* Cell::getLibCell()
-{
-    return _lib_cell;
 }
 
 void Cell::setX(int x)

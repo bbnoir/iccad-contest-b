@@ -1,7 +1,6 @@
 #include "Bin.h"
 #include "Cell.h"
 #include "FF.h"
-#include "param.h"
 #include <cmath>
 #include <iostream>
 #include <unordered_set>
@@ -19,21 +18,6 @@ Bin::Bin(int x, int y)
 
 Bin::~Bin()
 {
-}
-
-double Bin::getUtilization()
-{
-    return _utilization;
-}
-
-bool Bin::isOverMaxUtil()
-{
-    return _utilization >= BIN_MAX_UTIL;
-}
-
-const std::vector<Cell*>& Bin::getCells()
-{
-    return _cells;
 }
 
 double Bin::addCell(Cell* cell, bool trial)

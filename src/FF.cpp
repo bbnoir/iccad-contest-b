@@ -115,26 +115,6 @@ FF::~FF()
 {
 }
 
-int FF::getBit()
-{
-    return _lib_cell->bit;
-}
-
-int FF::getOccupiedBit()
-{
-    return _outputPins.size();
-}
-
-double FF::getQDelay()
-{
-    return _lib_cell->qDelay;
-}
-
-double FF::getPower()
-{
-    return _lib_cell->power;
-}
-
 double FF::getTotalNegativeSlack()
 {
     double totalNegativeSlack = 0.0;
@@ -157,11 +137,6 @@ double FF::getTotalSlack()
         totalSlack += pin->getSlack();
     }
     return totalSlack;
-}
-
-double FF::getCostPA()
-{
-    return _lib_cell->costPA;
 }
 
 int FF::getNSPinCount()
@@ -187,11 +162,6 @@ int FF::getNSPinCount()
     return count;
 }
 
-Pin* FF::getClkPin()
-{
-    return _clkPin;
-}
-
 std::vector<std::pair<Pin*, Pin*>> FF::getDQpairs()
 {
     std::vector<std::pair<Pin*, Pin*>> dqPairs;
@@ -201,11 +171,6 @@ std::vector<std::pair<Pin*, Pin*>> FF::getDQpairs()
         dqPairs.push_back(std::make_pair(this->_inputPins[i], this->_outputPins[i]));
     }
     return dqPairs;
-}
-
-int FF::getClkDomain()
-{
-    return clkDomain;
 }
 
 void FF::setClkDomain(int clkDomain)

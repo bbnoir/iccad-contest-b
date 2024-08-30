@@ -12,17 +12,17 @@ class FF : public Cell
         FF(int x, int y, std::string inst_name, LibCell* lib_cell, std::vector<std::pair<Pin*, Pin*>> dqpairs, std::vector<Pin*> clks);
         ~FF();
 
-        int getBit();
-        int getOccupiedBit();
-        double getQDelay();
-        double getPower();
+        int getBit() const { return _lib_cell->bit; }
+        int getOccupiedBit() const { return _outputPins.size(); }
+        double getQDelay() const { return _lib_cell->qDelay; }
+        double getPower() const { return _lib_cell->power; }
         double getTotalNegativeSlack();
         double getTotalSlack();
-        double getCostPA();
+        double getCostPA() const { return _lib_cell->costPA; }
         int getNSPinCount();
-        Pin* getClkPin();
+        Pin* getClkPin() const { return _clkPin; }
         std::vector<std::pair<Pin*, Pin*>> getDQpairs();
-        int getClkDomain();
+        int getClkDomain() const { return clkDomain; }
 
         void setClkDomain(int clkDomain);
     private:

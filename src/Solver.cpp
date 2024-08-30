@@ -1718,52 +1718,6 @@ void Solver::solve()
 
     legal = check();
     std::cout << "Legal: " << legal << "\n";
-    
-    // // std::cout<<"\nStart to legalize...\n";
-    // // _legalizer->legalize();
-    // // resetSlack();
-    // // _currCost = calCost();
-    // // std::cout << "==> Cost after reset slack: " << _currCost << "\n";
-    // // saveState("Legalize", true);
-
-    // // if(calTime)
-    // // {
-    // //     end = std::chrono::high_resolution_clock::now();
-    // //     std::chrono::duration<double> elapsed = end - start;
-    // //     _stateTimes.push_back(elapsed.count());
-    // //     std::cout << "Legalization time: " << elapsed.count() << "s" << std::endl;
-    // //     start = std::chrono::high_resolution_clock::now();
-    // // }
-
-    // std::cout<<"\nStart to force directed placement (Legal)...\n";
-    // iterativePlacementLegal();
-    // _currCost = calCost();
-    // std::cout << "==> Cost after force directed placement (Legal): " << _currCost << "\n";
-    // saveState("ForceDirectedLegal", true);
-
-    // if(calTime)
-    // {
-    //     end = std::chrono::high_resolution_clock::now();
-    //     std::chrono::duration<double> elapsed = end - start;
-    //     _stateTimes.push_back(elapsed.count());
-    //     std::cout << "Force directed placement (Legal) time: " << elapsed.count() << "s" << std::endl;
-    //     start = std::chrono::high_resolution_clock::now();
-    // }
-
-    // std::cout<<"\nStart to fine tune...\n";
-    // fineTune();
-    // resetSlack();
-    // _currCost = calCost();
-    // std::cout << "==> Cost after reset slack: " << _currCost << "\n";
-    // saveState("FineTune", true);
-
-    // if(calTime)
-    // {
-    //     end = std::chrono::high_resolution_clock::now();
-    //     std::chrono::duration<double> elapsed = end - start;
-    //     _stateTimes.push_back(elapsed.count());
-    //     std::cout << "Fine tuning time: " << elapsed.count() << "s" << std::endl;
-    // }
 
     std::cout << "\nCost after solving: " << _currCost << "\n";
     std::cout << "Cost difference: " << _currCost - _initCost << "\n";
@@ -1877,7 +1831,7 @@ bool Solver::checkOverlap()
 /*
 if cell1 and cell2 overlap, return true
 */
-bool Solver::isOverlap(Cell* cell1, Cell* cell2)
+inline bool Solver::isOverlap(Cell* cell1, Cell* cell2)
 {
     return cell1->getX() < cell2->getX() + cell2->getWidth() &&
            cell1->getX() + cell1->getWidth() > cell2->getX() &&
@@ -1888,7 +1842,7 @@ bool Solver::isOverlap(Cell* cell1, Cell* cell2)
 /*
 if cell1(x,y) and cell2 overlap, return true
 */
-bool Solver::isOverlap(int x1, int y1, Cell* cell1, Cell* cell2)
+inline bool Solver::isOverlap(int x1, int y1, Cell* cell1, Cell* cell2)
 {
     return x1 < cell2->getX() + cell2->getWidth() &&
            x1 + cell1->getWidth() > cell2->getX() &&
@@ -1899,7 +1853,7 @@ bool Solver::isOverlap(int x1, int y1, Cell* cell1, Cell* cell2)
 /*
 if cell1(x1,y1,w1,h1) and cell2 overlap, return true
 */
-bool Solver::isOverlap(int x1, int y1, int w1, int h1, Cell* cell2)
+inline bool Solver::isOverlap(int x1, int y1, int w1, int h1, Cell* cell2)
 {
     return x1 < cell2->getX() + cell2->getWidth() &&
            x1 + w1 > cell2->getX() &&
@@ -1907,7 +1861,7 @@ bool Solver::isOverlap(int x1, int y1, int w1, int h1, Cell* cell2)
            y1 + h1 > cell2->getY();
 }
 
-bool Solver::isOverlap(int x1, int y1, int w1, int h1, int x2, int y2, int w2, int h2)
+inline bool Solver::isOverlap(int x1, int y1, int w1, int h1, int x2, int y2, int w2, int h2)
 {
     return x1 < x2 + w2 &&
            x1 + w1 > x2 &&

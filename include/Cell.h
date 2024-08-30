@@ -65,18 +65,18 @@ public:
     int getY() const { return _y; }
     int getWidth() const { return _lib_cell->width; }
     int getHeight() const { return _lib_cell->height; }
-    int getArea();
-    std::string getInstName();
-    std::string getCellName();
-    CellType getCellType();
-    std::vector<Pin*> getPins();
-    std::vector<Pin*> getInputPins();
-    std::vector<Pin*> getOutputPins();
+    int getArea() const { return _lib_cell->width * _lib_cell->height; }
+    std::string getInstName() const { return _inst_name; }
+    std::string getCellName() const { return _lib_cell->cell_name; }
+    CellType getCellType() const { return _lib_cell->type; }
+    std::vector<Pin*> getPins() const { return _pins; }
+    std::vector<Pin*> getInputPins() const { return _inputPins; }
+    std::vector<Pin*> getOutputPins() const { return _outputPins; }
     Pin* getPin(std::string pin_name);
-    std::vector<Site*> getSites();
-    std::vector<Bin*> getBins();
+    std::vector<Site*> getSites() const { return _sites; }
+    std::vector<Bin*> getBins() const { return _bins; }
     double getQDelay();
-    LibCell* getLibCell();
+    LibCell* getLibCell() const { return _lib_cell; }
 
     void setX(int x);
     void setY(int y);
