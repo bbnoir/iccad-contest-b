@@ -395,6 +395,14 @@ void Solver::parse_input(std::string filename)
         }
     }
 
+    for (auto ff : _ffsLibList)
+    {
+        if(ff->bit == 1)
+        {
+            _oneBitFFs.push_back(ff);
+        }
+    }
+
     cout << "File parsed successfully" << endl;
     in.close();
 }
@@ -1084,7 +1092,7 @@ void Solver::deleteFF(FF* ff)
     delete ff;
 }
 
-void Solver::bankFFs(FF* ff1, FF* ff2, LibCell* targetFF, int x, int y)
+void Solver::bankFFs(FF* ff1, FF* ff2, LibCell* targetFF, int x, int y, bool isSA)
 {
     if (ff1->getClkDomain() != ff2->getClkDomain())
     {
@@ -1106,7 +1114,7 @@ void Solver::bankFFs(FF* ff1, FF* ff2, LibCell* targetFF, int x, int y)
     clkPins.push_back(ff2->getClkPin());
     // place the banked FF
     calCostBankFF(ff1, ff2, targetFF, x, y, true);
-    FF* bankedFF = new FF(x, y, makeUniqueName(), targetFF, dqPairs, clkPins);
+    FF* bankedFF = new FF(x, y, makeUniqueName(), targetFF, dqPairs, clkPins, isSA);
     bankedFF->setClkDomain(ff1->getClkDomain());
     addFF(bankedFF);
     placeCell(bankedFF);
@@ -1616,6 +1624,7 @@ void Solver::solve()
     const double alpha = 0.99;
     const double T_end = 1e-3;
     double T = T0;
+    int iter = 0;
     do
     {
         constructFFsCLKDomain();
@@ -1639,23 +1648,31 @@ void Solver::solve()
         {
             T = T_end;
         }
+        resetSlack();
+        _currCost = calCost();
+        legal = check();
+        std::cout << "==> Cost after clustering and banking: " << _currCost << "\n";
+        saveState("AnnealBanking" + std::to_string(iter++), legal);
+        if(calTime)
+        {
+            end = std::chrono::high_resolution_clock::now();
+            std::chrono::duration<double> elapsed = end - start;
+            _stateTimes.push_back(elapsed.count());
+            std::cout << "Clustering and banking time: " << elapsed.count() << "s" << std::endl;
+            start = std::chrono::high_resolution_clock::now();
+        }
     } while (prev_ffs_size != _ffs.size());
+
+    std::cout << "\nStart greedy debanking...\n";
+    greedyDebankAllSA();
+    resetSlack();
     _currCost = calCost();
-    std::cout << "==> Cost after clustering and banking: " << _currCost << "\n";
-    saveState("Banking");
-
-    if(calTime)
-    {
-        end = std::chrono::high_resolution_clock::now();
-        std::chrono::duration<double> elapsed = end - start;
-        _stateTimes.push_back(elapsed.count());
-        std::cout << "Clustering and banking time: " << elapsed.count() << "s" << std::endl;
-        start = std::chrono::high_resolution_clock::now();
-    }
-
+    std::cout << "==> Cost after greedy debanking: " << _currCost << "\n";
     legal = check();
     std::cout << "Legal: " << legal << "\n";
+    saveState("GreedyDebank", legal);
 
+ 
     std::cout << "\nStart to force directed placement (second)...\n";
     iterativePlacementLegal();
     _currCost = calCost();
@@ -2233,7 +2250,7 @@ void Solver::greedyBanking(std::vector<std::vector<FF*>> clusters)
             }
             if (pair_max_gain > 0)
             {
-                pair_infos.push_back(PairInfo{ff1, ff2, pair_targetFF, pair_result_x, pair_result_y, pair_max_gain});
+                pair_infos.push_back(PairInfo{ff1, ff2, pair_targetFF, pair_result_x, pair_result_y, pair_max_gain, false});
             }
         }
         std::sort(pair_infos.begin(), pair_infos.end(), [](const PairInfo& a, const PairInfo& b) {
@@ -2285,7 +2302,7 @@ void Solver::annealingBanking(std::vector<std::vector<FF*>> clusters, double T)
         if(cluster.size() < 2)
             continue;
         // prune pairs
-        std::cout << "Cluster size: " << cluster.size() << std::endl;
+        // std::cout << "Cluster size: " << cluster.size() << std::endl;
         std::vector<std::pair<FF*, FF*>> pairs;
         std::vector<std::pair<int, double>> pair_scores;
         int pair_count = 0;
@@ -2322,7 +2339,7 @@ void Solver::annealingBanking(std::vector<std::vector<FF*>> clusters, double T)
         std::sort(pair_scores.begin(), pair_scores.end(), [](const std::pair<int, double>& a, const std::pair<int, double>& b) {
             return a.second > b.second;
         });
-        std::cout << "Pair scores size: " << pair_scores.size() << std::endl;
+        // std::cout << "Pair scores size: " << pair_scores.size() << std::endl;
 
         std::vector<PairInfo> pair_infos;
         for (auto ps : pair_scores)
@@ -2349,9 +2366,13 @@ void Solver::annealingBanking(std::vector<std::vector<FF*>> clusters, double T)
                     }
                 }
             }
-            if (pair_max_gain > 0 || (double)rand() / RAND_MAX < std::exp(pair_max_gain / T))
+            if (pair_max_gain > 0)
             {
-                pair_infos.push_back(PairInfo{ff1, ff2, pair_targetFF, pair_result_x, pair_result_y, pair_max_gain});
+                pair_infos.push_back(PairInfo{ff1, ff2, pair_targetFF, pair_result_x, pair_result_y, pair_max_gain, false});
+            }
+            else if ((double)rand() / RAND_MAX < std::exp(pair_max_gain / T))
+            {
+                pair_infos.push_back(PairInfo{ff1, ff2, pair_targetFF, pair_result_x, pair_result_y, pair_max_gain, true});
             }
         }
         std::sort(pair_infos.begin(), pair_infos.end(), [](const PairInfo& a, const PairInfo& b) {
@@ -2362,7 +2383,7 @@ void Solver::annealingBanking(std::vector<std::vector<FF*>> clusters, double T)
         {
             locked[&pi] = false;
         }
-        std::cout << "Pair info size: " << pair_infos.size() << std::endl;
+        // std::cout << "Pair info size: " << pair_infos.size() << std::endl;
         if (!pair_infos.empty() && pair_infos[0].gain > 0)
         {
             for (size_t i = 0; i < pair_infos.size(); i++)
@@ -2387,13 +2408,176 @@ void Solver::annealingBanking(std::vector<std::vector<FF*>> clusters, double T)
                                 locked[&pi2] = true;
                             }
                         }
-                        bankFFs(pi.ff1, pi.ff2, pi.targetFF, pi.targetX, pi.targetY);
+                        bankFFs(pi.ff1, pi.ff2, pi.targetFF, pi.targetX, pi.targetY, pi.isSA);
                     }
                 }
             }
         }
     }
 }
+
+void Solver::greedyDebankAllSA()
+{
+    std::cout << "Start to greedy debank all SA FFs..." << std::endl;
+    std::vector<std::pair<int, double>> saFFIdx;
+    for (size_t i = 0; i < _ffs.size(); i++)
+    {
+        FF* ff = _ffs[i];
+        if (ff->isOnceSA())
+        {
+            double neg_slack = ff->getTotalNegativeSlack();
+            for (auto inPin : ff->getInputPins())
+            {
+                neg_slack += std::min(inPin->getSlack(), 0.0);
+            }
+            for (auto outPin : ff->getOutputPins())
+            {
+                
+                for (auto nextPin : outPin->getNextStagePins())
+                {
+                    neg_slack += std::min(nextPin->getSlack(), 0.0);
+                }
+            }
+            double score = ff->getCostPA() - neg_slack * GAMMA;
+            saFFIdx.push_back(std::make_pair(i, score));
+        }
+        else
+        {
+            saFFIdx.push_back(std::make_pair(i, 0));
+        }
+    }
+    std::sort(saFFIdx.begin(), saFFIdx.end(), [](const std::pair<int, double>& a, const std::pair<int, double>& b) {
+        return a.second > b.second;
+    });
+    std::cout << "SA FFs size: " << saFFIdx.size() << std::endl;
+
+    std::vector<FF*> debankedFFs;
+
+    for (auto saFF : saFFIdx)
+    {
+        FF* ff = _ffs[saFF.first];
+        removeCell(ff);
+
+        if (saFF.second == 0)
+        {
+            FF* cloneFF = new FF(ff->getX(), ff->getY(), makeUniqueName(), ff->getLibCell(), ff->getDQpairs(), ff->getClkPin());
+            cloneFF->setClkDomain(ff->getClkDomain());
+            debankedFFs.push_back(cloneFF);
+            placeCell(cloneFF);
+            delete ff->getClkPin();
+        }
+
+        std::vector<std::pair<Pin*, Pin*>> dqPairs = ff->getDQpairs();
+        Pin* clkPin = ff->getClkPin();
+        const int x = ff->getX();
+        const int y = ff->getY();
+        const int clkDomain = ff->getClkDomain();
+
+        double minCost = 0;
+        LibCell* bestFF = ff->getLibCell();
+        std::vector<int> bestX = {x};
+        std::vector<int> bestY = {y};
+
+        #pragma omp parallel for num_threads(NUM_THREADS)
+        for(auto oneBitFF: _oneBitFFs)
+        {
+            std::vector<int> target_X, target_Y;
+            // TODO: search distance should be a parameter
+            int searchDistance = ff->getWidth();
+            
+            int leftDownX = ff->getX() - searchDistance;
+            int leftDownY = ff->getY() - searchDistance;
+            int rightUpX = ff->getX() + searchDistance;
+            int rightUpY = ff->getY() + searchDistance;
+            std::vector<Site*> nearSites = _siteMap->getSitesInBlock(leftDownX, leftDownY, rightUpX, rightUpY);
+            // sort the sites by distance
+            std::sort(nearSites.begin(), nearSites.end(), [ff](Site* a, Site* b) -> bool {
+                return abs(a->getX()-ff->getX()) + abs(a->getY()-ff->getY()) < abs(b->getX()-ff->getX()) + abs(b->getY()-ff->getY());
+            });
+
+            int found = 0;
+            std::vector<Cell*> candidates;
+
+            for(size_t j = 0; j < nearSites.size(); j++)
+            {   
+                if(!placeable(oneBitFF, nearSites[j]->getX(), nearSites[j]->getY()))
+                    continue;
+                // check if overlap with other candidate FF
+                bool overlap = false;
+                for(auto candidate: candidates)
+                {
+                    if(isOverlap(nearSites[j]->getX(), nearSites[j]->getY(), oneBitFF->width, oneBitFF->height, candidate))
+                    {
+                        overlap = true;
+                        break;
+                    }
+                }
+                if(overlap)
+                    continue;
+                found++;
+                target_X.push_back(nearSites[j]->getX());
+                target_Y.push_back(nearSites[j]->getY());
+                candidates.push_back(new Cell(nearSites[j]->getX(), nearSites[j]->getY(), "dumb", oneBitFF));
+                if(found == ff->getBit())
+                    break;
+            }
+            
+            for(auto candidate: candidates)
+            {
+                if(candidate != nullptr)
+                    delete candidate;
+            }
+
+            if(found < ff->getBit())
+                continue;
+
+            double costDiff = calCostDebankFF(ff, oneBitFF, target_X, target_Y, false);
+
+            #pragma omp critical
+            if (costDiff < minCost)
+            {
+                minCost = costDiff;
+                bestX = target_X;
+                bestY = target_Y;
+                bestFF = oneBitFF;
+            }
+        }
+
+        if(minCost == 0)
+        {
+            // no better FF found
+            FF* cloneFF = new FF(x, y, makeUniqueName(), bestFF, dqPairs, clkPin);
+            cloneFF->setClkDomain(clkDomain);
+            debankedFFs.push_back(cloneFF);
+            placeCell(cloneFF);
+            delete clkPin;
+            continue;
+        }
+
+        calCostDebankFF(ff, bestFF, bestX, bestY, true);
+
+        for(size_t i=0;i<dqPairs.size();i++)
+        {
+            FF* newFF = new FF(bestX[i], bestY[i], makeUniqueName(), bestFF, dqPairs[i], clkPin);
+            newFF->setClkDomain(clkDomain);
+            debankedFFs.push_back(newFF);
+            placeCell(newFF);
+        }
+        delete clkPin;
+    }
+
+    for(size_t i=0;i<_ffs.size();i++)
+    {
+        delete _ffs[i];
+    }
+    _ffs.clear();
+    _ffsMap.clear();
+    for (auto ff : debankedFFs)
+    {
+        addFF(ff);
+    }
+}
+
 void Solver::display()
 {
     using namespace std;
@@ -2608,6 +2792,10 @@ void Solver::report()
         if(_stateTimes.size() > i)
         {
             std::cout << "\t" << std::fixed << std::setprecision(2) << _stateTimes[i] << "s";
+        }
+        if (_stateLegal[i])
+        {
+            std::cout << " L";
         }
         if (_bestStateIdx == i)
         {

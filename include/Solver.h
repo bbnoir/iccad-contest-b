@@ -42,6 +42,7 @@ struct PairInfo
     int targetX;
     int targetY;
     double gain;
+    bool isSA;
 };
 
 class Solver
@@ -92,7 +93,7 @@ class Solver
         SiteMap* _siteMap;
         int uniqueNameCounter = 0;
 
-        // Cost Calculation
+        std::vector<LibCell*> _oneBitFFs;
 
         double _initCost;
         double _currCost;
@@ -116,7 +117,7 @@ class Solver
         
         void addFF(FF* ff);
         void deleteFF(FF* ff);
-        void bankFFs(FF* ff1, FF* ff2, LibCell* targetFF, int x, int y);
+        void bankFFs(FF* ff1, FF* ff2, LibCell* targetFF, int x, int y, bool isSA = false);
         
         // Trivial
         
@@ -152,6 +153,8 @@ class Solver
         // 4. Greedy banking
         void greedyBanking(std::vector<std::vector<FF*>> clusters);
         void annealingBanking(std::vector<std::vector<FF*>> clusters, double T);
+        void greedyDebankAllSA();
+        void greedyDebankFFs(std::vector<FF*> ffs);
         double cal_banking_gain(FF* ff1, FF* ff2, LibCell* targetFF, int& result_x, int& result_y);
         // 5. Legalization
         Legalizer* _legalizer;

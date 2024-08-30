@@ -66,7 +66,7 @@ FF::FF(int x, int y, std::string inst_name, LibCell* lib_cell, std::vector<std::
 /*
 Constructor for banking
 */
-FF::FF(int x, int y, std::string inst_name, LibCell* lib_cell, std::vector<std::pair<Pin*, Pin*>> dqpairs, std::vector<Pin*> clks)
+FF::FF(int x, int y, std::string inst_name, LibCell* lib_cell, std::vector<std::pair<Pin*, Pin*>> dqpairs, std::vector<Pin*> clks, bool once_sa)
 {
     if (lib_cell->bit < int(dqpairs.size()))
     {
@@ -109,6 +109,8 @@ FF::FF(int x, int y, std::string inst_name, LibCell* lib_cell, std::vector<std::
     {
         delete clk;
     }
+
+    _onceSA = once_sa;
 }
 
 FF::~FF()
