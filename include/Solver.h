@@ -62,7 +62,6 @@ class Solver
         void display();
         
         // friend
-        friend class Renderer;
         friend class Legalizer;
     private:
         // lib

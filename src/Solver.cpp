@@ -9,7 +9,7 @@
 #include "Legalizer.h"
 #ifdef _OPENMP
 #include <omp.h>
-const int NUM_THREADS = 4;
+const int NUM_THREADS = 8;
 #endif
 
 // cost metrics
