@@ -642,18 +642,16 @@ bool Solver::placeable(Cell* cell, int x,int y)
     }
     // check the cell will not overlap with other cells in the bin
     std::vector<Bin*> bins = _binMap->getBins(x, y, x+cell->getWidth(), y+cell->getHeight());
-    std::vector<Cell*> cells;
     for(auto bin: bins)
     {
-        cells.insert(cells.end(), bin->getCells().begin(), bin->getCells().end());
-    }
-    for(auto c: cells)
-    {
-        if(c == cell || c->getInstName() == "dumb")
-            continue;
-        if(isOverlap(x, y, cell, c))
+        for(auto c: bin->getCells())
         {
-            return false;
+            if(c->getInstName() == "dumb" || c == cell)
+                continue;
+            if(isOverlap(x, y, cell, c))
+            {
+                return false;
+            }
         }
     }
     return true;
@@ -679,18 +677,17 @@ bool Solver::placeable(LibCell* libCell, int x, int y)
     }
     // check the cell will not overlap with other cells in the bin
     std::vector<Bin*> bins = _binMap->getBins(x, y, x+libCell->width, y+libCell->height);
-    std::vector<Cell*> cells;
+    
     for(auto bin: bins)
     {
-        cells.insert(cells.end(), bin->getCells().begin(), bin->getCells().end());
-    }
-    for(auto c: cells)
-    {
-        if(c->getInstName() == "dumb")
-            continue;
-        if(isOverlap(x, y, libCell->width, libCell->height, c))
+        for(auto cell: bin->getCells())
         {
-            return false;
+            if(cell->getInstName() == "dumb")
+                continue;
+            if(isOverlap(x, y, libCell->width, libCell->height, cell))
+            {
+                return false;
+            }
         }
     }
     return true;
