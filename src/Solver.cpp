@@ -460,27 +460,29 @@ void Solver::iterativePlacementLegal()
         int best_site = -1;
 
         #pragma omp parallel for num_threads(NUM_THREADS)
-        for(size_t j = 0; j < nearSites.size(); j++)
-        {   
-            if(!placeable(ff, nearSites[j]->getX(), nearSites[j]->getY()))
-                continue;
-            int original_x = ff->getX();
-            int original_y = ff->getY();
-            int trial_x = nearSites[j]->getX();
-            int trial_y = nearSites[j]->getY();
-            
-            // Bins cost difference when add and remove the cell
-            double binCost = _binMap->moveCell(ff, trial_x, trial_y, true);
-            double slackCost = calCostMoveFF(ff, original_x, original_y, trial_x, trial_y, false);
+            for(size_t j = 0; j < nearSites.size(); j++)
+            {   
+                if(!placeable(ff, nearSites[j]->getX(), nearSites[j]->getY()))
+                    continue;
+                int original_x = ff->getX();
+                int original_y = ff->getY();
+                int trial_x = nearSites[j]->getX();
+                int trial_y = nearSites[j]->getY();
+                
+                // Bins cost difference when add and remove the cell
+                double binCost = _binMap->moveCell(ff, trial_x, trial_y, true);
+                double slackCost = calCostMoveFF(ff, original_x, original_y, trial_x, trial_y, false);
 
-            double cost = slackCost + binCost;
-            #pragma omp critical
-            if(cost < cost_min)
-            {
-                cost_min = cost;
-                best_site = j;
+                double cost = slackCost + binCost;
+                #pragma omp critical
+                {
+                    if(cost < cost_min)
+                    {
+                        cost_min = cost;
+                        best_site = j;
+                    }
+                }
             }
-        }
         
         if(best_site != -1)
         {
@@ -1147,69 +1149,73 @@ void Solver::debankAll()
         std::vector<int> bestY = {y};
 
         #pragma omp parallel for num_threads(NUM_THREADS)
-        for(auto oneBitFF: oneBitFFs)
-        {
-            std::vector<int> target_X, target_Y;
-            // TODO: search distance should be a parameter
-            int searchDistance = ff->getWidth();
-            
-            int leftDownX = ff->getX() - searchDistance;
-            int leftDownY = ff->getY() - searchDistance;
-            int rightUpX = ff->getX() + searchDistance;
-            int rightUpY = ff->getY() + searchDistance;
-            std::vector<Site*> nearSites = _siteMap->getSitesInBlock(leftDownX, leftDownY, rightUpX, rightUpY);
-            // sort the sites by distance
-            std::sort(nearSites.begin(), nearSites.end(), [ff](Site* a, Site* b) -> bool {
-                return abs(a->getX()-ff->getX()) + abs(a->getY()-ff->getY()) < abs(b->getX()-ff->getX()) + abs(b->getY()-ff->getY());
-            });
+            for(size_t i = 0; i < oneBitFFs.size(); i++)
+            // for(auto oneBitFF: oneBitFFs)
+            {
+                LibCell* oneBitFF = oneBitFFs[i];
+                std::vector<int> target_X, target_Y;
+                // TODO: search distance should be a parameter
+                int searchDistance = ff->getWidth();
+                
+                int leftDownX = ff->getX() - searchDistance;
+                int leftDownY = ff->getY() - searchDistance;
+                int rightUpX = ff->getX() + searchDistance;
+                int rightUpY = ff->getY() + searchDistance;
+                std::vector<Site*> nearSites = _siteMap->getSitesInBlock(leftDownX, leftDownY, rightUpX, rightUpY);
+                // sort the sites by distance
+                std::sort(nearSites.begin(), nearSites.end(), [ff](Site* a, Site* b) -> bool {
+                    return abs(a->getX()-ff->getX()) + abs(a->getY()-ff->getY()) < abs(b->getX()-ff->getX()) + abs(b->getY()-ff->getY());
+                });
 
-            int found = 0;
-            std::vector<Cell*> candidates;
+                int found = 0;
+                std::vector<Cell*> candidates;
 
-            for(size_t j = 0; j < nearSites.size(); j++)
-            {   
-                if(!placeable(oneBitFF, nearSites[j]->getX(), nearSites[j]->getY()))
-                    continue;
-                // check if overlap with other candidate FF
-                bool overlap = false;
+                for(size_t j = 0; j < nearSites.size(); j++)
+                {   
+                    if(!placeable(oneBitFF, nearSites[j]->getX(), nearSites[j]->getY()))
+                        continue;
+                    // check if overlap with other candidate FF
+                    bool overlap = false;
+                    for(auto candidate: candidates)
+                    {
+                        if(isOverlap(nearSites[j]->getX(), nearSites[j]->getY(), oneBitFF->width, oneBitFF->height, candidate))
+                        {
+                            overlap = true;
+                            break;
+                        }
+                    }
+                    if(overlap)
+                        continue;
+                    found++;
+                    target_X.push_back(nearSites[j]->getX());
+                    target_Y.push_back(nearSites[j]->getY());
+                    candidates.push_back(new Cell(nearSites[j]->getX(), nearSites[j]->getY(), "dumb", oneBitFF));
+                    if(found == ff->getBit())
+                        break;
+                }
+                
                 for(auto candidate: candidates)
                 {
-                    if(isOverlap(nearSites[j]->getX(), nearSites[j]->getY(), oneBitFF->width, oneBitFF->height, candidate))
+                    if(candidate != nullptr)
+                        delete candidate;
+                }
+
+                if(found < ff->getBit())
+                    continue;
+
+                double costDiff = calCostDebankFF(ff, oneBitFF, target_X, target_Y, false);
+
+                #pragma omp critical
+                {
+                    if (costDiff < minCost)
                     {
-                        overlap = true;
-                        break;
+                        minCost = costDiff;
+                        bestX = target_X;
+                        bestY = target_Y;
+                        bestFF = oneBitFF;
                     }
                 }
-                if(overlap)
-                    continue;
-                found++;
-                target_X.push_back(nearSites[j]->getX());
-                target_Y.push_back(nearSites[j]->getY());
-                candidates.push_back(new Cell(nearSites[j]->getX(), nearSites[j]->getY(), "dumb", oneBitFF));
-                if(found == ff->getBit())
-                    break;
             }
-            
-            for(auto candidate: candidates)
-            {
-                if(candidate != nullptr)
-                    delete candidate;
-            }
-
-            if(found < ff->getBit())
-                continue;
-
-            double costDiff = calCostDebankFF(ff, oneBitFF, target_X, target_Y, false);
-
-            #pragma omp critical
-            if (costDiff < minCost)
-            {
-                minCost = costDiff;
-                bestX = target_X;
-                bestY = target_Y;
-                bestFF = oneBitFF;
-            }
-        }
 
         if(minCost == 0)
         {
@@ -2075,26 +2081,28 @@ double Solver::cal_banking_gain(FF* ff1, FF* ff2, LibCell* targetFF, int& result
     }
 
     #pragma omp parallel for num_threads(NUM_THREADS)
-    for(size_t i=0;i<candidates.size();i++)
-    {
-        Site* targetSite = _siteMap->getNearestSite(candidates[i].first, candidates[i].second);
-        const int target_x = targetSite->getX();
-        const int target_y = targetSite->getY();
-
-        if(!placeable(targetFF, target_x, target_y))
-            continue;
-        
-        double gain = -calCostBankFF(ff1, ff2, targetFF, target_x, target_y, false);
-        gain -= _binMap->trialLibCell(targetFF, target_x, target_y);
-
-        #pragma omp critical
-        if(gain > min_gain)
+        for(size_t i=0;i<candidates.size();i++)
         {
-            min_gain = gain;
-            result_x = target_x;
-            result_y = target_y;
+            Site* targetSite = _siteMap->getNearestSite(candidates[i].first, candidates[i].second);
+            const int target_x = targetSite->getX();
+            const int target_y = targetSite->getY();
+
+            if(!placeable(targetFF, target_x, target_y))
+                continue;
+            
+            double gain = -calCostBankFF(ff1, ff2, targetFF, target_x, target_y, false);
+            gain -= _binMap->trialLibCell(targetFF, target_x, target_y);
+
+            #pragma omp critical
+            {
+                if(gain > min_gain)
+                {
+                    min_gain = gain;
+                    result_x = target_x;
+                    result_y = target_y;
+                }
+            }
         }
-    }
 
     placeCell(ff1);
     placeCell(ff2);
@@ -2114,34 +2122,34 @@ void Solver::greedyBanking(std::vector<std::vector<FF*>> clusters)
         std::vector<std::pair<int, double>> pair_scores;
         int pair_count = 0;
         #pragma omp parallel for num_threads(NUM_THREADS)
-        for (size_t i = 0; i < cluster.size(); i++)
-        {
-            for (size_t j = i + 1; j < cluster.size(); j++)
+            for (size_t i = 0; i < cluster.size(); i++)
             {
-                const int bit = cluster[i]->getBit() + cluster[j]->getBit();
-                if (_bestCostPAFFs[bit] == nullptr)
+                for (size_t j = i + 1; j < cluster.size(); j++)
                 {
-                    continue;
-                }
-                double score = cluster[i]->getCostPA() + cluster[j]->getCostPA() - _bestCostPA[bit];
-                if (score < 0)
-                {
-                    continue;
-                }
-                double dist = std::abs(cluster[i]->getX() - cluster[j]->getX()) + std::abs(cluster[i]->getY() - cluster[j]->getY());
-                int pin_count = cluster[i]->getNSPinCount() + cluster[j]->getNSPinCount();
-                score -= dist * DISP_DELAY * ALPHA * pin_count / 2;
-                if (score < 0)
-                {
-                    continue;
-                }
-                #pragma omp critical
-                {
-                    pairs.push_back(std::make_pair(cluster[i], cluster[j]));
-                    pair_scores.push_back(std::make_pair(pair_count++, score));
+                    const int bit = cluster[i]->getBit() + cluster[j]->getBit();
+                    if (_bestCostPAFFs[bit] == nullptr)
+                    {
+                        continue;
+                    }
+                    double score = cluster[i]->getCostPA() + cluster[j]->getCostPA() - _bestCostPA[bit];
+                    if (score < 0)
+                    {
+                        continue;
+                    }
+                    double dist = std::abs(cluster[i]->getX() - cluster[j]->getX()) + std::abs(cluster[i]->getY() - cluster[j]->getY());
+                    int pin_count = cluster[i]->getNSPinCount() + cluster[j]->getNSPinCount();
+                    score -= dist * DISP_DELAY * ALPHA * pin_count / 2;
+                    if (score < 0)
+                    {
+                        continue;
+                    }
+                    #pragma omp critical
+                    {
+                        pairs.push_back(std::make_pair(cluster[i], cluster[j]));
+                        pair_scores.push_back(std::make_pair(pair_count++, score));
+                    }
                 }
             }
-        }
         // sort pairs
         std::sort(pair_scores.begin(), pair_scores.end(), [](const std::pair<int, double>& a, const std::pair<int, double>& b) {
             return a.second > b.second;
