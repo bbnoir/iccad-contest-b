@@ -148,9 +148,13 @@ void Pin::resetArrivalTime(bool check)
         _arrivalTimes.push_back(arrival_time);
     }
     _currCriticalArrivalTime = 0;
-    for (auto arrival_time : _arrivalTimes)
+    for (size_t i = 0; i < _arrivalTimes.size(); i++)
     {
-        _currCriticalArrivalTime = std::max(_currCriticalArrivalTime, arrival_time);
+        if (_arrivalTimes.at(i) > _currCriticalArrivalTime)
+        {
+            _currCriticalArrivalTime = _arrivalTimes.at(i);
+            _currCriticalIndex = i;
+        }
     }
     if (check)
     {
@@ -180,14 +184,6 @@ void Pin::resetArrivalTime(bool check)
 }
 
 /*
-Get the index of the path from previous stage pin to this pin
-*/
-std::vector<int>* Pin::getPathIndex(Pin* prevStagePin)
-{
-    return _prevPathIndexListMap[prevStagePin];
-}
-
-/*
 Calculate the slack of this pin after a previous stage pin is moved, no update
 Return the calculated slack
 */
@@ -204,8 +200,11 @@ double Pin::calSlack(Pin* movedPrevStagePin, int sourceX, int sourceY, int targe
     }
     std::vector<double>* tempArrivalTimes = (update) ? &_arrivalTimes : new std::vector<double>(_arrivalTimes);
     // update the arrival time and re-sort the critical index
-    std::vector<int>* indexList = getPathIndex(movedPrevStagePin);
-    for (int index : *indexList)
+    const double old_critical_arrival_time = _currCriticalArrivalTime;
+    double* new_critical_arrival_time = (update) ? &_currCriticalArrivalTime : new double(_currCriticalArrivalTime);
+    size_t* new_critical_index = (update) ? &_currCriticalIndex : new size_t(_currCriticalIndex);
+    std::vector<size_t>* indexList = getPathIndex(movedPrevStagePin);
+    for (size_t index : *indexList)
     {
         std::vector<Pin*> path = _pathToPrevStagePins.at(index);
         Pin* secondLastPin = path.at(path.size()-2);
@@ -213,22 +212,34 @@ double Pin::calSlack(Pin* movedPrevStagePin, int sourceX, int sourceY, int targe
         const int secondLastPinY = secondLastPin->getGlobalY();
         const double diff_arrival_time = (abs(sourceX - secondLastPinX) + abs(sourceY - secondLastPinY) - abs(targetX - secondLastPinX) - abs(targetY - secondLastPinY)) * DISP_DELAY;
         tempArrivalTimes->at(index) -= diff_arrival_time;
+        if (tempArrivalTimes->at(index) > *new_critical_arrival_time)
+        {
+            *new_critical_arrival_time = tempArrivalTimes->at(index);
+            *new_critical_index = index;
+        }
+        else if (index == *new_critical_index && tempArrivalTimes->at(index) < *new_critical_arrival_time)
+        {
+            *new_critical_arrival_time = tempArrivalTimes->at(index);
+            for (size_t i = 0; i < tempArrivalTimes->size(); i++)
+            {
+                if (tempArrivalTimes->at(i) > *new_critical_arrival_time)
+                {
+                    *new_critical_arrival_time = tempArrivalTimes->at(i);
+                    *new_critical_index = i;
+                }
+            }
+        }
     }
-    const double old_critical_arrival_time = _currCriticalArrivalTime;
-    double new_critical_arrival_time = tempArrivalTimes->at(0);
-    for (double arrival_time : *tempArrivalTimes)
-    {
-        new_critical_arrival_time = std::max(new_critical_arrival_time, arrival_time);
-    }
-    const double new_slack = _slack + (old_critical_arrival_time - new_critical_arrival_time);
+    const double new_slack = _slack + (old_critical_arrival_time - *new_critical_arrival_time);
     if (update)
     {
-        _currCriticalArrivalTime = new_critical_arrival_time;
         _slack = new_slack;
     }
     else
     {
         delete tempArrivalTimes;
+        delete new_critical_arrival_time;
+        delete new_critical_index;
     }
     return new_slack;
 }
@@ -249,26 +260,41 @@ double Pin::calSlackQ(Pin* changeQPin, double diffQDelay, bool update)
         return 0;
     }
     std::vector<double>* tempArrivalTimes = (update) ? &_arrivalTimes : new std::vector<double>(_arrivalTimes);
-    std::vector<int>* indexList = getPathIndex(changeQPin);
-    for (int index : *indexList)
+    const double old_arrival_time = _currCriticalArrivalTime;
+    double* new_arrival_time = (update) ? &_currCriticalArrivalTime : new double(_currCriticalArrivalTime);
+    size_t* new_critical_index = (update) ? &_currCriticalIndex : new size_t(_currCriticalIndex);
+    std::vector<size_t>* indexList = getPathIndex(changeQPin);
+    for (size_t index : *indexList)
     {
         tempArrivalTimes->at(index) += diffQDelay;
+        if (tempArrivalTimes->at(index) > *new_arrival_time)
+        {
+            *new_arrival_time = tempArrivalTimes->at(index);
+            *new_critical_index = index;
+        }
+        else if (index == *new_critical_index && tempArrivalTimes->at(index) < *new_arrival_time)
+        {
+            *new_arrival_time = tempArrivalTimes->at(index);
+            for (size_t i = 0; i < tempArrivalTimes->size(); i++)
+            {
+                if (tempArrivalTimes->at(i) > *new_arrival_time)
+                {
+                    *new_arrival_time = tempArrivalTimes->at(i);
+                    *new_critical_index = i;
+                }
+            }
+        }
     }
-    const double old_arrival_time = _currCriticalArrivalTime;
-    double new_arrival_time = tempArrivalTimes->at(0);
-    for (double arrival_time : *tempArrivalTimes)
-    {
-        new_arrival_time = std::max(new_arrival_time, arrival_time);
-    }
-    const double new_slack = _slack + (old_arrival_time - new_arrival_time);
+    const double new_slack = _slack + (old_arrival_time - *new_arrival_time);
     if (update)
     {
-        _currCriticalArrivalTime = new_arrival_time;
         _slack = new_slack;
     }
     else
     {
         delete tempArrivalTimes;
+        delete new_arrival_time;
+        delete new_critical_index;
     }
     return new_slack;
 }
@@ -344,7 +370,7 @@ void Pin::initPathMaps()
         Pin* prevPin = _prevStagePins.at(i);
         if (_prevPathIndexListMap.find(prevPin) == _prevPathIndexListMap.end())
         {
-            _prevPathIndexListMap[prevPin] = new std::vector<int>();
+            _prevPathIndexListMap[prevPin] = new std::vector<size_t>();
         }
         _prevPathIndexListMap[prevPin]->push_back(i);
     }
