@@ -1622,7 +1622,7 @@ void Solver::solve()
         for(size_t i = 0; i < _ffs_clkdomains.size(); i++)
         {
             std::vector<std::vector<FF*>> cluster;
-            if (_ffs_clkdomains[i].size() > 1000)
+            if (_ffs_clkdomains[i].size() > 100)
             {
                 cluster = clusteringFFs(i);
             }
@@ -1677,7 +1677,7 @@ void Solver::solve()
         for(size_t i = 0; i < _ffs_clkdomains.size(); i++)
         {
             std::vector<std::vector<FF*>> cluster;
-            if (_ffs_clkdomains[i].size() > 1000)
+            if (_ffs_clkdomains[i].size() > 100)
             {
                 cluster = clusteringFFs(i);
             }
@@ -1884,6 +1884,7 @@ inline bool Solver::isOverlap(int x1, int y1, int w1, int h1, int x2, int y2, in
 std::vector<int> Solver::regionQuery(std::vector<FF*> FFs, size_t idx, int eps)
 {
     std::vector<int> neighbors;
+    neighbors.reserve(FFs.size());
     for(size_t i = 0; i < FFs.size(); i++)
     {
         if(i == idx)
@@ -1895,6 +1896,11 @@ std::vector<int> Solver::regionQuery(std::vector<FF*> FFs, size_t idx, int eps)
             neighbors.push_back(i);
         }
     }
+    std::sort(neighbors.begin(), neighbors.end(), [&](int a, int b) {
+        int dist_a = abs(FFs[a]->getX() - FFs[idx]->getX()) + abs(FFs[a]->getY() - FFs[idx]->getY());
+        int dist_b = abs(FFs[b]->getX() - FFs[idx]->getX()) + abs(FFs[b]->getY() - FFs[idx]->getY());
+        return dist_a < dist_b;
+    });
     return neighbors;
 }
 
@@ -1908,8 +1914,7 @@ std::vector<std::vector<FF*>> Solver::clusteringFFs(size_t clkdomain_idx)
     std::vector<FF*> FFs = _ffs_clkdomains[clkdomain_idx];
     std::vector<std::vector<FF*>> clusters;
     std::vector<bool> visited(FFs.size(), false);
-    std::vector<int> cluster_num(FFs.size(), -1);
-    size_t max_cluster_size = 50;
+    const size_t max_cluster_size = 100;
     // DBSCAN
     // TODO: optimize the algorithm or change to other clustering algorithm
     for(size_t i = 0; i < FFs.size(); i++)
@@ -1920,7 +1925,6 @@ std::vector<std::vector<FF*>> Solver::clusteringFFs(size_t clkdomain_idx)
 
         std::vector<FF*> cluster;
         cluster.push_back(FFs[i]);
-        cluster_num[i] = clusters.size();
         std::vector<int> neighbors = regionQuery(FFs, i, (DIE_UP_RIGHT_X - DIE_LOW_LEFT_X) / 100);
         if(neighbors.size() == 0)
         {
@@ -1935,7 +1939,6 @@ std::vector<std::vector<FF*>> Solver::clusteringFFs(size_t clkdomain_idx)
                 continue;
             
             visited[idx] = true;
-            cluster_num[idx] = clusters.size();
             cluster.push_back(FFs[idx]);
             // std::vector<int> new_neighbors = regionQuery(FFs, idx, BIN_WIDTH);
             // if(new_neighbors.size() >= 2)
@@ -2123,7 +2126,15 @@ double Solver::cal_banking_gain(FF* ff1, FF* ff2, LibCell* targetFF, int& result
 
 void Solver::greedyBanking(std::vector<std::vector<FF*>> clusters)
 {
-    // #pragma omp parallel for num_threads(NUM_THREADS)
+    std::vector<LibCell*> targetFFs;
+    for(auto ff : _ffsLibList)
+    {
+        if(ff->bit > 1)
+        {
+            targetFFs.push_back(ff);
+        }
+    }
+
     for(auto cluster : clusters)
     {
         if(cluster.size() < 2)
@@ -2176,7 +2187,7 @@ void Solver::greedyBanking(std::vector<std::vector<FF*>> clusters)
             int pair_result_x = 0;
             int pair_result_y = 0;
             LibCell* pair_targetFF = nullptr;
-            for(auto ff : _ffsLibList)
+            for(auto ff : targetFFs)
             {
                 if(ff->bit == ff1->getBit() + ff2->getBit())
                 {
@@ -2211,7 +2222,9 @@ void Solver::greedyBanking(std::vector<std::vector<FF*>> clusters)
             {
                 PairInfo& pi = pair_infos[i];
                 if (locked[&pi])
+                {
                     continue;
+                }
                 if (pi.gain > 0)
                 {
                     const std::string ff1_name = pi.ff1->getInstName();
