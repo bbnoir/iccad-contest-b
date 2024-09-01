@@ -2065,8 +2065,10 @@ double Solver::cal_banking_gain(FF* ff1, FF* ff2, LibCell* targetFF, int& result
     remove_gain -= _binMap->removeCell(ff1,true);
     remove_gain -= _binMap->removeCell(ff2,true);
     
-    removeCell(ff1);
-    removeCell(ff2);
+    const std::string ff1_name = ff1->getInstName();
+    const std::string ff2_name = ff2->getInstName();
+    ff1->setInstName("dumb");
+    ff2->setInstName("dumb");
 
     int leftDownX = std::min(ff1->getX(), ff2->getX());
     int leftDownY = std::min(ff1->getY(), ff2->getY());
@@ -2113,8 +2115,8 @@ double Solver::cal_banking_gain(FF* ff1, FF* ff2, LibCell* targetFF, int& result
             }
         }
 
-    placeCell(ff1);
-    placeCell(ff2);
+    ff1->setInstName(ff1_name);
+    ff2->setInstName(ff2_name);
     
     return min_gain + remove_gain;
 }
@@ -2212,11 +2214,13 @@ void Solver::greedyBanking(std::vector<std::vector<FF*>> clusters)
                     continue;
                 if (pi.gain > 0)
                 {
-                    removeCell(pi.ff1);
-                    removeCell(pi.ff2);
+                    const std::string ff1_name = pi.ff1->getInstName();
+                    const std::string ff2_name = pi.ff2->getInstName();
+                    pi.ff1->setInstName("dumb");
+                    pi.ff2->setInstName("dumb");
                     bool isPlaceable = placeable(pi.targetFF, pi.targetX, pi.targetY);
-                    placeCell(pi.ff1);
-                    placeCell(pi.ff2);
+                    pi.ff1->setInstName(ff1_name);
+                    pi.ff2->setInstName(ff2_name);
                     if (isPlaceable)
                     {
                         for (size_t j = i + 1; j < pair_infos.size(); j++)
