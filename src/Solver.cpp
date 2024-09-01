@@ -1549,6 +1549,7 @@ void Solver::solve()
 {
     bool calTime = true;
     auto start = std::chrono::high_resolution_clock::now();
+    auto start_solve_time = start;
     auto end = std::chrono::high_resolution_clock::now();
 
     std::cout<<"Alpha: "<<ALPHA<<" Beta: "<<BETA<<" Gamma: "<<GAMMA<<" Lambda: "<<LAMBDA<<"\n";
@@ -1717,6 +1718,14 @@ void Solver::solve()
         _stateTimes.push_back(elapsed.count());
         std::cout << "Force directed placement (third) time: " << elapsed.count() << "s" << std::endl;
         start = std::chrono::high_resolution_clock::now();
+    }
+
+    if (calTime)
+    {
+        end = std::chrono::high_resolution_clock::now();
+        std::chrono::duration<double> elapsed = end - start_solve_time;
+        _stateTimes.push_back(elapsed.count());
+        std::cout << "Total solve time: " << elapsed.count() << "s" << std::endl;
     }
 
     legal = check();
@@ -2447,6 +2456,13 @@ void Solver::report()
         }
         std::cout << std::endl;
     }
+    std::cout << std::setw(16) << std::left << "Best/Total time\t\t " << std::right << std::scientific << std::setprecision(6) << _stateCosts[_bestStateIdx];
+    std::cout << "\t" << std::fixed << std::setprecision(2) << _stateCosts[_bestStateIdx] / firstCost * 100 << "%";
+    if(_stateTimes.size() > 0)
+    {
+        std::cout << "\t" << std::fixed << std::setprecision(2) << _stateTimes.back() << "s";
+    }
+    std::cout << "\n";
     std::cout << "------------------------------------------------------------------" << std::endl;
 }
 

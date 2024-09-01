@@ -1,0 +1,1 @@
+gprof ./bin/RUN gmon.out | gprof2dot | dot -Tpng -o output.png
