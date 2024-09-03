@@ -15,3 +15,6 @@ extern int BIN_HEIGHT;
 extern double BIN_MAX_UTIL;
 // Delay info
 extern double DISP_DELAY;
+
+// Hyper parameters
+const int MAX_CLUSTER_SIZE = 100;

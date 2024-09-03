@@ -437,6 +437,7 @@ void Solver::iterativePlacement()
 
 void Solver::iterativePlacementLegal()
 {
+    // HYPER
     int searchDistance = _siteMap->getSites()[0]->getHeight()*2;
     for(size_t i = 0; i<_ffs.size();i++)
     {
@@ -532,18 +533,17 @@ void Solver::init_placement()
     _siteMap = new SiteMap(_placementRows);
 
     // place cells
+    for (auto comb : _combs)
+    {
+        placeCell(comb);
+    }
+    _legalizer->generateSubRows();
     for (auto ff : _ffs)
     {
         // place on the nearest site for it may not be on site initially
         Site* nearest_site = _siteMap->getNearestSite(ff->getX(), ff->getY());
         placeCell(ff, nearest_site->getX(), nearest_site->getY());
     }
-    for (auto comb : _combs)
-    {
-        placeCell(comb);
-    }
-
-    _legalizer->generateSubRows();
 }
 
 /*
@@ -1042,7 +1042,7 @@ void Solver::debankAll()
             {
                 LibCell* oneBitFF = oneBitFFs[i];
                 std::vector<int> target_X, target_Y;
-                // TODO: search distance should be a parameter
+                // HYPER
                 int searchDistance = ff->getWidth();
                 
                 int leftDownX = ff->getX() - searchDistance;
@@ -1187,7 +1187,11 @@ void Solver::solve()
 
     bool legal = check();
     std::cout << "Legal: " << legal << "\n";
-    
+    if(!legal)
+    {
+        _legalizer->legalize();
+    }
+
     std::cout << "\nStart to debank...\n";
     debankAll();
     _currCost = calCost();
@@ -1205,7 +1209,11 @@ void Solver::solve()
 
     legal = check();
     std::cout << "Legal: " << legal << "\n";
-    
+    if(!legal)
+    {
+        _legalizer->legalize();
+    }
+
     std::cout<<"\nStart to force directed placement...\n";
     iterativePlacementLegal();
     _currCost = calCost();
@@ -1223,6 +1231,10 @@ void Solver::solve()
 
     legal = check();
     std::cout << "Legal: " << legal << "\n";
+    if(!legal)
+    {
+        _legalizer->legalize();
+    }
 
     std::cout << "\nStart clustering and banking...\n";
     size_t prev_ffs_size;
@@ -1234,7 +1246,7 @@ void Solver::solve()
         for(size_t i = 0; i < _ffs_clkdomains.size(); i++)
         {
             std::vector<std::vector<FF*>> cluster;
-            if (_ffs_clkdomains[i].size() > 100)
+            if (_ffs_clkdomains[i].size() > MAX_CLUSTER_SIZE)
             {
                 cluster = clusteringFFs(i);
             }
@@ -1261,6 +1273,10 @@ void Solver::solve()
 
     legal = check();
     std::cout << "Legal: " << legal << "\n";
+    if(!legal)
+    {
+        _legalizer->legalize();
+    }
 
     std::cout << "\nStart to force directed placement (second)...\n";
     iterativePlacementLegal();
@@ -1279,6 +1295,10 @@ void Solver::solve()
 
     legal = check();
     std::cout << "Legal: " << legal << "\n";
+    if(!legal)
+    {
+        _legalizer->legalize();
+    }
 
     std::cout << "\nStart clustering and banking...\n";
     std::cout << "Init FFs size: " << _ffs.size() << "\n";
@@ -1289,7 +1309,7 @@ void Solver::solve()
         for(size_t i = 0; i < _ffs_clkdomains.size(); i++)
         {
             std::vector<std::vector<FF*>> cluster;
-            if (_ffs_clkdomains[i].size() > 100)
+            if (_ffs_clkdomains[i].size() > MAX_CLUSTER_SIZE)
             {
                 cluster = clusteringFFs(i);
             }
@@ -1316,6 +1336,10 @@ void Solver::solve()
 
     legal = check();
     std::cout << "Legal: " << legal << "\n";
+    if(!legal)
+    {
+        _legalizer->legalize();
+    }
 
     std::cout << "\nStart to force directed placement (third)...\n";
     iterativePlacementLegal();
@@ -1342,6 +1366,10 @@ void Solver::solve()
 
     legal = check();
     std::cout << "Legal: " << legal << "\n";
+    if(!legal)
+    {
+        _legalizer->legalize();
+    }
 
     std::cout << "\nCost after solving: " << _currCost << "\n";
     std::cout << "Cost difference: " << _currCost - _initCost << "\n";
@@ -1507,9 +1535,7 @@ std::vector<std::vector<FF*>> Solver::clusteringFFs(size_t clkdomain_idx)
     std::vector<FF*> FFs = _ffs_clkdomains[clkdomain_idx];
     std::vector<std::vector<FF*>> clusters;
     std::vector<bool> visited(FFs.size(), false);
-    const size_t max_cluster_size = 100;
-    // DBSCAN
-    // TODO: optimize the algorithm or change to other clustering algorithm
+
     for(size_t i = 0; i < FFs.size(); i++)
     {
         if(visited[i])
@@ -1518,10 +1544,10 @@ std::vector<std::vector<FF*>> Solver::clusteringFFs(size_t clkdomain_idx)
 
         std::vector<FF*> cluster;
         cluster.push_back(FFs[i]);
+        // HYPER
         std::vector<int> neighbors = regionQuery(FFs, i, (DIE_UP_RIGHT_X - DIE_LOW_LEFT_X) / 100);
         if(neighbors.size() == 0)
         {
-            // noise
             clusters.push_back(cluster);
             continue;
         }
@@ -1533,7 +1559,7 @@ std::vector<std::vector<FF*>> Solver::clusteringFFs(size_t clkdomain_idx)
             
             visited[idx] = true;
             cluster.push_back(FFs[idx]);
-            if(cluster.size() >= max_cluster_size)
+            if(cluster.size() >= MAX_CLUSTER_SIZE)
                 break;
         }
         clusters.push_back(cluster);
@@ -1566,6 +1592,7 @@ double Solver::cal_banking_gain(FF* ff1, FF* ff2, LibCell* targetFF, int& result
 
     // set candidates
     std::vector<std::pair<int, int>> candidates;
+    // HYPER
     const int div = 4;
     const double x_stride = double(rightUpX - leftDownX) / div;
     const double y_stride = double(rightUpY - leftDownY) / div;
