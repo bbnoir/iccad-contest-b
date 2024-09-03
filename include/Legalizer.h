@@ -33,5 +33,4 @@ class Legalizer{
 
         void legalize();
         void generateSubRows();
-        void placeOrphan(FF* ff);
 };

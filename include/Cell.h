@@ -61,25 +61,23 @@ public:
     Cell(int x, int y, std::string inst_name, LibCell* lib_cell);
     ~Cell();
 
-    int getX() const { return _x; }
-    int getY() const { return _y; }
-    int getWidth() const { return _lib_cell->width; }
-    int getHeight() const { return _lib_cell->height; }
-    int getArea() const { return _lib_cell->width * _lib_cell->height; }
-    std::string getInstName() const { return _inst_name; }
-    std::string getCellName() const { return _lib_cell->cell_name; }
-    CellType getCellType() const { return _lib_cell->type; }
-    std::vector<Pin*> getPins() const { return _pins; }
-    std::vector<Pin*> getInputPins() const { return _inputPins; }
-    std::vector<Pin*> getOutputPins() const { return _outputPins; }
+    inline int getX() const { return _x; }
+    inline int getY() const { return _y; }
+    inline int getWidth() const { return _lib_cell->width; }
+    inline int getHeight() const { return _lib_cell->height; }
+    inline int getArea() const { return _lib_cell->width * _lib_cell->height; }
+    inline std::string getInstName() const { return _inst_name; }
+    inline std::string getCellName() const { return _lib_cell->cell_name; }
+    inline CellType getCellType() const { return _lib_cell->type; }
+    inline std::vector<Pin*> getPins() const { return _pins; }
+    inline std::vector<Pin*> getInputPins() const { return _inputPins; }
+    inline std::vector<Pin*> getOutputPins() const { return _outputPins; }
+    inline std::vector<Site*> getSites() const { return _sites; }
+    inline std::vector<Bin*> getBins() const { return _bins; }
+    inline double getQDelay() const { return _lib_cell->qDelay; }
+    inline LibCell* getLibCell() const { return _lib_cell; }
     Pin* getPin(std::string pin_name);
-    std::vector<Site*> getSites() const { return _sites; }
-    std::vector<Bin*> getBins() const { return _bins; }
-    double getQDelay();
-    LibCell* getLibCell() const { return _lib_cell; }
 
-    void setX(int x);
-    void setY(int y);
     void setXY(int x, int y);
     void setInstName(std::string inst_name);
     void addSite(Site* site);

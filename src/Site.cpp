@@ -6,18 +6,6 @@
 #include "Cell.h"
 #include "Bin.h"
 
-bool isPlacable(std::vector<Site*> sites)
-{
-    for (Site* site : sites)
-    {
-        if (site->isOccupied())
-        {
-            return false;
-        }
-    }
-    return true;
-}
-
 Site::Site()
 {
     _x = 0;
@@ -172,12 +160,6 @@ std::vector<Site*> SiteMap::getSitesInBlock(int leftDownX, int leftDownY, int ri
         }
     }
     return sites;
-}
-
-
-std::vector<std::vector<Site*>> SiteMap::getSiteRows()
-{
-    return _sites;
 }
 
 int SiteMap::getFirstLargerRow(int y)

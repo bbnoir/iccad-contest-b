@@ -53,11 +53,6 @@ double Bin::removeCell(Cell* cell, bool trial)
     return newUtil;
 }
 
-bool Bin::totallyContains(Cell* cell)
-{
-    return (cell->getX() >= _x && cell->getX() + cell->getWidth() <= _x + BIN_WIDTH) && (cell->getY() >= _y && cell->getY() + cell->getHeight() <= _y + BIN_HEIGHT);
-}
-
 int Bin::calOverlapArea(Cell* cell)
 {
     int x1 = _x;
@@ -94,26 +89,6 @@ BinMap::BinMap(int dieLowerLeftX, int dieLowerLeftY, int dieUpperRightX, int die
         }
         _bins.emplace_back(row);
     }
-    _numBinsX = _bins[0].size();
-    _numBinsY = _bins.size();
-}
-
-std::vector<Bin*> BinMap::getBins()
-{
-    std::vector<Bin*> bins;
-    for (auto row : _bins)
-    {
-        for (auto bin : row)
-        {
-            bins.emplace_back(bin);
-        }
-    }
-    return bins;
-}
-
-std::vector<std::vector<Bin*>> BinMap::getBins2D()
-{
-    return _bins;
 }
 
 std::vector<Bin*> BinMap::getBins(int leftDownX, int leftDownY, int rightUpX, int rightUpY)
@@ -139,71 +114,6 @@ std::vector<Bin*> BinMap::getBins(int leftDownX, int leftDownY, int rightUpX, in
 }
 
 /*
-indexX, indexY: the index of the left down bin
-numBlocksX, numBlocksY: the number of blocks in x and y direction
-*/
-std::vector<Bin*> BinMap::getBinsBlocks(int indexX, int indexY, int numBlocksX, int numBlocksY)
-{
-    if (indexX < 0 || indexY < 0 || indexX + numBlocksX > _numBinsX || indexY + numBlocksY > _numBinsY)
-    {
-        std::cerr << "Error: getBinsBlocks out of range" << std::endl;
-        exit(1);
-    }
-    std::vector<Bin*> bins;
-    for (int i = indexY; i < indexY + numBlocksY; i++)
-    {
-        for (int j = indexX; j < indexX + numBlocksX; j++)
-        {
-            bins.emplace_back(_bins[i][j]);
-        }
-    }
-    return bins;
-}
-
-/*
-Get all FFs in the bins
-*/
-std::vector<FF*> BinMap::getFFsInBins(const std::vector<Bin*>& bins)
-{
-    std::unordered_set<FF*> ffs;
-    for (auto bin : bins)
-    {
-        for (auto cell : bin->getCells())
-        {
-            if (cell->getCellType() == CellType::FF && bin->totallyContains(cell))
-            {
-                ffs.insert(static_cast<FF*>(cell));
-            }
-        }
-    }
-    std::vector<FF*> res;
-    for (auto ff : ffs)
-    {
-        res.emplace_back(ff);
-    }
-    return res;
-}
-
-/*
-Get all FFs in the bins blocks
-*/
-std::vector<FF*> BinMap::getFFsInBinsBlocks(int indexX, int indexY, int numBlocksX, int numBlocksY)
-{
-    std::vector<Bin*> bins = getBinsBlocks(indexX, indexY, numBlocksX, numBlocksY);
-    return getFFsInBins(bins);
-}
-
-int BinMap::getNumBinsX()
-{
-    return _numBinsX;
-}
-
-int BinMap::getNumBinsY()
-{
-    return _numBinsY;
-}
-
-/*
 Get the number of bins whose utilization is over the max utilization
 */
 int BinMap::getNumOverMaxUtilBins()
@@ -214,32 +124,6 @@ int BinMap::getNumOverMaxUtilBins()
         for (auto bin : row)
         {
             if (bin->isOverMaxUtil())
-            {
-                count++;
-            }
-        }
-    }
-    return count;
-}
-
-/*
-Get the number of bins whose utilization is over the max utilization by Combs
-*/
-int BinMap::getNumOverMaxUtilBinsByComb()
-{
-    int count = 0;
-    for (auto row : _bins)
-    {
-        for (auto bin : row)
-        {
-            double util_comb = 0;
-            for (auto cell : bin->getCells())
-            {
-                if(cell->getCellType() == CellType::COMB){
-                    util_comb += 100.*bin->calOverlapArea(cell) / (BIN_WIDTH * BIN_HEIGHT);
-                }
-            }
-            if (util_comb > BIN_MAX_UTIL)
             {
                 count++;
             }
@@ -276,8 +160,7 @@ double BinMap::addCell(Cell* cell, int x, int y, bool trial)
     std::vector<Bin*> bins = getBins(leftDownX, leftDownY, rightUpX, rightUpY);
     double causedCost = 0;
     if(!trial){
-        cell->setX(x);
-        cell->setY(y);
+        cell->setXY(x, y);
     }
     for (auto bin : bins)
     {

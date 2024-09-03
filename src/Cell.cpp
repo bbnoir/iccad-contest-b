@@ -64,16 +64,6 @@ Pin* Cell::getPin(std::string pin_name)
     return nullptr;
 }
 
-void Cell::setX(int x)
-{
-    this->_x = x;
-}
-
-void Cell::setY(int y)
-{
-    this->_y = y;
-}
-
 void Cell::setXY(int x, int y)
 {
     this->_x = x;
@@ -136,11 +126,6 @@ bool Cell::checkOverlap()
         }
     }
     return false;
-}
-
-double Cell::getQDelay()
-{
-    return _lib_cell->qDelay;
 }
 
 void Cell::deletePins()

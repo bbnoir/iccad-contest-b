@@ -17,10 +17,6 @@ class Site
         bool removeCell(Cell* cell);
 
         inline bool isOccupied() const { return !_cells.empty(); }
-        inline bool isOverLapping() const { return _cells.size() > 1; }
-        inline std::vector<Cell*> getCell() const { return _cells; }
-        inline int getNumCells() const { return _cells.size(); }
-        
         inline int getX() const { return _x; }
         inline int getY() const { return _y; }
         inline int getWidth() const { return _width; }
@@ -43,7 +39,7 @@ class SiteMap
         std::vector<Site*> getSites();
         std::vector<Site*> getSitesOfCell(int leftDownX, int leftDownY, int rightUpX, int rightUpY);
         std::vector<Site*> getSitesInBlock(int leftDownX, int leftDownY, int rightUpX, int rightUpY);
-        std::vector<std::vector<Site*>> getSiteRows();
+        inline std::vector<std::vector<Site*>> getSiteRows() const { return _sites; }
 
         Site* getNearestSite(int x, int y);
 

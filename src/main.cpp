@@ -16,8 +16,9 @@ int main(int argc, char* argv[])
     std::string output_file = argv[2];
     Solver* solver = new Solver();
 
-    solver->parse_input(input_file); // take about 10 seconds
+    solver->parse_input(input_file);
     solver->solve();
+    // TO BE DELETED
     solver->check();
     solver->report();
     solver->dump_best(output_file);

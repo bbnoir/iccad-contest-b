@@ -88,14 +88,8 @@ void Pin::addNextStagePin(Pin* pin, std::vector<Pin*> path)
     _pathToNextStagePins.push_back(std::vector<Pin*>(path));
 }
 
-void Pin::connect(Net* net)
-{
-    _net = net;
-}
-
 void Pin::copyConnection(Pin* pin)
 {
-    _net = pin->getNet();
     _faninPin = pin->getFaninPin();
     _fanoutPins = pin->getFanoutPins();
 }
@@ -348,19 +342,6 @@ void Pin::resetSlack(bool check)
             }
         }
     }
-}
-
-/*
-Check if _currCriticalArrivalTime is really the critical arrival time
-*/
-bool Pin::checkCritical()
-{
-    double max_arrival_time = 0;
-    for (double arrival_time : _arrivalTimes)
-    {
-        max_arrival_time = std::max(max_arrival_time, arrival_time);
-    }
-    return max_arrival_time == _currCriticalArrivalTime;
 }
 
 void Pin::initPathMaps()

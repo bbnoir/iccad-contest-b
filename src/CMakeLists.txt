@@ -7,7 +7,6 @@ set(RUN_SOURCE
     ${BA_SOURCE_DIR}/Cell.cpp
     ${BA_SOURCE_DIR}/Comb.cpp
     ${BA_SOURCE_DIR}/FF.cpp
-    ${BA_SOURCE_DIR}/Net.cpp
     ${BA_SOURCE_DIR}/Pin.cpp
     ${BA_SOURCE_DIR}/Site.cpp
     ${BA_SOURCE_DIR}/Solver.cpp

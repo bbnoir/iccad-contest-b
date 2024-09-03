@@ -2,14 +2,13 @@
 #include "Cell.h"
 #include "Comb.h"
 #include "FF.h"
-#include "Net.h"
 #include "Pin.h"
 #include "Site.h"
 #include "Bin.h"
 #include "Legalizer.h"
 #ifdef _OPENMP
 #include <omp.h>
-const int NUM_THREADS = 8;
+const int NUM_THREADS = 4;
 #endif
 
 // cost metrics
@@ -28,6 +27,8 @@ int BIN_HEIGHT;
 double BIN_MAX_UTIL;
 // Delay info
 double DISP_DELAY;
+
+const std::string DUMB_CELL_NAME = "du_mb";
 
 std::string toLower(std::string str)
 {
@@ -50,10 +51,6 @@ Solver::~Solver()
     for(auto comb : _combs)
     {
         delete comb;
-    }
-    for(auto net : _nets)
-    {
-        delete net;
     }
     for(auto ff : _ffsLibList)
     {
@@ -203,7 +200,6 @@ void Solver::parse_input(std::string filename)
         string netName;
         int pinCount;
         in >> token >> netName >> pinCount;
-        Net* newNet = new Net(netName);
         vector<Pin*> pins;
         for(int j = 0; j < pinCount; j++)
         {
@@ -236,11 +232,7 @@ void Solver::parse_input(std::string filename)
                 exit(1);
             }
             pins.push_back(p);
-            p->connect(newNet);
         }
-        newNet->setPins(pins);
-        _nets.push_back(newNet);
-        _netsMap[netName] = newNet;
         for(size_t i = 0; i < pins.size(); i++)
         {
             if(pins[i]->getType() == PinType::FF_Q || pins[i]->getType() == PinType::GATE_OUT || pins[i]->getType() == PinType::INPUT)
@@ -406,8 +398,6 @@ void Solver::iterativePlacement()
     for(size_t i = 0; i<_ffs.size();i++)
     {
         FF* ff = _ffs[i];
-        if(ff->getTotalNegativeSlack() < 1e-1)
-            continue;
         int leftDownX = ff->getX() - searchDistance;
         int leftDownY = ff->getY() - searchDistance;
         int rightUpX = ff->getX() + searchDistance;
@@ -515,37 +505,6 @@ double Solver::calCost()
     return cost;
 }
 
-void Solver::checkCLKDomain()
-{
-    constructFFsCLKDomain();
-    int sum = 0;
-    for(size_t i=0;i<_ffs_clkdomains.size();i++){
-        sum += _ffs_clkdomains[i].size();
-        std::cout<<"Sum from clk domain "<<i<<" : "<<_ffs_clkdomains[i].size()<<std::endl;
-    }
-    std::cout<<"Sum from CLK domain: "<<sum<<std::endl;
-    std::cout<<"Sum from list: "<<_ffs.size()<<std::endl;
-}
-
-void Solver::checkFFsBitDistribution()
-{
-    int oneBit = 0;
-    int twoBit = 0;
-    int fourBit = 0;
-    for(auto ff: _ffs)
-    {
-        if(ff->getBit() == 1)
-            oneBit++;
-        else if(ff->getBit() == 2)
-            twoBit++;
-        else if(ff->getBit() == 4)
-            fourBit++;
-    }
-    std::cout<<"One bit FFs: "<<oneBit<<std::endl;
-    std::cout<<"Two bit FFs: "<<twoBit<<std::endl;
-    std::cout<<"Four bit FFs: "<<fourBit<<std::endl;
-}
-
 void Solver::constructFFsCLKDomain()
 {
     _ffs_clkdomains.clear();
@@ -588,43 +547,6 @@ void Solver::init_placement()
 }
 
 /*
-check the cell is placeable on the site(on site and not overlap)
-Call before placing the cell if considering overlap
-*/
-bool Solver::placeable(Cell* cell)
-{
-    // check the cell is on site
-    if(!_siteMap->onSite(cell->getX(), cell->getY()))
-    {
-        // std::cerr << "Cell not placed on site: " << cell->getInstName() << std::endl;
-        return false;
-    }
-    // check the cell in the die
-    if(cell->getX() < DIE_LOW_LEFT_X || cell->getX()+cell->getWidth() > DIE_UP_RIGHT_X || cell->getY() < DIE_LOW_LEFT_Y || cell->getY()+cell->getHeight() > DIE_UP_RIGHT_Y)
-    {
-        // std::cerr << "Cell not in die: " << cell->getInstName() << std::endl;
-        return false;
-    }
-    // check the cell will not overlap with other cells in the bin
-    std::vector<Bin*> bins = _binMap->getBins(cell->getX(), cell->getY(), cell->getX()+cell->getWidth(), cell->getY()+cell->getHeight());
-    std::vector<Cell*> cells;
-    for(auto bin: bins)
-    {   
-        cells.insert(cells.end(), bin->getCells().begin(), bin->getCells().end());
-    }
-    for(auto c: cells)
-    {
-        if(c == cell || c->getInstName() == "dumb")
-            continue;
-        if(isOverlap(cell, c))
-        {
-            return false;
-        }
-    }
-    return true;
-}
-
-/*
 check the cell is placeable on the site at (x,y) (on site and not overlap)
 Call before placing the cell if considering overlap
 */
@@ -648,7 +570,7 @@ bool Solver::placeable(Cell* cell, int x,int y)
     {
         for(auto c: bin->getCells())
         {
-            if(c->getInstName() == "dumb" || c == cell)
+            if(c->getInstName() == DUMB_CELL_NAME || c == cell)
                 continue;
             if(isOverlap(x, y, cell, c))
             {
@@ -684,8 +606,10 @@ bool Solver::placeable(LibCell* libCell, int x, int y)
     {
         for(auto cell: bin->getCells())
         {
-            if(cell->getInstName() == "dumb")
+            if(cell->getInstName() == DUMB_CELL_NAME)
+            {
                 continue;
+            }
             if(isOverlap(x, y, libCell->width, libCell->height, cell))
             {
                 return false;
@@ -725,8 +649,10 @@ bool Solver::placeable(Cell* cell, int x, int y, int& move_distance)
     int move = 0;
     for(auto c: cells)
     {
-        if(c == cell || c->getInstName() == "dumb")
+        if(c == cell || c->getInstName() == DUMB_CELL_NAME)
+        {
             continue;
+        }
         if(isOverlap(x, y, cell, c))
         {
             overlap = true;
@@ -737,42 +663,6 @@ bool Solver::placeable(Cell* cell, int x, int y, int& move_distance)
     return !overlap;
 }
 
-bool Solver::placeable(LibCell* libCell, int x, int y, int& move_distance)
-{
-    // check the cell is on site
-    if(!_siteMap->onSite(x, y))
-    {
-        // std::cerr << "Cell not placed on site: " << cell->getInstName() << std::endl;
-        return false;
-    }
-    // check the cell in the die
-    if(x < DIE_LOW_LEFT_X || x+libCell->width > DIE_UP_RIGHT_X || y < DIE_LOW_LEFT_Y || y+libCell->height > DIE_UP_RIGHT_Y)
-    {
-        // std::cerr << "Cell not in die: " << cell->getInstName() << std::endl;
-        return false;
-    }
-    // check the cell will not overlap with other cells in the bin
-    std::vector<Bin*> bins = _binMap->getBins(x, y, x+libCell->width, y+libCell->height);
-    std::vector<Cell*> cells;
-    for(auto bin: bins)
-    {
-        cells.insert(cells.end(), bin->getCells().begin(), bin->getCells().end());
-    }
-    bool overlap = false;
-    int move = 0;
-    for(auto c: cells)
-    {
-        if(c->getInstName() == "dumb")
-            continue;
-        if(isOverlap(x, y, libCell->width, libCell->height, c))
-        {
-            overlap = true;
-            move = std::max(move, c->getX()+c->getWidth()-x);
-        }
-    }
-    move_distance = move;
-    return !overlap;
-}
 /*
 place the cell based on the cell's x and y
 */
@@ -787,8 +677,7 @@ place the cell based on the x and y
 */
 void Solver::placeCell(Cell* cell, int x, int y)
 {
-    cell->setX(x);
-    cell->setY(y);
+    cell->setXY(x, y);
     _binMap->addCell(cell);
     _siteMap->place(cell);
 }
@@ -812,8 +701,7 @@ void Solver::moveCell(Cell* cell, int x, int y)
         exit(1);
     }
     removeCell(cell);
-    cell->setX(x);
-    cell->setY(y);
+    cell->setXY(x, y);
     placeCell(cell);
 }
 
@@ -1116,7 +1004,7 @@ void Solver::bankFFs(FF* ff1, FF* ff2, LibCell* targetFF, int x, int y)
 
 std::string Solver::makeUniqueName()
 {
-    std::string newName = "APPLEBUSTER" + std::to_string(uniqueNameCounter++);
+    const std::string newName = "AP" + std::to_string(uniqueNameCounter++);
     return newName;
 }
 
@@ -1189,7 +1077,7 @@ void Solver::debankAll()
                     found++;
                     target_X.push_back(nearSites[j]->getX());
                     target_Y.push_back(nearSites[j]->getY());
-                    candidates.push_back(new Cell(nearSites[j]->getX(), nearSites[j]->getY(), "dumb", oneBitFF));
+                    candidates.push_back(new Cell(nearSites[j]->getX(), nearSites[j]->getY(), DUMB_CELL_NAME, oneBitFF));
                     if(found == ff->getBit())
                         break;
                 }
@@ -1272,279 +1160,6 @@ double Solver::calDiffCost(double oldSlack, double newSlack)
     return ALPHA * diff_neg_slack;
 }
 
-void Solver::forceDirectedPlaceFFLock(const int ff_idx, std::vector<bool>& locked, std::vector<char>& lock_cnt, int& lock_num)
-{
-    if (locked[ff_idx])
-    {
-        return;
-    }
-    // calculate the force
-    std::vector<double> x_list, y_list, slack_list;
-    FF* ff = _ffs[ff_idx];
-    // display ff's info
-    for (auto inPin : ff->getInputPins())
-    {
-        Pin* fanin = inPin->getFaninPin();
-        if(fanin == nullptr)
-        {
-            continue;
-        }
-        x_list.push_back(fanin->getGlobalX());
-        y_list.push_back(fanin->getGlobalY());
-        double slack_reducable = abs(inPin->getGlobalX() - fanin->getGlobalX()) + abs(inPin->getGlobalY() - fanin->getGlobalY()) + 1;
-        slack_reducable *= DISP_DELAY;
-        if(inPin->getSlack() < 0)
-        {
-            slack_list.push_back(std::min(-slack_reducable/inPin->getSlack(), 1.0));
-        }else{
-            slack_list.push_back(1/(inPin->getSlack()+1));
-        }
-    }
-    for (auto outPin : ff->getOutputPins())
-    {
-        for (auto path : outPin->getPathToNextStagePins())
-        {
-            Pin* fanout = path.at(path.size()-2);
-            x_list.push_back(fanout->getGlobalX());
-            y_list.push_back(fanout->getGlobalY());
-            Pin* nextStagePin = path.front();
-            double slack_reducable = abs(outPin->getGlobalX() - fanout->getGlobalX()) + abs(outPin->getGlobalY() - fanout->getGlobalY()) + 1;
-            slack_reducable *= DISP_DELAY;
-            if(nextStagePin->getSlack() < 0)
-            {
-                slack_list.push_back(std::min(-slack_reducable/nextStagePin->getSlack(), 1.0));
-            }else{
-                slack_list.push_back(1/(nextStagePin->getSlack()+1));
-            }
-        }
-    }
-    if (slack_list.size() == 0)
-    {
-        locked[ff_idx] = true;
-    }
-    else
-    {
-        // for (auto& slack : slack_list)
-        // {
-        //     slack = (slack < 0) ? 20 : 1;
-        //     // slack = -slack;
-        //     // slack = -slack+min_slack;
-        //     // slack = -slack+min_slack+1;
-        //     // slack = std::exp(-slack);
-        //     // slack = std::exp(-0.001*slack);
-        // }
-        double x_sum = 0;
-        double y_sum = 0;
-        double total_slack = 0;
-        for (size_t i = 0; i < x_list.size(); i++)
-        {
-            x_sum += x_list[i] * slack_list[i];
-            y_sum += y_list[i] * slack_list[i];
-            total_slack += slack_list[i];
-        }
-        if (total_slack == 0)
-        {
-            std::cerr << "Error: total slack is 0" << std::endl;
-            exit(1);
-        }
-        int x_avg = x_sum / total_slack;
-        int y_avg = y_sum / total_slack;
-        Site* nearest_site = _siteMap->getNearestSite(x_avg, y_avg);
-        const int source_x = ff->getX();
-        const int source_y = ff->getY();
-        const int target_x = nearest_site->getX();
-        const int target_y = nearest_site->getY();
-        double dist = abs(source_x - target_x) + abs(source_y - target_y);
-        moveCell(ff, target_x, target_y);
-        calCostMoveFF(ff, source_x, source_y, target_x, target_y, true);
-        // check if the ff should be locked
-        if (dist < nearest_site->getWidth() / 2)
-        {
-            lock_cnt[ff_idx]++;
-        }
-        if (lock_cnt[ff_idx] > 1)
-        {
-            locked[ff_idx] = true;
-            // also lock fanin and fanout
-            // for (auto inPin : ff->getInputPins())
-            // {
-            //     Pin* fanin = inPin->getFaninPin();
-            //     if(fanin == nullptr)
-            //         continue;
-            //     Cell* cell = fanin->getCell();
-            //     if(cell == nullptr)
-            //         continue;
-            //     if(cell->getCellType() == CellType::FF)
-            //     {
-            //         FF* faninFF = static_cast<FF*>(cell);
-            //         int fanin_idx = -1;
-            //         for (size_t i = 0; i < _ffs.size(); i++)
-            //         {
-            //             if (_ffs[i] == faninFF)
-            //             {
-            //                 fanin_idx = i;
-            //                 break;
-            //             }
-            //         }
-            //         if (fanin_idx != -1)
-            //         {
-            //             locked[fanin_idx] = true;
-            //         }
-            //     }
-            // }
-            // for (auto outPin : ff->getOutputPins())
-            // {
-            //     for (auto path : outPin->getPathToNextStagePins())
-            //     {
-            //         Pin* fanout = path.at(path.size()-2);
-            //         Cell* cell = fanout->getCell();
-            //         if(cell == nullptr)
-            //             continue;
-            //         if(cell->getCellType() == CellType::FF)
-            //         {
-            //             FF* fanoutFF = static_cast<FF*>(cell);
-            //             int fanout_idx = -1;
-            //             for (size_t i = 0; i < _ffs.size(); i++)
-            //             {
-            //                 if (_ffs[i] == fanoutFF)
-            //                 {
-            //                     fanout_idx = i;
-            //                     break;
-            //                 }
-            //             }
-            //             if (fanout_idx != -1)
-            //             {
-            //                 locked[fanout_idx] = true;
-            //             }
-            //         }
-            //     }
-            // }
-        }
-    }
-    if (locked[ff_idx])
-    {
-        lock_num++;
-    }
-}
-
-void Solver::forceDirectedPlacement()
-{
-    bool converged = false;
-    int max_iter = 1000;
-    int iter = 0;
-    const int numFFs = _ffs.size();
-    const int lockThreshold = numFFs;
-    std::cout << "Lock threshold: " << lockThreshold << std::endl;
-    const int diff_lock_threshold = 5;
-    const int diff_lock_count_threshold = 20;
-    int diff_lock_count = 0;
-    int prev_lock_num = 0;
-    int lock_num = 0;
-    std::vector<char> lock_cnt(numFFs, 0);
-    std::vector<bool> locked(numFFs, false);
-    while(!converged && iter++ < max_iter){
-        for (int i = 0; i < numFFs; i++)
-        {
-            forceDirectedPlaceFFLock(i, locked, lock_cnt, lock_num);
-        }
-        std::cout << "Iteration: " << iter << ", Lock/Total: " << lock_num << "/" << numFFs << std::endl;
-        if (lock_num - prev_lock_num < diff_lock_threshold)
-        {
-            diff_lock_count++;
-        }
-        else
-        {
-            diff_lock_count = 0;
-        }
-        converged = (lock_num >= lockThreshold) || (diff_lock_count > diff_lock_count_threshold);
-        prev_lock_num = lock_num;
-    }
-}
-
-void Solver::fineTune()
-{
-    std::cout << "Fine tuning..." << std::endl;
-    std::cout << "Bin Grid: " << _binMap->getNumBinsX() << "x" << _binMap->getNumBinsY() << std::endl;
-
-    int kernel_size = 5;
-    int stride_x = 1;
-    int stride_y = 1;
-    int stride_x_width = stride_x * BIN_WIDTH;
-    int stride_y_height = stride_y * BIN_HEIGHT;
-    int num_x = (_binMap->getNumBinsX() - kernel_size) / stride_x + 1;
-    int num_y = (_binMap->getNumBinsY() - kernel_size) / stride_y + 1;
-
-    double cost_difference = 0;
-
-    for(int y = 0; y < num_y; y++)
-    {
-        std::cout << "Fine tuning: " << y << "/" << num_y << std::endl;
-        for(int x = 0; x < num_x; x++)
-        {
-            int cur_x = x * stride_x_width;
-            int cur_y = y * stride_y_height;
-            int upright_x = std::min(cur_x + kernel_size * BIN_WIDTH, DIE_UP_RIGHT_X);
-            int upright_y = std::min(cur_y + kernel_size * BIN_HEIGHT, DIE_UP_RIGHT_Y);
-
-            std::vector<Bin*> bins = _binMap->getBinsBlocks(x, y, kernel_size, kernel_size);
-            bool is_over_max_util = false;
-            for(size_t i = 0; i < bins.size(); i++)
-            {
-                if(bins[i]->isOverMaxUtil())
-                {
-                    is_over_max_util = true;
-                    break;
-                }
-            }
-
-            // continue if the bins utilization rate is less than threshold
-            if(!is_over_max_util)
-                continue;
-
-            std::vector<FF*> ffs_local = _binMap->getFFsInBins(bins);
-            std::vector<Site*> sites = _siteMap->getSitesInBlock(cur_x, cur_y, upright_x, upright_y);
-            
-            for(size_t i = 0; i < ffs_local.size(); i++)
-            {
-                FF* ff = ffs_local[i];
-                double cost_min = 0;
-                int best_site = -1;
-                for(size_t j = 0; j < sites.size(); j++)
-                {
-                    if(!placeable(ff, sites[j]->getX(), sites[j]->getY()))
-                        continue;
-                    
-                    int original_x = ff->getX();
-                    int original_y = ff->getY();
-                    int trial_x = sites[j]->getX();
-                    int trial_y = sites[j]->getY();
-                    
-                    // Bins cost difference when add and remove the cell
-                    double binCost = _binMap->moveCell(ff, trial_x, trial_y, true);
-                    double slackCost = calCostMoveFF(ff, original_x, original_y, trial_x, trial_y, false);
-
-                    double cost = slackCost + binCost;
-
-                    if(cost < cost_min)
-                    {
-                        cost_min = cost;
-                        best_site = j;
-                    }
-                }
-                if(best_site != -1)
-                {
-                    cost_difference += cost_min;
-                    const int original_x = ff->getX();
-                    const int original_y = ff->getY();
-                    moveCell(ff, sites[best_site]->getX(), sites[best_site]->getY());
-                    calCostMoveFF(ff, original_x, original_y, sites[best_site]->getX(), sites[best_site]->getY(), true);
-                }
-            }
-        }
-    }
-    std::cout << "Cost difference: " << cost_difference << std::endl;
-}
-
 void Solver::solve()
 {
     bool calTime = true;
@@ -1553,7 +1168,6 @@ void Solver::solve()
     auto end = std::chrono::high_resolution_clock::now();
 
     std::cout<<"Alpha: "<<ALPHA<<" Beta: "<<BETA<<" Gamma: "<<GAMMA<<" Lambda: "<<LAMBDA<<"\n";
-    checkFFsBitDistribution();
 
     std::cout << "\nStart initial placement...\n";
     init_placement();
@@ -1588,8 +1202,6 @@ void Solver::solve()
         std::cout << "Debanking time: " << elapsed.count() << "s" << std::endl;
         start = std::chrono::high_resolution_clock::now();
     }
-
-    checkFFsBitDistribution();
 
     legal = check();
     std::cout << "Legal: " << legal << "\n";
@@ -1841,17 +1453,6 @@ bool Solver::checkOverlap()
 }
 
 /*
-if cell1 and cell2 overlap, return true
-*/
-inline bool Solver::isOverlap(Cell* cell1, Cell* cell2)
-{
-    return cell1->getX() < cell2->getX() + cell2->getWidth() &&
-           cell1->getX() + cell1->getWidth() > cell2->getX() &&
-           cell1->getY() < cell2->getY() + cell2->getHeight() &&
-           cell1->getY() + cell1->getHeight() > cell2->getY();
-}
-
-/*
 if cell1(x,y) and cell2 overlap, return true
 */
 inline bool Solver::isOverlap(int x1, int y1, Cell* cell1, Cell* cell2)
@@ -1871,14 +1472,6 @@ inline bool Solver::isOverlap(int x1, int y1, int w1, int h1, Cell* cell2)
            x1 + w1 > cell2->getX() &&
            y1 < cell2->getY() + cell2->getHeight() &&
            y1 + h1 > cell2->getY();
-}
-
-inline bool Solver::isOverlap(int x1, int y1, int w1, int h1, int x2, int y2, int w2, int h2)
-{
-    return x1 < x2 + w2 &&
-           x1 + w1 > x2 &&
-           y1 < y2 + h2 &&
-           y1 + h1 > y2;
 }
 
 std::vector<int> Solver::regionQuery(std::vector<FF*> FFs, size_t idx, int eps)
@@ -1940,22 +1533,6 @@ std::vector<std::vector<FF*>> Solver::clusteringFFs(size_t clkdomain_idx)
             
             visited[idx] = true;
             cluster.push_back(FFs[idx]);
-            // std::vector<int> new_neighbors = regionQuery(FFs, idx, BIN_WIDTH);
-            // if(new_neighbors.size() >= 2)
-            // {
-            //     for(size_t k = 0; k < new_neighbors.size(); k++)
-            //     {
-            //         if(std::find(neighbors.begin(), neighbors.end(), new_neighbors[k]) == neighbors.end())
-            //         {
-            //             neighbors.push_back(new_neighbors[k]);
-            //         }
-            //     }
-            // }
-        
-            // if(std::find(cluster.begin(), cluster.end(), FFs[idx]) == cluster.end())
-            // {
-            //     cluster.push_back(FFs[idx]);
-            // }
             if(cluster.size() >= max_cluster_size)
                 break;
         }
@@ -1963,98 +1540,6 @@ std::vector<std::vector<FF*>> Solver::clusteringFFs(size_t clkdomain_idx)
     }
 
     return clusters;
-}
-
-void Solver::findForceDirectedPlacementBankingFFs(FF* ff1, FF* ff2, int& result_x, int& result_y)
-{
-    std::vector<double> x_list, y_list, slack_list;
-    for (auto inPin : ff1->getInputPins())
-    {
-        Pin* fanin = inPin->getFaninPin();
-        if (fanin->getCell() != ff2)
-        {
-            x_list.push_back(fanin->getGlobalX());
-            y_list.push_back(fanin->getGlobalY());
-            slack_list.push_back(inPin->getSlack());
-        }
-    }
-    for (auto inPin : ff2->getInputPins())
-    {
-        Pin* fanin = inPin->getFaninPin();
-        if (fanin->getCell() != ff1)
-        {
-            x_list.push_back(fanin->getGlobalX());
-            y_list.push_back(fanin->getGlobalY());
-            slack_list.push_back(inPin->getSlack());
-        }
-    }
-    for (auto outPin : ff1->getOutputPins())
-    {
-        for (auto path : outPin->getPathToNextStagePins())
-        {
-            Pin* fanout = path.at(path.size()-2);
-            if (fanout->getCell() != ff2)
-            {
-                x_list.push_back(fanout->getGlobalX());
-                y_list.push_back(fanout->getGlobalY());
-                Pin* nextStagePin = path.front();
-                slack_list.push_back(nextStagePin->getSlack());
-            }
-        }
-    }
-    for (auto outPin : ff2->getOutputPins())
-    {
-        for (auto path : outPin->getPathToNextStagePins())
-        {
-            Pin* fanout = path.at(path.size()-2);
-            if (fanout->getCell() != ff1)
-            {
-                x_list.push_back(fanout->getGlobalX());
-                y_list.push_back(fanout->getGlobalY());
-                Pin* nextStagePin = path.front();
-                slack_list.push_back(nextStagePin->getSlack());
-            }
-        }
-    }
-    if (slack_list.size() == 0)
-    {
-        int x_avg = (ff1->getX() + ff2->getX()) / 2;
-        int y_avg = (ff1->getY() + ff2->getY()) / 2;
-        Site* nearest_site = _siteMap->getNearestSite(x_avg, y_avg);
-        result_x = nearest_site->getX();
-        result_y = nearest_site->getY();
-    }
-    else
-    {
-        for (auto& slack : slack_list)
-        {
-            slack = (slack < 0) ? 20 : 1;
-            // slack = -slack;
-            // slack = -slack+min_slack;
-            // slack = -slack+min_slack+1;
-            // slack = std::exp(-slack);
-            // slack = std::exp(-0.001*slack);
-        }
-        double x_sum = 0;
-        double y_sum = 0;
-        double total_slack = 0;
-        for (size_t i = 0; i < x_list.size(); i++)
-        {
-            x_sum += x_list[i] * slack_list[i];
-            y_sum += y_list[i] * slack_list[i];
-            total_slack += slack_list[i];
-        }
-        if (total_slack == 0)
-        {
-            std::cout << "Error: total slack is 0" << std::endl;
-            exit(1);
-        }
-        int x_avg = x_sum / total_slack;
-        int y_avg = y_sum / total_slack;
-        Site* nearest_site = _siteMap->getNearestSite(x_avg, y_avg);
-        result_x = nearest_site->getX();
-        result_y = nearest_site->getY();
-    }
 }
 
 double Solver::cal_banking_gain(FF* ff1, FF* ff2, LibCell* targetFF, int& result_x, int& result_y)
@@ -2070,8 +1555,8 @@ double Solver::cal_banking_gain(FF* ff1, FF* ff2, LibCell* targetFF, int& result
     
     const std::string ff1_name = ff1->getInstName();
     const std::string ff2_name = ff2->getInstName();
-    ff1->setInstName("dumb");
-    ff2->setInstName("dumb");
+    ff1->setInstName(DUMB_CELL_NAME);
+    ff2->setInstName(DUMB_CELL_NAME);
 
     int leftDownX = std::min(ff1->getX(), ff2->getX());
     int leftDownY = std::min(ff1->getY(), ff2->getY());
@@ -2229,8 +1714,8 @@ void Solver::greedyBanking(std::vector<std::vector<FF*>> clusters)
                 {
                     const std::string ff1_name = pi.ff1->getInstName();
                     const std::string ff2_name = pi.ff2->getInstName();
-                    pi.ff1->setInstName("dumb");
-                    pi.ff2->setInstName("dumb");
+                    pi.ff1->setInstName(DUMB_CELL_NAME);
+                    pi.ff2->setInstName(DUMB_CELL_NAME);
                     bool isPlaceable = placeable(pi.targetFF, pi.targetX, pi.targetY);
                     pi.ff1->setInstName(ff1_name);
                     pi.ff2->setInstName(ff2_name);
@@ -2248,156 +1733,6 @@ void Solver::greedyBanking(std::vector<std::vector<FF*>> clusters)
                     }
                 }
             }
-        }
-    }
-}
-
-void Solver::display()
-{
-    using namespace std;
-    // Display cost metrics
-    cout << "Cost metrics:" << endl;
-    cout << "ALPHA: " << ALPHA << endl;
-    cout << "BETA: " << BETA << endl;
-    cout << "GAMMA: " << GAMMA << endl;
-    cout << "LAMBDA: " << LAMBDA << endl;
-    cout << "====================================" << endl;
-    // Display die info
-    cout << "Die info:" << endl;
-    cout << "DIE_LOW_LEFT_X: " << DIE_LOW_LEFT_X << endl;
-    cout << "DIE_LOW_LEFT_Y: " << DIE_LOW_LEFT_Y << endl;
-    cout << "DIE_UP_RIGHT_X: " << DIE_UP_RIGHT_X << endl;
-    cout << "DIE_UP_RIGHT_Y: " << DIE_UP_RIGHT_Y << endl;
-    cout << "====================================" << endl;
-    // Display I/O info
-    cout << "Input pins:" << endl;
-    for(auto pin : _inputPins)
-    {
-        cout << "Name: " << pin->getName() << ", X: " << pin->getX() << ", Y: " << pin->getY() << endl;
-    }
-    cout << "Output pins:" << endl;
-    for(auto pin : _outputPins)
-    {
-        cout << "Name: " << pin->getName() << ", X: " << pin->getX() << ", Y: " << pin->getY() << endl;
-    }
-    cout << "====================================" << endl;
-    // Display cell library
-    cout << "FlipFlops libs:" << endl;
-    for(auto ff : _ffsLibList)
-    {
-        cout << "Name: " << ff->cell_name << ", Width: " << ff->width << ", Height: " << ff->height << ", Bits: " << ff->bit << endl;
-        cout << "Qpin delay: " << ff->qDelay << endl;
-        cout << "Power: " << ff->power << endl;
-        for(auto pin : ff->pins)
-        {
-            cout << "Pin Name: " << pin->getName() << ", X: " << pin->getX() << ", Y: " << pin->getY() << endl;
-        }
-    }
-    cout << "Gates libs:" << endl;
-    for(auto comb : _combsLibList)
-    {
-        cout << "Name: " << comb->cell_name << ", Width: " << comb->width << ", Height: " << comb->height << endl;
-        cout << "Power: " << comb->power << endl;
-        for(auto pin : comb->pins)
-        {
-            cout << "Pin Name: " << pin->getName() << ", X: " << pin->getX() << ", Y: " << pin->getY() << endl;
-        }
-    }
-    cout << "====================================" << endl;
-    // Display instance info
-    cout << "Instances:" << endl;
-    cout << "FlipFlops:" << endl;
-    for(auto ff : _ffs)
-    {
-        cout << "Name: " << ff->getInstName() << ", Lib: " << ff->getCellName() << ", X: " << ff->getX() << ", Y: " << ff->getY() << ", Width: " << ff->getWidth() << ", Height: " << ff->getHeight() << ", Bits: " << ff->getBit() << endl;
-        cout << "Qpin delay: " << ff->getQDelay() << endl;
-        cout << "Power: " << ff->getPower() << endl;
-        for(auto pin : ff->getPins())
-        {
-            cout << "Pin Name: " << pin->getName() << ", X: " << pin->getX() << ", Y: " << pin->getY();
-            if(pin->isDpin())
-                cout << ", Slack: " << pin->getSlack();
-            cout << endl;
-        }
-    }
-    cout << "Gates:" << endl;
-    for(auto comb : _combs)
-    {
-        cout << "Name: " << comb->getInstName() << ", Lib: " << comb->getCellName() << ", X: " << comb->getX() << ", Y: " << comb->getY() << ", Width: " << comb->getWidth() << ", Height: " << comb->getHeight() << endl;
-        for(auto pin : comb->getPins())
-        {
-            cout << "Pin Name: " << pin->getName() << ", X: " << pin->getX() << ", Y: " << pin->getY() << endl;
-        }
-    }
-    cout << "====================================" << endl;
-    // Display net info
-    cout << "Nets:" << endl;
-    for(auto net : _nets)
-    {
-        cout << "Name: " << net->getName() << endl;
-        for(auto pin : net->getPins())
-        {
-            cout << "Pin Name: " << pin->getName() << ", X: " << pin->getX() << ", Y: " << pin->getY() << endl;
-        }
-    }
-    cout << "====================================" << endl;
-    // Display bin info
-    cout << "Bin info:" << endl;
-    cout << "BIN_WIDTH: " << BIN_WIDTH << endl;
-    cout << "BIN_HEIGHT: " << BIN_HEIGHT << endl;
-    cout << "BIN_MAX_UTIL: " << BIN_MAX_UTIL << endl;
-    cout << "====================================" << endl;
-    // Display placement rows
-    cout << "Placement rows:" << endl;
-    for(auto row : _placementRows)
-    {
-        cout << "StartX: " << row.startX << ", StartY: " << row.startY << ", SiteWidth: " << row.siteWidth << ", SiteHeight: " << row.siteHeight << ", NumSites: " << row.numSites << endl;
-    }
-    cout << "====================================" << endl;
-    // Display timing info
-    cout << "Timing info:" << endl;
-    cout << "DISP_DELAY: " << DISP_DELAY << endl;
-    cout << "====================================" << endl;
-    // Display bin utilization
-    cout << "Bin utilization:" << endl;
-    for(auto row : _binMap->getBins())
-    {
-        cout << "Bin: (" << row->getX() << ", " << row->getY() << "), Utilization: " << row->getUtilization() << endl;
-    }
-    // Display placement row
-    cout << "Placement rows:" << endl;
-    std::vector<Site*> sites = _siteMap->getSites();
-    for(auto site : sites)
-    {
-        cout << "Site: (" << site->getX() << ", " << site->getY() << "), Width: " << site->getWidth() << ", Height: " << site->getHeight()<<", NumCells: "<< site->getNumCells() << endl;
-    }
-
-}
-
-void Solver::dump(std::string filename) const
-{
-    using namespace std;
-    ofstream out(filename);
-    out << "CellInst " << _ffs.size() << endl;
-    for (auto ff : _ffs)
-    {
-        out << "Inst " << ff->getInstName() << " " << ff->getCellName() << " " << ff->getX() << " " << ff->getY() << endl;
-    }
-    for (auto ff : _ffs)
-    {
-        for (auto pin : ff->getInputPins())
-        {
-            out << pin->getOriginalName() << " map " << pin->getCell()->getInstName() << "/" << pin->getName() << endl;
-        }
-        for (auto pin : ff->getOutputPins())
-        {
-            out << pin->getOriginalName() << " map " << pin->getCell()->getInstName() << "/" << pin->getName() << endl;
-        }
-        Pin* clkPin = ff->getClkPin();
-        std::vector<std::string> clkPinNames = ff->getClkPin()->getOriginalNames();
-        for(auto clkPinName : clkPinNames)
-        {
-            out << clkPinName << " map " << clkPin->getCell()->getInstName() << "/" << clkPin->getName() << endl;
         }
     }
 }

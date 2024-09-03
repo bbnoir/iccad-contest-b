@@ -129,16 +129,6 @@ double FF::getTotalNegativeSlack()
     return -totalNegativeSlack;
 }
 
-double FF::getTotalSlack()
-{
-    double totalSlack = 0.0;
-    for (Pin* pin : _inputPins)
-    {
-        totalSlack += pin->getSlack();
-    }
-    return totalSlack;
-}
-
 int FF::getNSPinCount()
 {
     int count = 0;
@@ -165,7 +155,7 @@ int FF::getNSPinCount()
 std::vector<std::pair<Pin*, Pin*>> FF::getDQpairs()
 {
     std::vector<std::pair<Pin*, Pin*>> dqPairs;
-    const int bit = this->getOccupiedBit();
+    const int bit = this->getBit();
     for (int i = 0; i < bit; i++)
     {
         dqPairs.push_back(std::make_pair(this->_inputPins[i], this->_outputPins[i]));

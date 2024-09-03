@@ -2,10 +2,8 @@
 #include <string>
 #include <queue>
 #include "Cell.h"
-#include "Net.h"
 #include "param.h"
 
-class Net;
 class Cell;
 
 // Pin type
@@ -37,9 +35,7 @@ class Pin
         inline double getSlack() const { return _slack; }
         inline Cell *getCell() const { return _cell; }
         inline PinType getType() const { return _type; }
-        inline Net* getNet() const { return _net; }
         inline Pin* getFaninPin() const { return _faninPin; }
-        inline Pin* getFirstFanoutPin() const { return (_fanoutPins.size() > 0) ? _fanoutPins[0] : nullptr; }
         inline std::vector<Pin*> getFanoutPins() const { return _fanoutPins; }
         inline std::vector<Pin*> getPrevStagePins() const { return _prevStagePins; }
         inline size_t getPrevStagePinsSize() const { return _prevStagePins.size(); }
@@ -47,8 +43,6 @@ class Pin
         inline std::vector<Pin*> getNextStagePins() const { return _nextStagePins; }
         inline size_t getNextStagePinsSize() const { return _nextStagePins.size(); }
         inline const std::vector<std::vector<Pin*>>& getPathToNextStagePins() const { return _pathToNextStagePins; }
-        inline std::vector<double> getArrivalTimes() const { return _arrivalTimes; }
-        inline std::vector<double>& getArrivalTimesRef() { return _arrivalTimes; }
 
         void setSlack(double slack);
         void setInitSlack(double initSlack);
@@ -67,10 +61,8 @@ class Pin
         double calSlack(Pin* movedPrevStagePin, int sourceX, int sourceY, int targetX, int targetY, bool update = false);
         double calSlackQ(Pin* changeQPin, double diffQDelay, bool update = false);
         void resetSlack(bool check = false);
-        bool checkCritical();
         void initPathMaps();
 
-        void connect(Net* net);
         void copyConnection(Pin* pin);
         void transInfo(Pin* pin);
 
@@ -86,7 +78,6 @@ class Pin
         double _slack;
         bool _isDpin;
         // which net this pin is connected to
-        Net* _net;
         Pin* _faninPin;
         std::vector<Pin*> _fanoutPins;
 

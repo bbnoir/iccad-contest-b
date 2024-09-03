@@ -8,7 +8,4 @@ class Comb : public Cell
     public:
         using Cell::Cell;
         ~Comb();
-        
-    private:
-
 };
