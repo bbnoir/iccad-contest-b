@@ -138,6 +138,7 @@ class Solver
         // 5. Legalization
         LegalPlacer* _legalizer;
         // Extra. Change One Bit FFs
+        void changeOneBitFFs();
 
         // State saving
         std::vector<std::string> _stateNames;

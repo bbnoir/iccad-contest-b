@@ -1009,9 +1009,15 @@ void Solver::debankAll()
         std::vector<int> bestX = {x};
         std::vector<int> bestY = {y};
 
+        bool end = false;
+
         #pragma omp parallel for num_threads(NUM_THREADS)
             for(size_t i = 0; i < oneBitFFs.size(); i++)
             {
+                if (end)
+                {
+                    continue;
+                }
                 LibCell* oneBitFF = oneBitFFs[i];
                 std::vector<int> target_X, target_Y;
                 // HYPER
@@ -1073,6 +1079,7 @@ void Solver::debankAll()
                         bestX = target_X;
                         bestY = target_Y;
                         bestFF = oneBitFF;
+                        end = true;
                     }
                 }
             }
@@ -1146,6 +1153,12 @@ void Solver::solve()
     _currCost = calCost();
     _initCost = _currCost;
     std::cout << "==> Initial cost: " << _initCost << "\n";
+
+    // rename all
+    for (auto ff : _ffs)
+    {
+        ff->setInstName(makeUniqueName());
+    }
 
     if(calTime)
     {
@@ -1339,12 +1352,28 @@ void Solver::solve()
         start = std::chrono::high_resolution_clock::now();
     }
 
-    if (calTime)
+    legal = check();
+    std::cout << "Legal: " << legal << "\n";
+    if(!legal)
+    {
+        _legalizer->legalize();
+        resetSlack(false);
+        _currCost = calCost();
+    }
+    saveState("ForceDirected3");
+
+    std::cout << "\nStart to change one bit ff...\n";
+    changeOneBitFFs();
+    _currCost = calCost();
+    std::cout << "==> Cost after changing one bit ff: " << _currCost << "\n";
+
+    if(calTime)
     {
         end = std::chrono::high_resolution_clock::now();
-        std::chrono::duration<double> elapsed = end - start_solve_time;
+        std::chrono::duration<double> elapsed = end - start;
         _stateTimes.push_back(elapsed.count());
-        std::cout << "Total solve time: " << elapsed.count() << "s" << std::endl;
+        std::cout << "Change one bit ff time: " << elapsed.count() << "s" << std::endl;
+        start = std::chrono::high_resolution_clock::now();
     }
 
     legal = check();
@@ -1355,7 +1384,16 @@ void Solver::solve()
         resetSlack(false);
         _currCost = calCost();
     }
-    saveState("ForceDirected3");
+    saveState("ChangeOneBitFF");
+
+    if (calTime)
+    {
+        end = std::chrono::high_resolution_clock::now();
+        std::chrono::duration<double> elapsed = end - start_solve_time;
+        _stateTimes.push_back(elapsed.count());
+        std::cout << "Total solve time: " << elapsed.count() << "s" << std::endl;
+    }
+
 
     std::cout << "\nCost after solving: " << _currCost << "\n";
     std::cout << "Cost difference: " << _currCost - _initCost << "\n";
@@ -1814,5 +1852,61 @@ void Solver::dump_best(std::string filename) const
     for (auto str : vecStr)
     {
         out << str;
+    }
+}
+
+void Solver::changeOneBitFFs()
+{
+    std::vector<LibCell*> oneBitFFs;
+    for (auto ff : _ffsLibList)
+    {
+        if (ff->bit == 1)
+        {
+            oneBitFFs.push_back(ff);
+        }
+    }
+    for (auto ff : _ffs)
+    {
+        if (ff->getBit() == 1)
+        {
+            const std::string ff_name = ff->getInstName();
+            ff->setInstName(DUMB_CELL_NAME);
+            double max_gain = 0;
+            LibCell* bestFF = nullptr;
+            #pragma omp parallel for num_threads(NUM_THREADS)
+            for (auto oneBitFF : oneBitFFs)
+            {
+                if (placeable(oneBitFF, ff->getX(), ff->getY()))
+                {
+                    double gain = ff->getCostPA() - oneBitFF->costPA;
+                    Pin* inputPin = ff->getInputPins()[0];
+                    gain -= calCostMoveD(inputPin, inputPin->getGlobalX(), inputPin->getGlobalY(), ff->getX()+oneBitFF->inputPins[0]->getX(), ff->getY()+oneBitFF->inputPins[0]->getY(), false);
+                    Pin* outputPin = ff->getOutputPins()[0];
+                    gain -= calCostMoveQ(outputPin, outputPin->getGlobalX(), outputPin->getGlobalY(), ff->getX()+oneBitFF->outputPins[0]->getX(), ff->getY()+oneBitFF->outputPins[0]->getY(), false);
+                    gain -= calCostChangeQDelay(outputPin, oneBitFF->qDelay - ff->getQDelay(), false);
+                    #pragma omp critical
+                    if (gain > max_gain)
+                    {
+                        max_gain = gain;
+                        bestFF = oneBitFF;
+                    }
+                }
+            }
+            if (bestFF != nullptr)
+            {
+                Pin* clkPin = ff->getClkPin();
+                FF* newFF = new FF(ff->getX(), ff->getY(), makeUniqueName(), bestFF, ff->getDQpairs(), ff->getClkPin());
+                newFF->setClkDomain(ff->getClkDomain());
+                removeCell(ff);
+                placeCell(newFF);
+                addFF(newFF);
+                delete clkPin;
+                deleteFF(ff);
+            }
+            else
+            {
+                ff->setInstName(ff_name);
+            }
+        }
     }
 }
