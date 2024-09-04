@@ -5,7 +5,7 @@
 #include "Pin.h"
 #include "Site.h"
 #include "Bin.h"
-#include "Legalizer.h"
+#include "LegalPlacer.h"
 #ifdef _OPENMP
 #include <omp.h>
 const int NUM_THREADS = 4;
@@ -38,7 +38,7 @@ std::string toLower(std::string str)
 
 Solver::Solver()
 {
-    _legalizer = new Legalizer(this);
+    _legalizer = new LegalPlacer(this);
 }
 
 Solver::~Solver()
@@ -391,50 +391,6 @@ void Solver::parse_input(std::string filename)
     in.close();
 }
 
-void Solver::iterativePlacement()
-{
-    int searchDistance = _siteMap->getSites()[0]->getHeight()*2;
-    // #pragma omp parallel for num_threads(NUM_THREADS)
-    for(size_t i = 0; i<_ffs.size();i++)
-    {
-        FF* ff = _ffs[i];
-        int leftDownX = ff->getX() - searchDistance;
-        int leftDownY = ff->getY() - searchDistance;
-        int rightUpX = ff->getX() + searchDistance;
-        int rightUpY = ff->getY() + searchDistance;
-        std::vector<Site*> nearSites = _siteMap->getSitesInBlock(leftDownX, leftDownY, rightUpX, rightUpY);
-        double cost_min = 0;
-        int best_site = -1;
-        for(size_t j = 0; j < nearSites.size(); j++)
-        {   
-            int original_x = ff->getX();
-            int original_y = ff->getY();
-            int trial_x = nearSites[j]->getX();
-            int trial_y = nearSites[j]->getY();
-            
-            // Bins cost difference when add and remove the cell
-            double binCost = _binMap->moveCell(ff, trial_x, trial_y, true);
-            double slackCost = calCostMoveFF(ff, original_x, original_y, trial_x, trial_y, false);
-
-            double cost = slackCost + binCost;
-
-            if(cost < cost_min)
-            {
-                cost_min = cost;
-                best_site = j;
-            }
-        }
-        // #pragma omp critical
-        if(best_site != -1)
-        {
-            const int original_x = ff->getX();
-            const int original_y = ff->getY();
-            moveCell(ff, nearSites[best_site]->getX(), nearSites[best_site]->getY());
-            calCostMoveFF(ff, original_x, original_y, nearSites[best_site]->getX(), nearSites[best_site]->getY(), true);
-        }
-    }
-}
-
 void Solver::iterativePlacementLegal()
 {
     // HYPER
@@ -442,10 +398,10 @@ void Solver::iterativePlacementLegal()
     for(size_t i = 0; i<_ffs.size();i++)
     {
         FF* ff = _ffs[i];
-        int leftDownX = ff->getX() - searchDistance;
-        int leftDownY = ff->getY() - searchDistance;
-        int rightUpX = ff->getX() + searchDistance;
-        int rightUpY = ff->getY() + searchDistance;
+        int leftDownX = std::max(ff->getX() - searchDistance, DIE_LOW_LEFT_X);
+        int leftDownY = std::max(ff->getY() - searchDistance, DIE_LOW_LEFT_Y);
+        int rightUpX = std::min(ff->getX() + searchDistance, DIE_UP_RIGHT_X);
+        int rightUpY = std::min(ff->getY() + searchDistance, DIE_UP_RIGHT_Y);
         std::vector<Site*> nearSites = _siteMap->getSitesInBlock(leftDownX, leftDownY, rightUpX, rightUpY);
         double cost_min = 0;
         int best_site = -1;
@@ -643,24 +599,22 @@ bool Solver::placeable(Cell* cell, int x, int y, int& move_distance)
         return false;
     }
     // check the cell will not overlap with other cells in the bin
-    std::vector<Bin*> bins = _binMap->getBins(x, y, x+cell->getWidth(), y+cell->getHeight());
-    std::vector<Cell*> cells;
-    for(auto bin: bins)
-    {
-        cells.insert(cells.end(), bin->getCells().begin(), bin->getCells().end());
-    }
     bool overlap = false;
     int move = 0;
-    for(auto c: cells)
+    std::vector<Bin*> bins = _binMap->getBins(x, y, x+cell->getWidth(), y+cell->getHeight());
+    for(auto bin: bins)
     {
-        if(c == cell || c->getInstName() == DUMB_CELL_NAME)
+        for(auto c: bin->getCells())
         {
-            continue;
-        }
-        if(isOverlap(x, y, cell, c))
-        {
-            overlap = true;
-            move = std::max(move, c->getX()+c->getWidth()-x);
+            if(c == cell || c->getInstName() == DUMB_CELL_NAME)
+            {
+                continue;
+            }
+            if(isOverlap(x, y, cell, c))
+            {
+                overlap = true;
+                move = std::max(move, c->getX()+c->getWidth()-x);
+            }
         }
     }
     move_distance = move;
@@ -691,6 +645,11 @@ remove the cell from the binMap and siteMap
 */
 void Solver::removeCell(Cell* cell)
 {
+    if (cell->getCellType() == CellType::COMB)
+    {
+        std::cerr << "Error: removeCell for comb cell" << std::endl;
+        return;
+    }
     _siteMap->removeCell(cell);
     _binMap->removeCell(cell);
 }
@@ -702,7 +661,7 @@ void Solver::moveCell(Cell* cell, int x, int y)
 {
     if(cell->getCellType() == CellType::COMB) {
         std::cerr << "Error: moveCell for comb cell" << std::endl;
-        exit(1);
+        return;
     }
     removeCell(cell);
     cell->setXY(x, y);
@@ -748,8 +707,12 @@ double Solver::calCostMoveQ(Pin* movedQPin, int sourceX, int sourceY, int target
     double diff_cost = 0;
     for (auto nextStagePin : movedQPin->getNextStagePins())
     {
+        if (nextStagePin->getType() != PinType::FF_D)
+        {
+            continue;
+        }
         const bool isLoopback = nextStagePin->getCell() != nullptr && nextStagePin->getCell() == movedQPin->getCell() && nextStagePin->getFaninPin() == movedQPin;
-        if (!isLoopback && nextStagePin->getType() == PinType::FF_D)
+        if (!isLoopback)
         {
             const double next_old_slack = nextStagePin->getSlack();
             const double next_new_slack = nextStagePin->calSlack(movedQPin, sourceX, sourceY, targetX, targetY, update);
@@ -833,6 +796,11 @@ double Solver::calCostBankFF(FF* ff1, FF* ff2, LibCell* targetFF, int targetX, i
             if (faninPin->getCell() == ff2)
             {
                 fanin_ff_pin_idx += ff1_bit;
+            }
+            if (fanin_ff_pin_idx >= targetFF->bit)
+            {
+                std::cerr << "Error: fanin_ff_pin_idx out of range\n";
+                continue;
             }
             const int old_fanin_x = faninPin->getGlobalX();
             const int old_fanin_y = faninPin->getGlobalY();
@@ -982,7 +950,7 @@ void Solver::bankFFs(FF* ff1, FF* ff2, LibCell* targetFF, int x, int y)
         std::cerr << "Error: Banking FFs in different clk domains" << std::endl;
         std::cerr << "FF1: " << ff1->getInstName() << " clk domain: " << ff1->getClkDomain() << std::endl;
         std::cerr << "FF2: " << ff2->getInstName() << " clk domain: " << ff2->getClkDomain() << std::endl;
-        exit(1);
+        return;
     }
     removeCell(ff1);
     removeCell(ff2);
@@ -1015,7 +983,6 @@ std::string Solver::makeUniqueName()
 void Solver::debankAll()
 {
     // TODO: speed up
-    std::vector<FF*> debankedFFs;
     std::vector<LibCell*> oneBitFFs;
     for (auto ff : _ffsLibList)
     {
@@ -1024,7 +991,9 @@ void Solver::debankAll()
             oneBitFFs.push_back(ff);
         }
     }
+    // std::sort(oneBitFFs.begin(), oneBitFFs.end(), [](LibCell* a, LibCell* b) -> bool { return a->width * a->height < b->width * b->height; });
 
+    std::vector<FF*> debankedFFs;
     for (auto ff : _ffs)
     {
         removeCell(ff);
@@ -1042,17 +1011,16 @@ void Solver::debankAll()
 
         #pragma omp parallel for num_threads(NUM_THREADS)
             for(size_t i = 0; i < oneBitFFs.size(); i++)
-            // for(auto oneBitFF: oneBitFFs)
             {
                 LibCell* oneBitFF = oneBitFFs[i];
                 std::vector<int> target_X, target_Y;
                 // HYPER
                 int searchDistance = ff->getWidth();
                 
-                int leftDownX = ff->getX() - searchDistance;
-                int leftDownY = ff->getY() - searchDistance;
-                int rightUpX = ff->getX() + searchDistance;
-                int rightUpY = ff->getY() + searchDistance;
+                int leftDownX = std::max(ff->getX() - searchDistance, DIE_LOW_LEFT_X);
+                int leftDownY = std::max(ff->getY() - searchDistance, DIE_LOW_LEFT_Y);
+                int rightUpX = std::min(ff->getX() + searchDistance, DIE_UP_RIGHT_X);
+                int rightUpY = std::min(ff->getY() + searchDistance, DIE_UP_RIGHT_Y);
                 std::vector<Site*> nearSites = _siteMap->getSitesInBlock(leftDownX, leftDownY, rightUpX, rightUpY);
                 // sort the sites by distance
                 std::sort(nearSites.begin(), nearSites.end(), [ff](Site* a, Site* b) -> bool {
@@ -1193,6 +1161,8 @@ void Solver::solve()
     if(!legal)
     {
         _legalizer->legalize();
+        resetSlack(false);
+        _currCost = calCost();
     }
     saveState("Initial");
 
@@ -1215,6 +1185,8 @@ void Solver::solve()
     if(!legal)
     {
         _legalizer->legalize();
+        resetSlack(false);
+        _currCost = calCost();
     }
     saveState("Debank");
 
@@ -1237,6 +1209,8 @@ void Solver::solve()
     if(!legal)
     {
         _legalizer->legalize();
+        resetSlack(false);
+        _currCost = calCost();
     }
     saveState("ForceDirected");
 
@@ -1279,6 +1253,8 @@ void Solver::solve()
     if(!legal)
     {
         _legalizer->legalize();
+        resetSlack(false);
+        _currCost = calCost();
     }
     saveState("Banking");
 
@@ -1301,6 +1277,8 @@ void Solver::solve()
     if(!legal)
     {
         _legalizer->legalize();
+        resetSlack(false);
+        _currCost = calCost();
     }
     saveState("ForceDirected2");
 
@@ -1342,6 +1320,8 @@ void Solver::solve()
     if(!legal)
     {
         _legalizer->legalize();
+        resetSlack(false);
+        _currCost = calCost();
     }
     saveState("Banking2");
 
@@ -1372,6 +1352,8 @@ void Solver::solve()
     if(!legal)
     {
         _legalizer->legalize();
+        resetSlack(false);
+        _currCost = calCost();
     }
     saveState("ForceDirected3");
 
@@ -1392,6 +1374,7 @@ bool Solver::check()
     {
         std::cerr << "============== Error ==============" << std::endl;    
         std::cerr << "FF not placed in Die" << std::endl;
+        return false;
     }
     std::cout << "Check FF on Site" << std::endl;
     bool onSite = checkFFOnSite();
@@ -1399,6 +1382,7 @@ bool Solver::check()
     {
         std::cerr << "============== Error ==============" << std::endl;    
         std::cerr << "FF not placed on Site" << std::endl;
+        return false;
     }
     std::cout << "Check Overlap" << std::endl;
     bool overlap = checkOverlap();
@@ -1406,15 +1390,9 @@ bool Solver::check()
     {
         std::cerr << "============== Error ==============" << std::endl;    
         std::cerr << "Overlap" << std::endl;
-    }
-
-    if(inDie && onSite && !overlap)
-    {
-        std::cout << "================= Success ================" << std::endl;
-        return true;
-    }else{
         return false;
     }
+    return true;
 }
 
 /*
@@ -1422,16 +1400,14 @@ if any FF is not placed on site, return false
 */
 bool Solver::checkFFOnSite()
 {
-    bool onSite = true;
     for(auto ff: _ffs)
     {
         if(!_siteMap->onSite(ff->getX(), ff->getY()))
         {
-            onSite = false;
-            std::cerr << "FF not placed on site: " << ff->getInstName() << std::endl;
+            return false;
         }
     }
-    return onSite;
+    return true;
 }
 
 /*
@@ -1439,15 +1415,13 @@ if any FF is not placed or placed out of Die, return false
 */
 bool Solver::checkFFInDie()
 {
-    bool inDie = true;
     for(auto ff: _ffs)
     {
         if(ff->getX()<DIE_LOW_LEFT_X || ff->getX()+ff->getWidth()>DIE_UP_RIGHT_X || ff->getY()<DIE_LOW_LEFT_Y || ff->getY()+ff->getHeight()>DIE_UP_RIGHT_Y){
-            inDie = false;
-            std::cerr << "FF not placed in Die: " << ff->getInstName() << std::endl;
+            return false;
         }
     }
-    return inDie;
+    return true;
 }
 
 /*
@@ -1465,6 +1439,11 @@ bool Solver::checkOverlap()
                 Cell* cell2 = bin->getCells()[j];
                 if (isOverlap(cell1->getX(), cell1->getY(), cell1->getWidth(), cell1->getHeight(), cell2))
                 {
+                    std::cout << "Overlap: " << cell1->getInstName() << " and " << cell2->getInstName() << std::endl;
+                    std::cout << "Cell1: " << cell1->getX() << " " << cell1->getY() << " " << cell1->getWidth() << " " << cell1->getHeight() << std::endl;
+                    std::cout << "Cell2: " << cell2->getX() << " " << cell2->getY() << " " << cell2->getWidth() << " " << cell2->getHeight() << std::endl;
+                    std::cout << "CellType1: " << ((cell1->getCellType() == CellType::FF)? "FF" : "Combinational") << std::endl;
+                    std::cout << "CellType2: " << ((cell2->getCellType() == CellType::FF)? "FF" : "Combinational") << std::endl;
                     return true;
                 }
             }
@@ -1520,11 +1499,6 @@ std::vector<int> Solver::regionQuery(std::vector<FF*> FFs, size_t idx, int eps)
 
 std::vector<std::vector<FF*>> Solver::clusteringFFs(size_t clkdomain_idx)
 {
-    if(clkdomain_idx >= _ffs_clkdomains.size())
-    {
-        std::cerr << "Invalid clk domain index" << std::endl;
-        return std::vector<std::vector<FF*>>();
-    }
     std::vector<FF*> FFs = _ffs_clkdomains[clkdomain_idx];
     std::vector<std::vector<FF*>> clusters;
     std::vector<bool> visited(FFs.size(), false);
@@ -1563,11 +1537,6 @@ std::vector<std::vector<FF*>> Solver::clusteringFFs(size_t clkdomain_idx)
 
 double Solver::cal_banking_gain(FF* ff1, FF* ff2, LibCell* targetFF, int& result_x, int& result_y)
 {
-    if(ff1->getBit()+ff2->getBit()!=targetFF->bit){
-        std::cout << "Invalid target FF" << std::endl;
-        return -INT_MAX;
-    }
-    
     double remove_gain = 0;
     remove_gain -= _binMap->removeCell(ff1,true);
     remove_gain -= _binMap->removeCell(ff2,true);
@@ -1581,7 +1550,7 @@ double Solver::cal_banking_gain(FF* ff1, FF* ff2, LibCell* targetFF, int& result
     int leftDownY = std::min(ff1->getY(), ff2->getY());
     int rightUpX = std::max(ff1->getX() + ff1->getWidth(), ff2->getX() + ff2->getWidth());
     int rightUpY = std::max(ff1->getY() + ff1->getHeight(), ff2->getY() + ff2->getHeight());
-    double min_gain = -INFINITY;
+    double max_gain = -INFINITY;
 
     // set candidates
     std::vector<std::pair<int, int>> candidates;
@@ -1603,6 +1572,8 @@ double Solver::cal_banking_gain(FF* ff1, FF* ff2, LibCell* targetFF, int& result
         for(size_t i=0;i<candidates.size();i++)
         {
             Site* targetSite = _siteMap->getNearestSite(candidates[i].first, candidates[i].second);
+            if (targetSite == nullptr)
+                continue;
             const int target_x = targetSite->getX();
             const int target_y = targetSite->getY();
 
@@ -1614,9 +1585,9 @@ double Solver::cal_banking_gain(FF* ff1, FF* ff2, LibCell* targetFF, int& result
 
             #pragma omp critical
             {
-                if(gain > min_gain)
+                if(gain > max_gain)
                 {
-                    min_gain = gain;
+                    max_gain = gain;
                     result_x = target_x;
                     result_y = target_y;
                 }
@@ -1626,7 +1597,7 @@ double Solver::cal_banking_gain(FF* ff1, FF* ff2, LibCell* targetFF, int& result
     ff1->setInstName(ff1_name);
     ff2->setInstName(ff2_name);
     
-    return min_gain + remove_gain;
+    return max_gain + remove_gain;
 }
 
 void Solver::greedyBanking(std::vector<std::vector<FF*>> clusters)
@@ -1665,6 +1636,7 @@ void Solver::greedyBanking(std::vector<std::vector<FF*>> clusters)
                     }
                     double dist = std::abs(cluster[i]->getX() - cluster[j]->getX()) + std::abs(cluster[i]->getY() - cluster[j]->getY());
                     int pin_count = cluster[i]->getNSPinCount() + cluster[j]->getNSPinCount();
+                    // HYPER
                     score -= dist * DISP_DELAY * ALPHA * pin_count / 2;
                     if (score < 0)
                     {
@@ -1720,7 +1692,6 @@ void Solver::greedyBanking(std::vector<std::vector<FF*>> clusters)
         {
             locked[&pi] = false;
         }
-        // std::cout << "Pair info size: " << pair_infos.size() << std::endl;
         if (!pair_infos.empty() && pair_infos[0].gain > 0)
         {
             for (size_t i = 0; i < pair_infos.size(); i++)
@@ -1730,27 +1701,24 @@ void Solver::greedyBanking(std::vector<std::vector<FF*>> clusters)
                 {
                     continue;
                 }
-                if (pi.gain > 0)
+                const std::string ff1_name = pi.ff1->getInstName();
+                const std::string ff2_name = pi.ff2->getInstName();
+                pi.ff1->setInstName(DUMB_CELL_NAME);
+                pi.ff2->setInstName(DUMB_CELL_NAME);
+                bool isPlaceable = placeable(pi.targetFF, pi.targetX, pi.targetY);
+                pi.ff1->setInstName(ff1_name);
+                pi.ff2->setInstName(ff2_name);
+                if (isPlaceable)
                 {
-                    const std::string ff1_name = pi.ff1->getInstName();
-                    const std::string ff2_name = pi.ff2->getInstName();
-                    pi.ff1->setInstName(DUMB_CELL_NAME);
-                    pi.ff2->setInstName(DUMB_CELL_NAME);
-                    bool isPlaceable = placeable(pi.targetFF, pi.targetX, pi.targetY);
-                    pi.ff1->setInstName(ff1_name);
-                    pi.ff2->setInstName(ff2_name);
-                    if (isPlaceable)
+                    for (size_t j = i + 1; j < pair_infos.size(); j++)
                     {
-                        for (size_t j = i + 1; j < pair_infos.size(); j++)
+                        PairInfo& pi2 = pair_infos[j];
+                        if (pi2.ff1 == pi.ff1 || pi2.ff1 == pi.ff2 || pi2.ff2 == pi.ff1 || pi2.ff2 == pi.ff2)
                         {
-                            PairInfo& pi2 = pair_infos[j];
-                            if (pi2.ff1 == pi.ff1 || pi2.ff1 == pi.ff2 || pi2.ff2 == pi.ff1 || pi2.ff2 == pi.ff2)
-                            {
-                                locked[&pi2] = true;
-                            }
+                            locked[&pi2] = true;
                         }
-                        bankFFs(pi.ff1, pi.ff2, pi.targetFF, pi.targetX, pi.targetY);
                     }
+                    bankFFs(pi.ff1, pi.ff2, pi.targetFF, pi.targetX, pi.targetY);
                 }
             }
         }

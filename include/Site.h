@@ -14,7 +14,7 @@ class Site
         ~Site();
 
         void place(Cell* cell);
-        bool removeCell(Cell* cell);
+        void removeCell(Cell* cell);
 
         inline bool isOccupied() const { return !_cells.empty(); }
         inline int getX() const { return _x; }

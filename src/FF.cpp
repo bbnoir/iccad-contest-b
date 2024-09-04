@@ -5,11 +5,6 @@ Constructor for single bits
 */
 FF::FF(int x, int y, std::string inst_name, LibCell* lib_cell, std::pair<Pin*, Pin*> dqpair, Pin* clk)
 {
-    if (lib_cell->bit > 1)
-    {
-        std::cerr << "Error: base FF cell bit > 1" << std::endl;
-        exit(1);
-    }
     _x = x;
     _y = y;
     _inst_name = inst_name;
@@ -68,11 +63,6 @@ Constructor for banking
 */
 FF::FF(int x, int y, std::string inst_name, LibCell* lib_cell, std::vector<std::pair<Pin*, Pin*>> dqpairs, std::vector<Pin*> clks)
 {
-    if (lib_cell->bit < int(dqpairs.size()))
-    {
-        std::cerr << "Error: lib FF cell bit < dqpairs.size()" << std::endl;
-        exit(1);
-    }
     _x = x;
     _y = y;
     _inst_name = inst_name;
@@ -120,6 +110,10 @@ double FF::getTotalNegativeSlack()
     double totalNegativeSlack = 0.0;
     for (Pin* pin : _inputPins)
     {
+        if (pin == nullptr)
+        {
+            continue;
+        }
         double slack = pin->getSlack();
         if (slack < 0)
         {

@@ -31,14 +31,12 @@ void Site::place(Cell* cell)
     this->_cells.push_back(cell);
 }
 
-bool Site::removeCell(Cell* cell)
+void Site::removeCell(Cell* cell)
 {
     if (std::find(_cells.begin(), _cells.end(), cell) != _cells.end())
     {
         _cells.erase(std::remove(_cells.begin(), _cells.end(), cell), _cells.end());
-        return true;
     }
-    return false;
 }
 
 SiteMap::SiteMap()
@@ -132,7 +130,7 @@ std::vector<Site*> SiteMap::getSitesInBlock(int leftDownX, int leftDownY, int ri
     if (leftDownX < DIE_LOW_LEFT_X || leftDownY < DIE_LOW_LEFT_Y || rightUpX > DIE_UP_RIGHT_X || rightUpY > DIE_UP_RIGHT_Y)
     {
         std::cerr << "Error: SiteMap::getSitesInBlock() - out of die boundary" << std::endl;
-        exit(1);
+        return std::vector<Site*>();
     }
     std::vector<Site*> sites;
     const int startRow = getFirstLargerRow(leftDownY);
@@ -194,7 +192,7 @@ Site* SiteMap::getNearestSite(int x, int y)
     if (x < DIE_LOW_LEFT_X || y < DIE_LOW_LEFT_Y || x > DIE_UP_RIGHT_X || y > DIE_UP_RIGHT_Y)
     {
         std::cerr << "Error: SiteMap::getNearestSite() - out of die boundary" << std::endl;
-        exit(1);
+        return nullptr;
     }
     int distance;
     int minDistance = -1;

@@ -153,7 +153,7 @@ double BinMap::addCell(Cell* cell, bool trial)
     for (auto bin : bins)
     {
         double util = bin->getUtilization();
-        causedCost += ((util <= BIN_MAX_UTIL) && (bin->addCell(cell, trial) > BIN_MAX_UTIL))? LAMBDA : 0;
+        causedCost += ((bin->addCell(cell, trial) > BIN_MAX_UTIL) && (util <= BIN_MAX_UTIL))? LAMBDA : 0;
     }
     return causedCost;
 }
@@ -179,7 +179,7 @@ double BinMap::addCell(Cell* cell, int x, int y, bool trial)
 
 double BinMap::trialLibCell(LibCell* libCell, int x, int y)
 {
-    Cell* cell = new Cell(x, y, "dumb", libCell);
+    Cell* cell = new Cell(x, y, "du_mb", libCell);
     double causedCost = addCell(cell, true);
     delete cell;
     return causedCost;

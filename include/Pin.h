@@ -31,7 +31,6 @@ class Pin
         inline int getY() const { return _y; }
         int getGlobalX() const;
         int getGlobalY() const;
-        inline bool isDpin() const { return _isDpin; }
         inline double getSlack() const { return _slack; }
         inline Cell *getCell() const { return _cell; }
         inline PinType getType() const { return _type; }
@@ -76,7 +75,6 @@ class Pin
         // which cell this pin belongs to
         Cell* _cell;
         double _slack;
-        bool _isDpin;
         // which net this pin is connected to
         Pin* _faninPin;
         std::vector<Pin*> _fanoutPins;

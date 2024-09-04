@@ -10,7 +10,6 @@ Pin::Pin(PinType type, int x, int y, std::string name, Cell* cell)
     _name = name;
     _cell = cell;
     _slack = 0;
-    _isDpin = false;
     _initSlack = 0;
 }
 
@@ -35,13 +34,11 @@ int Pin::getGlobalY() const
 void Pin::setSlack(double slack)
 {
     _slack = slack;
-    _isDpin = true;
 }
 
 void Pin::setInitSlack(double initSlack)
 {
     _slack = initSlack;
-    _isDpin = true;
     _initSlack = initSlack;
 }
 
@@ -100,7 +97,6 @@ void Pin::transInfo(Pin* pin)
     _x = pin->getX();
     _y = pin->getY();
     _name = pin->getName();
-    _isDpin = pin->isDpin();
     _type = pin->getType();
 }
 
@@ -187,11 +183,11 @@ double Pin::calSlack(Pin* movedPrevStagePin, int sourceX, int sourceY, int targe
     if (this->getType() != PinType::FF_D)
     {
         std::cerr << "Error: only D pin can update slack" << std::endl;
-        exit(1);
+        return _slack;
     }
     if (_arrivalTimes.size() == 0)
     {
-        return 0;
+        return _slack;
     }
     std::vector<double>* tempArrivalTimes = (update) ? &_arrivalTimes : new std::vector<double>(_arrivalTimes);
     // update the arrival time and re-sort the critical index
@@ -248,11 +244,11 @@ double Pin::calSlackQ(Pin* changeQPin, double diffQDelay, bool update)
     if (this->getType() != PinType::FF_D)
     {
         std::cerr << "Error: only D pin can update slack" << std::endl;
-        exit(1);
+        return _slack;
     }
     if (_arrivalTimes.size() == 0)
     {
-        return 0;
+        return _slack;
     }
     std::vector<double>* tempArrivalTimes = (update) ? &_arrivalTimes : new std::vector<double>(_arrivalTimes);
     const double old_arrival_time = _currCriticalArrivalTime;
@@ -301,7 +297,6 @@ void Pin::resetSlack(bool check)
 {
     if (_arrivalTimes.size() == 0)
     {
-        // TODO: there is empty path pin
         _slack = (_initSlack == 0) ? 0 : _initSlack;
     }
     else
@@ -339,7 +334,7 @@ void Pin::resetSlack(bool check)
                     }
                     std::cout << "Arrival time: " << _arrivalTimes.at(i) << std::endl;
                 }
-                exit(1);
+                return;
             }
         }
     }

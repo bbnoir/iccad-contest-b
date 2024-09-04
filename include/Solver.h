@@ -21,7 +21,7 @@ class FF;
 class Site;
 class BinMap;
 class SiteMap;
-class Legalizer;
+class LegalPlacer;
 
 struct PlacementRows
 {
@@ -57,7 +57,7 @@ class Solver
         void report();
         
         // friend
-        friend class Legalizer;
+        friend class LegalPlacer;
     private:
         // lib
         std::vector<LibCell*> _combsLibList;
@@ -129,7 +129,6 @@ class Solver
         // 1. Debank all FFs
         void debankAll();
         // 2. Force-directed placement
-        void iterativePlacement();
         void iterativePlacementLegal();
         // 3. Clustering in each clock domain
         std::vector<std::vector<FF*>> clusteringFFs(long unsigned int clkdomain_idx);
@@ -137,7 +136,8 @@ class Solver
         void greedyBanking(std::vector<std::vector<FF*>> clusters);
         double cal_banking_gain(FF* ff1, FF* ff2, LibCell* targetFF, int& result_x, int& result_y);
         // 5. Legalization
-        Legalizer* _legalizer;
+        LegalPlacer* _legalizer;
+        // Extra. Change One Bit FFs
 
         // State saving
         std::vector<std::string> _stateNames;
