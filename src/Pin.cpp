@@ -11,6 +11,7 @@ Pin::Pin(PinType type, int x, int y, std::string name, Cell* cell)
     _cell = cell;
     _slack = 0;
     _isDpin = false;
+    _initSlack = 0;
 }
 
 Pin::~Pin()

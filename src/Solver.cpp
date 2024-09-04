@@ -1174,7 +1174,6 @@ void Solver::solve()
     _currCost = calCost();
     _initCost = _currCost;
     std::cout << "==> Initial cost: " << _initCost << "\n";
-    saveState("Initial");
 
     if(calTime)
     {
@@ -1191,12 +1190,12 @@ void Solver::solve()
     {
         _legalizer->legalize();
     }
+    saveState("Initial");
 
     std::cout << "\nStart to debank...\n";
     debankAll();
     _currCost = calCost();
     std::cout << "==> Cost after debanking: " << _currCost << "\n";
-    saveState("Debank");
 
     if(calTime)
     {
@@ -1213,12 +1212,12 @@ void Solver::solve()
     {
         _legalizer->legalize();
     }
+    saveState("Debank");
 
     std::cout<<"\nStart to force directed placement...\n";
     iterativePlacementLegal();
     _currCost = calCost();
     std::cout << "==> Cost after force directed placement: " << _currCost << "\n";
-    saveState("ForceDirected");
 
     if(calTime)
     {
@@ -1235,6 +1234,7 @@ void Solver::solve()
     {
         _legalizer->legalize();
     }
+    saveState("ForceDirected");
 
     std::cout << "\nStart clustering and banking...\n";
     size_t prev_ffs_size;
@@ -1260,7 +1260,6 @@ void Solver::solve()
     } while (prev_ffs_size != _ffs.size());
     _currCost = calCost();
     std::cout << "==> Cost after clustering and banking: " << _currCost << "\n";
-    saveState("Banking");
 
     if(calTime)
     {
@@ -1277,12 +1276,12 @@ void Solver::solve()
     {
         _legalizer->legalize();
     }
+    saveState("Banking");
 
     std::cout << "\nStart to force directed placement (second)...\n";
     iterativePlacementLegal();
     _currCost = calCost();
     std::cout << "==> Cost after force directed placement (second): " << _currCost << "\n";
-    saveState("ForceDirected2");
     
     if(calTime)
     {
@@ -1299,6 +1298,7 @@ void Solver::solve()
     {
         _legalizer->legalize();
     }
+    saveState("ForceDirected2");
 
     std::cout << "\nStart clustering and banking...\n";
     std::cout << "Init FFs size: " << _ffs.size() << "\n";
@@ -1323,7 +1323,6 @@ void Solver::solve()
     } while (prev_ffs_size != _ffs.size());
     _currCost = calCost();
     std::cout << "==> Cost after clustering and banking: " << _currCost << "\n";
-    saveState("Banking2");
 
     if(calTime)
     {
@@ -1340,12 +1339,12 @@ void Solver::solve()
     {
         _legalizer->legalize();
     }
+    saveState("Banking2");
 
     std::cout << "\nStart to force directed placement (third)...\n";
     iterativePlacementLegal();
     _currCost = calCost();
     std::cout << "==> Cost after force directed placement (third): " << _currCost << "\n";
-    saveState("ForceDirected3");
     
     if(calTime)
     {
@@ -1370,6 +1369,7 @@ void Solver::solve()
     {
         _legalizer->legalize();
     }
+    saveState("ForceDirected3");
 
     std::cout << "\nCost after solving: " << _currCost << "\n";
     std::cout << "Cost difference: " << _currCost - _initCost << "\n";
