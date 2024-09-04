@@ -46,10 +46,12 @@ Solver::~Solver()
     delete _legalizer;
     for(auto ff : _ffs)
     {
+        ff->deletePins();
         delete ff;
     }
     for(auto comb : _combs)
     {
+        comb->deletePins();
         delete comb;
     }
     for(auto ff : _ffsLibList)
@@ -135,11 +137,6 @@ void Solver::parse_input(std::string filename)
             sort(ff->inputPins.begin(), ff->inputPins.end(), [](Pin* a, Pin* b) -> bool { return a->getName() < b->getName(); });
             sort(ff->outputPins.begin(), ff->outputPins.end(), [](Pin* a, Pin* b) -> bool { return a->getName() < b->getName(); });
             // set fanout of input pins to output pins
-            const int numDQpairs = bits;
-            for (int i = 0; i < numDQpairs; i++)
-            {
-                ff->inputPins[i]->addFanoutPin(ff->outputPins[i]);
-            }
             _ffsLibList.push_back(ff);
             _ffsLibMap[name] = ff;
         }else if(token == "Gate"){
@@ -158,11 +155,6 @@ void Solver::parse_input(std::string filename)
                 } else if (tolower(pinName[0]) == 'o') {
                     comb->outputPins.push_back(new Pin(PinType::GATE_OUT, x, y, pinName, nullptr));
                 }
-            }
-            // set fanout of input pins to output pins
-            for (auto inPin : comb->inputPins)
-            {
-                inPin->addFanoutPin(comb->outputPins[0]);
             }
             _combsLibList.push_back(comb);
             _combsLibMap[name] = comb;
@@ -210,17 +202,12 @@ void Solver::parse_input(std::string filename)
             string pin;
             if(pinName.find('/') != string::npos)
                 pin = pinName.substr(pinName.find('/') + 1);
-            if((toLower(pin) == "clk" || toLower(pinName) == "clk") && !clknet){
+            if(!clknet && (toLower(pin) == "clk" || toLower(pinName) == "clk")){
                 clknet = true;
-                _ffs_clkdomains.push_back(vector<FF*>());
             }
             Pin* p = nullptr;
             if(_ffsMap.find(instName) != _ffsMap.end()){
                 p = _ffsMap[instName]->getPin(pin);
-                if(toLower(pin) == "clk" && clknet){
-                    _ffs_clkdomains.back().push_back(_ffsMap[instName]);
-                    _ffs_clkdomains.back().back()->setClkDomain(_ffs_clkdomains.size()-1);
-                }
             }else if(_combsMap.find(instName) != _combsMap.end()){
                 p = _combsMap[instName]->getPin(pin);
             }else if(_inputPinsMap.find(pinName) != _inputPinsMap.end()){
@@ -229,9 +216,22 @@ void Solver::parse_input(std::string filename)
                 p = _outputPinsMap[pinName];
             }else{
                 cerr << "Error: Pin not found: " << pinName << endl;
-                exit(1);
+                continue;
             }
             pins.push_back(p);
+        }
+        if (clknet == true)
+        {
+            _ffs_clkdomains.push_back(vector<FF*>());
+            for (auto p : pins)
+            {
+                if (p->getType() == PinType::FF_CLK)
+                {
+                    FF* curFF = static_cast<FF*>(p->getCell());
+                    _ffs_clkdomains.back().push_back(curFF);
+                    curFF->setClkDomain(_ffs_clkdomains.size() - 1);
+                }
+            }
         }
         for(size_t i = 0; i < pins.size(); i++)
         {
@@ -272,35 +272,35 @@ void Solver::parse_input(std::string filename)
         in >> token >> cellName >> delay;
         _ffsLibMap[cellName]->qDelay = delay;
     }
-    size_t totalBits = 0;
-    for(size_t i = 0; i < _ffs.size(); i++)
-    {
-        totalBits += _ffs[i]->getBit();
-    }
     // slack
-    for(size_t i = 0; i < totalBits; i++)
+    while (!in.eof())
     {
+        in >> token;
+        if (token != "TimingSlack")
+            break;
         string instName;
         string port;
         double slack;
-        in >> token >> instName >> port >> slack;
+        in >> instName >> port >> slack;
         _ffsMap[instName]->getPin(port)->setInitSlack(slack);
     }
     // Read power info
-    for(size_t i = 0; i < _ffsLibList.size(); i++)
+    if (token == "GatePower")
     {
-        string cellName;
-        double power;
-        in >> token >> cellName >> power;
-        if(_ffsLibMap.find(cellName) != _ffsLibMap.end())
+        do
         {
-            _ffsLibMap[cellName]->power = power;
-        }
+            string cellName;
+            double power;
+            in >> cellName >> power;
+            if(_ffsLibMap.find(cellName) != _ffsLibMap.end())
+            {
+                _ffsLibMap[cellName]->power = power;
+            }
+            in >> token;
+        } while (!in.eof());
     }
-    // set power to instances
 
     // Set prev and next stage pins
-    // TODO: check if is needed to set prev and next stage pins for INPUT and OUTPUT pins
     for (auto ff : _ffs)
     {
         for (auto inPin : ff->getInputPins())
@@ -354,7 +354,8 @@ void Solver::parse_input(std::string filename)
                     {
                         std::cerr << "Error: Unexpected fanin pin type" << endl;
                         std::cerr << "Pin: " << curPin->getCell()->getInstName() << " " << curPin->getName() << endl;
-                        exit(1);
+                        pinStack.pop_back();
+                        continue;
                     }
                 }
             }
@@ -387,7 +388,6 @@ void Solver::parse_input(std::string filename)
         }
     }
 
-    cout << "File parsed successfully" << endl;
     in.close();
 }
 
@@ -528,8 +528,12 @@ void Solver::constructFFsCLKDomain()
 void Solver::init_placement()
 {
     _binMap = new BinMap(DIE_LOW_LEFT_X, DIE_LOW_LEFT_Y, DIE_UP_RIGHT_X, DIE_UP_RIGHT_Y, BIN_WIDTH, BIN_HEIGHT);
-    // Sort placement rows ascending by startY
-    sort(_placementRows.begin(), _placementRows.end(), [](const PlacementRows& a, const PlacementRows& b) -> bool { return a.startY < b.startY; });
+    // Sort placement rows ascending by startY and ascending by startX
+    sort(_placementRows.begin(), _placementRows.end(), [](const PlacementRows& a, const PlacementRows& b) -> bool { 
+        if(a.startY == b.startY)
+            return a.startX < b.startX;
+        return a.startY < b.startY;
+    });
     _siteMap = new SiteMap(_placementRows);
 
     // place cells
@@ -1438,11 +1442,7 @@ bool Solver::checkFFInDie()
     bool inDie = true;
     for(auto ff: _ffs)
     {
-        if(ff->getSites().size() == 0)
-        {
-            inDie = false;
-            // std::cerr << "FF not placed: " << ff->getInstName() << std::endl;
-        }else if(ff->getX()<DIE_LOW_LEFT_X || ff->getX()+ff->getWidth()>DIE_UP_RIGHT_X || ff->getY()<DIE_LOW_LEFT_Y || ff->getY()+ff->getHeight()>DIE_UP_RIGHT_Y){
+        if(ff->getX()<DIE_LOW_LEFT_X || ff->getX()+ff->getWidth()>DIE_UP_RIGHT_X || ff->getY()<DIE_LOW_LEFT_Y || ff->getY()+ff->getHeight()>DIE_UP_RIGHT_Y){
             inDie = false;
             std::cerr << "FF not placed in Die: " << ff->getInstName() << std::endl;
         }
@@ -1455,29 +1455,22 @@ if any cells(Combs and FFs) overlap, return true
 */
 bool Solver::checkOverlap()
 {
-    std::vector<Cell*> cells;
-    cells.insert(cells.end(), _combs.begin(), _combs.end());
-    cells.insert(cells.end(), _ffs.begin(), _ffs.end());
-    bool overlap = false;
-    for(size_t i = 0; i < cells.size(); i++)
+    for (auto bin : _binMap->getBins())
     {
-        // for(size_t j = i+1; j < cells.size(); j++)
-        // {
-        //     if(isOverlap(cells[i], cells[j]))
-        //     {
-        //         std::cerr << "Overlap: " << cells[i]->getInstName() << " and " << cells[j]->getInstName() << std::endl;
-        //         std::cerr << "Cell1: " << cells[i]->getX() << " " << cells[i]->getY() << " " << cells[i]->getWidth() << " " << cells[i]->getHeight() << std::endl;
-        //         std::cerr << "Cell2: " << cells[j]->getX() << " " << cells[j]->getY() << " " << cells[j]->getWidth() << " " << cells[j]->getHeight() << std::endl;
-        //         overlap = true;
-        //     }
-        // }
-        
-        if(cells[i]->checkOverlap()){
-            std::cerr << "Overlap: " << cells[i]->getInstName() << std::endl;
-            overlap = true;
+        for (size_t i = 0; i < bin->getCells().size(); i++)
+        {
+            for (size_t j = i + 1; j < bin->getCells().size(); j++)
+            {
+                Cell* cell1 = bin->getCells()[i];
+                Cell* cell2 = bin->getCells()[j];
+                if (isOverlap(cell1->getX(), cell1->getY(), cell1->getWidth(), cell1->getHeight(), cell2))
+                {
+                    return true;
+                }
+            }
         }
     }
-    return overlap;
+    return false;
 }
 
 /*

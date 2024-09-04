@@ -39,6 +39,7 @@ class BinMap
         BinMap(int dieLowerLeftX, int dieLowerLeftY, int dieUpperRightX, int dieUpperRightY, int binWidth, int binHeight);
 
         std::vector<Bin*> getBins(int leftDownX, int leftDownY, int rightUpX, int rightUpY);
+        std::vector<Bin*> getBins();
 
         int getNumOverMaxUtilBins();
 

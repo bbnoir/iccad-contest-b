@@ -172,7 +172,7 @@ void Pin::resetArrivalTime(bool check)
                 std::cout << "Old arrival time: " << tempArrivalTimes.at(i) << std::endl;
                 std::cout << "New arrival time: " << _arrivalTimes.at(i) << std::endl;
                 std::cout << "Difference: " << tempArrivalTimes.at(i) - _arrivalTimes.at(i) << std::endl;
-                exit(1);
+                break;
             }
         }
     }

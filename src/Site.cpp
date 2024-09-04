@@ -55,11 +55,11 @@ SiteMap::SiteMap(std::vector<PlacementRows> placementRows)
     for (int i = 0; i < nPlacementRows; i++)
     {
         PlacementRows& row = placementRows[i];
-        int siteX = row.startX;
+        int siteX = row.startX, siteY = row.startY;
         // set y2row to the first row with the same y
-        if (_y2row.find(row.startY) == _y2row.end())
+        if (_y2row.find(siteY) == _y2row.end())
         {
-            _y2row[row.startY] = i;
+            _y2row[siteY] = i;
         }
         else
         {
@@ -78,7 +78,7 @@ SiteMap::SiteMap(std::vector<PlacementRows> placementRows)
                 row.numSites = j;
                 break;
             }
-            Site* site = new Site(siteX, row.startY, row.siteWidth, row.siteHeight);
+            Site* site = new Site(siteX, siteY, row.siteWidth, row.siteHeight);
             _x2col[i][siteX] = j;
             _sites[i].push_back(site);
             siteX += row.siteWidth;
@@ -114,18 +114,9 @@ std::vector<Site*> SiteMap::getSitesOfCell(int leftDownX, int leftDownY, int rig
         {
             continue;
         }
-        const int startCol = getFirstLargerColInRow(row, leftDownX);
+        const int startCol = std::max(0, (leftDownX - _placementRows[row].startX) / _placementRows[row].siteWidth);
         int endCol = getFirstLargerColInRow(row, rightUpX);
-        if(rightUpX > _placementRows[row].startX + _placementRows[row].siteWidth * _placementRows[row].numSites)
-        {
-            endCol = _placementRows[row].numSites;
-        }
-        if(startCol == endCol)
-        {
-            sites.push_back(_sites[row][startCol]);
-            continue;
-        }
-        for (int col = startCol; col < endCol; col++)
+        for (int col = startCol; col <= endCol; col++)
         {
             sites.push_back(_sites[row][col]);
         }
@@ -150,11 +141,7 @@ std::vector<Site*> SiteMap::getSitesInBlock(int leftDownX, int leftDownY, int ri
     {
         const int startCol = getFirstLargerColInRow(row, leftDownX);
         int endCol = getFirstLargerColInRow(row, rightUpX);
-        if(rightUpX > _placementRows[row].startX + _placementRows[row].siteWidth * _placementRows[row].numSites)
-        {
-            endCol = _placementRows[row].numSites;
-        }   
-        for (int col = startCol; col < endCol; col++)
+        for (int col = startCol; col <= endCol; col++)
         {
             sites.push_back(_sites[row][col]);
         }
@@ -167,12 +154,12 @@ int SiteMap::getFirstLargerRow(int y)
     if (y < DIE_LOW_LEFT_Y || y > DIE_UP_RIGHT_Y)
     {
         std::cerr << "Error: SiteMap::getFirstLargerRow() - out of die boundary" << std::endl;
-        exit(1);
+        return _placementRows.size()-1;
     }
-    int row = _placementRows.size();
+    int row = _placementRows.size()-1;
     // binary search
     int left = 0;
-    int right = row-1;
+    int right = row;
     while (left <= right)
     {
         int mid = left + (right - left) / 2;
@@ -194,7 +181,7 @@ int SiteMap::getFirstLargerColInRow(int row, int x)
     if (x < DIE_LOW_LEFT_X || x > DIE_UP_RIGHT_X)
     {
         std::cerr << "Error: SiteMap::getFirstLargerColInRow() - out of die boundary" << std::endl;
-        exit(1);
+        return _placementRows[row].numSites-1;
     }
     int col = (x - _placementRows[row].startX) / _placementRows[row].siteWidth + 1;
     col = std::max(0, col);
@@ -287,7 +274,6 @@ void SiteMap::place(Cell* cell)
     for (Site* site : sites)
     {
         site->place(cell);
-        cell->addSite(site);
     }
 }
 
@@ -302,8 +288,7 @@ void SiteMap::removeCell(Cell* cell)
     std::vector<Site*> sites = getSitesOfCell(cellX, cellY, cellRightX, cellUpY);
     for (Site* site : sites)
     {
-        if(site->removeCell(cell))
-            cell->removeSite(site);
+        site->removeCell(cell);
     }
     return;
 }

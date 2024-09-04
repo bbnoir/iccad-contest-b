@@ -24,8 +24,8 @@ double Bin::addCell(Cell* cell, bool trial)
 {
     // update utilization
     // calculate the overlap area
-    int overlapArea = calOverlapArea(cell);
-    double newUtil = _utilization + 100.*overlapArea / (BIN_WIDTH * BIN_HEIGHT);
+    const int overlapArea = calOverlapArea(cell);
+    const double newUtil = _utilization + 100.*overlapArea / (BIN_WIDTH * BIN_HEIGHT);
     if(!trial){
         _cells.push_back(cell);
         _utilization = newUtil;
@@ -96,7 +96,7 @@ std::vector<Bin*> BinMap::getBins(int leftDownX, int leftDownY, int rightUpX, in
     if (leftDownX < _dieLowerLeftX || leftDownY < _dieLowerLeftY || rightUpX > _dieUpperRightX || rightUpY > _dieUpperRightY)
     {
         std::cerr << "Error: getBins out of range" << std::endl;
-        exit(1);
+        return std::vector<Bin*>();
     }
     std::vector<Bin*> bins;
     const int startBinX = (leftDownX - _dieLowerLeftX) / _binWidth;
@@ -109,6 +109,16 @@ std::vector<Bin*> BinMap::getBins(int leftDownX, int leftDownY, int rightUpX, in
         {
             bins.emplace_back(_bins[i][j]);
         }
+    }
+    return bins;
+}
+
+std::vector<Bin *> BinMap::getBins()
+{
+    std::vector<Bin *> bins;
+    for (auto row : _bins)
+    {
+        bins.insert(bins.end(), row.begin(), row.end());
     }
     return bins;
 }
@@ -143,10 +153,7 @@ double BinMap::addCell(Cell* cell, bool trial)
     for (auto bin : bins)
     {
         double util = bin->getUtilization();
-        causedCost += ((bin->addCell(cell, trial) > BIN_MAX_UTIL) && (util <= BIN_MAX_UTIL))? LAMBDA : 0;
-        if(!trial)
-            cell->addBin(bin);
-        
+        causedCost += ((util <= BIN_MAX_UTIL) && (bin->addCell(cell, trial) > BIN_MAX_UTIL))? LAMBDA : 0;
     }
     return causedCost;
 }
@@ -166,8 +173,6 @@ double BinMap::addCell(Cell* cell, int x, int y, bool trial)
     {
         double util = bin->getUtilization();
         causedCost += ((bin->addCell(cell, trial) > BIN_MAX_UTIL) && (util <= BIN_MAX_UTIL))? LAMBDA : 0;
-        if(!trial)
-            cell->addBin(bin);
     }
     return causedCost;
 }
@@ -192,8 +197,6 @@ double BinMap::removeCell(Cell* cell, bool trial)
     {
         double util = bin->getUtilization();
         causedCost += ((bin->removeCell(cell, trial) <= BIN_MAX_UTIL) && (util > BIN_MAX_UTIL))? -LAMBDA : 0;
-        if(!trial)
-            cell->removeBin(bin);
     }
     return causedCost;
 }
