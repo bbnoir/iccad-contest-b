@@ -1,0 +1,160 @@
+File parsed successfully
+Alpha: 10 Beta: 10 Gamma: 2e-07 Lambda: 10
+
+Start initial placement...
+--- Calculating cost ---
+TNS: 0.33524
+Power: 96.858
+Area: 2.63112e+06
+Num of bins violated: 2
+==> Initial cost: 992.459
+Initialization time: 0.000419618s
+============= Start checking =============
+Check FF in Die
+Check FF on Site
+Check Overlap
+================= Success ================
+Legal: 1
+
+Start to debank...
+--- Calculating cost ---
+TNS: 0.32524
+Power: 73.905
+Area: 720000
+Num of bins violated: 0
+==> Cost after debanking: 742.446
+Debanking time: 0.000135496s
+============= Start checking =============
+Check FF in Die
+Check FF on Site
+Check Overlap
+================= Success ================
+Legal: 1
+
+Start to force directed placement...
+--- Calculating cost ---
+TNS: 0.183134
+Power: 73.905
+Area: 720000
+Num of bins violated: 0
+==> Cost after force directed placement: 741.025
+Force directed placement time: 0.000139896s
+============= Start checking =============
+Check FF in Die
+Check FF on Site
+Check Overlap
+================= Success ================
+Legal: 1
+
+Start clustering and banking...
+Init FFs size: 5
+FFs size after greedy banking: 5
+--- Calculating cost ---
+TNS: 0.183134
+Power: 73.905
+Area: 720000
+Num of bins violated: 0
+==> Cost after clustering and banking: 741.025
+Clustering and banking time: 4.5678e-05s
+============= Start checking =============
+Check FF in Die
+Check FF on Site
+Check Overlap
+================= Success ================
+Legal: 1
+
+Start to force directed placement (second)...
+--- Calculating cost ---
+TNS: 0
+Power: 73.905
+Area: 720000
+Num of bins violated: 0
+==> Cost after force directed placement (second): 739.194
+Force directed placement (second) time: 0.000118873s
+============= Start checking =============
+Check FF in Die
+Check FF on Site
+Check Overlap
+================= Success ================
+Legal: 1
+
+Start clustering and banking...
+Init FFs size: 5
+FFs size after greedy banking: 5
+--- Calculating cost ---
+TNS: 0
+Power: 73.905
+Area: 720000
+Num of bins violated: 0
+==> Cost after clustering and banking: 739.194
+Clustering and banking time: 4.0579e-05s
+============= Start checking =============
+Check FF in Die
+Check FF on Site
+Check Overlap
+================= Success ================
+Legal: 1
+
+Start to force directed placement (second)...
+--- Calculating cost ---
+TNS: 0
+Power: 73.905
+Area: 720000
+Num of bins violated: 0
+==> Cost after force directed placement (second): 739.194
+Force directed placement (second) time: 0.000127813s
+============= Start checking =============
+Check FF in Die
+Check FF on Site
+Check Overlap
+================= Success ================
+Legal: 1
+
+Cost after solving: 739.194
+Cost difference: -253.265
+Cost difference percentage: -25.5189%
+============= Start checking =============
+Check FF in Die
+Check FF on Site
+Check Overlap
+================= Success ================
+
+------------------------------------------------------------------
+----------------------------- Report -----------------------------
+------------------------------------------------------------------
+Initial          		 9.924586e+02	100.00%	0.00s
+Debank           		 7.424464e+02	74.81%	0.00s
+ForceDirected    		 7.410253e+02	74.67%	0.00s
+Banking          		 7.410253e+02	74.67%	0.00s
+ForceDirected2   		 7.391940e+02	74.48%	0.00s *
+Banking          		 7.391940e+02	74.48%	0.00s
+ForceDirected2   		 7.391940e+02	74.48%	0.00s
+------------------------------------------------------------------
+Renderer closed
+Read testcase...
+Read output...
+Check Inst <name> <libcell> <x> <y> format...
+Check From/pin map To/pin  format...
+Start checking...
+check libType
+check pins are in design
+check pins are correct connected
+check same CLK for banking
+check netlist... step1
+check netlist... step2
+Checking pass!
+Read Input:
+Read output...
+Check Inst <name> <libcell> <x> <y> format...
+Check From/pin map To/pin  format...
+
+Start checking...
+check libType
+check pins are in design
+check pins are correct connected
+check same CLK for banking
+check netlist... step1
+check netlist... step2
+update timing...
+Check pass! Scoring...
+Final score:739.194006875157

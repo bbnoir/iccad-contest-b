@@ -1,0 +1,160 @@
+File parsed successfully
+Alpha: 10 Beta: 10 Gamma: 2e-07 Lambda: 10
+
+Start initial placement...
+--- Calculating cost ---
+TNS: 0.33524
+Power: 59.124
+Area: 1.42272e+06
+Num of bins violated: 0
+==> Initial cost: 594.877
+Initialization time: 0.000152608s
+============= Start checking =============
+Check FF in Die
+Check FF on Site
+Check Overlap
+================= Success ================
+Legal: 1
+
+Start to debank...
+--- Calculating cost ---
+TNS: 0.33524
+Power: 59.124
+Area: 1.42272e+06
+Num of bins violated: 0
+==> Cost after debanking: 594.877
+Debanking time: 2.9125e-05s
+============= Start checking =============
+Check FF in Die
+Check FF on Site
+Check Overlap
+================= Success ================
+Legal: 1
+
+Start to force directed placement...
+--- Calculating cost ---
+TNS: 0.33524
+Power: 59.124
+Area: 1.42272e+06
+Num of bins violated: 0
+==> Cost after force directed placement: 594.877
+Force directed placement time: 4.3094e-05s
+============= Start checking =============
+Check FF in Die
+Check FF on Site
+Check Overlap
+================= Success ================
+Legal: 1
+
+Start clustering and banking...
+Init FFs size: 4
+FFs size after greedy banking: 4
+--- Calculating cost ---
+TNS: 0.33524
+Power: 59.124
+Area: 1.42272e+06
+Num of bins violated: 0
+==> Cost after clustering and banking: 594.877
+Clustering and banking time: 1.781e-05s
+============= Start checking =============
+Check FF in Die
+Check FF on Site
+Check Overlap
+================= Success ================
+Legal: 1
+
+Start to force directed placement (second)...
+--- Calculating cost ---
+TNS: 0.33524
+Power: 59.124
+Area: 1.42272e+06
+Num of bins violated: 0
+==> Cost after force directed placement (second): 594.877
+Force directed placement (second) time: 4.1277e-05s
+============= Start checking =============
+Check FF in Die
+Check FF on Site
+Check Overlap
+================= Success ================
+Legal: 1
+
+Start clustering and banking...
+Init FFs size: 4
+FFs size after greedy banking: 4
+--- Calculating cost ---
+TNS: 0.33524
+Power: 59.124
+Area: 1.42272e+06
+Num of bins violated: 0
+==> Cost after clustering and banking: 594.877
+Clustering and banking time: 1.4178e-05s
+============= Start checking =============
+Check FF in Die
+Check FF on Site
+Check Overlap
+================= Success ================
+Legal: 1
+
+Start to force directed placement (second)...
+--- Calculating cost ---
+TNS: 0.33524
+Power: 59.124
+Area: 1.42272e+06
+Num of bins violated: 0
+==> Cost after force directed placement (second): 594.877
+Force directed placement (second) time: 4.3513e-05s
+============= Start checking =============
+Check FF in Die
+Check FF on Site
+Check Overlap
+================= Success ================
+Legal: 1
+
+Cost after solving: 594.877
+Cost difference: 0
+Cost difference percentage: 0%
+============= Start checking =============
+Check FF in Die
+Check FF on Site
+Check Overlap
+================= Success ================
+
+------------------------------------------------------------------
+----------------------------- Report -----------------------------
+------------------------------------------------------------------
+Initial          		 5.948769e+02	100.00%	0.00s *
+Debank           		 5.948769e+02	100.00%	0.00s
+ForceDirected    		 5.948769e+02	100.00%	0.00s
+Banking          		 5.948769e+02	100.00%	0.00s
+ForceDirected2   		 5.948769e+02	100.00%	0.00s
+Banking          		 5.948769e+02	100.00%	0.00s
+ForceDirected2   		 5.948769e+02	100.00%	0.00s
+------------------------------------------------------------------
+Renderer closed
+Read testcase...
+Read output...
+Check Inst <name> <libcell> <x> <y> format...
+Check From/pin map To/pin  format...
+Start checking...
+check libType
+check pins are in design
+check pins are correct connected
+check same CLK for banking
+check netlist... step1
+check netlist... step2
+Checking pass!
+Read Input:
+Read output...
+Check Inst <name> <libcell> <x> <y> format...
+Check From/pin map To/pin  format...
+
+Start checking...
+check libType
+check pins are in design
+check pins are correct connected
+check same CLK for banking
+check netlist... step1
+check netlist... step2
+update timing...
+Check pass! Scoring...
+Final score:594.876962661743

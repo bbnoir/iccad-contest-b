@@ -25,10 +25,10 @@ struct LibCell
     double qDelay;
     int bit;
     std::string cell_name;
-    std::vector<Pin*> pins;
     std::vector<Pin*> inputPins;
     std::vector<Pin*> outputPins;
     Pin* clkPin;
+    double costPA;
 
     LibCell()
     {
@@ -50,6 +50,7 @@ struct LibCell
         this->bit = bit;
         this->cell_name = cell_name;
     }
+    ~LibCell();
 };
 
 class Cell
@@ -60,37 +61,26 @@ public:
     Cell(int x, int y, std::string inst_name, LibCell* lib_cell);
     ~Cell();
 
-    int getX() const { return _x; }
-    int getY() const { return _y; }
-    int getWidth() const { return _lib_cell->width; }
-    int getHeight() const { return _lib_cell->height; }
-    int getArea();
-    std::string getInstName();
-    std::string getCellName();
-    CellType getCellType();
-    std::vector<Pin*> getPins();
-    std::vector<Pin*> getInputPins();
-    std::vector<Pin*> getOutputPins();
+    inline int getX() const { return _x; }
+    inline int getY() const { return _y; }
+    inline int getWidth() const { return _lib_cell->width; }
+    inline int getHeight() const { return _lib_cell->height; }
+    inline int getArea() const { return _lib_cell->width * _lib_cell->height; }
+    inline std::string getInstName() const { return _inst_name; }
+    inline std::string getCellName() const { return _lib_cell->cell_name; }
+    inline CellType getCellType() const { return _lib_cell->type; }
+    inline std::vector<Pin*> getPins() const { return _pins; }
+    inline std::vector<Pin*> getInputPins() const { return _inputPins; }
+    inline std::vector<Pin*> getOutputPins() const { return _outputPins; }
+    inline double getQDelay() const { return _lib_cell->qDelay; }
+    inline LibCell* getLibCell() const { return _lib_cell; }
     Pin* getPin(std::string pin_name);
-    std::vector<Site*> getSites();
-    std::vector<Bin*> getBins();
-    double getQDelay();
-    LibCell* getLibCell();
 
-    void setX(int x);
-    void setY(int y);
     void setXY(int x, int y);
     void setInstName(std::string inst_name);
-    void addSite(Site* site);
-    void addBin(Bin* bin);
     void addPin(Pin* pin);
 
-    void removeSite(Site* site);
-    void removeBin(Bin* bin);
-
     void deletePins();
-
-    bool checkOverlap();
 
 protected:
     LibCell* _lib_cell;
@@ -101,7 +91,4 @@ protected:
     std::vector<Pin*> _inputPins;
     std::vector<Pin*> _outputPins;
     Pin* _clkPin;
-    // Site where the cell is placed
-    std::vector<Site*> _sites;
-    std::vector<Bin*> _bins;
 };

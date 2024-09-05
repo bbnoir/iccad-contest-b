@@ -165,31 +165,5 @@ void Legalizer::legalize(){
     }
 
     std::cout << "Legalizing done." << std::endl;
-    std::cout << "Total movement: " << totalMove << std::endl;\
-}
-
-void Legalizer::placeOrphan(FF* ff)
-{
-    double cost_min = INFINITY;
-    int best_subrow = -1;
-    int searchDistance = (DIE_UP_RIGHT_Y-DIE_LOW_LEFT_Y)/10;
-    int min_distance = -1;
-    int max_distance = searchDistance;
-    while(best_subrow == -1 && max_distance < (DIE_UP_RIGHT_Y-DIE_LOW_LEFT_Y)){
-        std::vector<int> nearSubRows = getNearSubRows(ff, min_distance, max_distance);
-        for(long unsigned int j = 0;j < nearSubRows.size();j++){
-            double cost = placeRow(ff, nearSubRows[j], true);
-            if(cost < cost_min){
-                cost_min = cost;
-                best_subrow = nearSubRows[j];
-            }
-        }
-        // Increase search distance
-        min_distance = max_distance;
-        max_distance += searchDistance;
-    }
-    if(best_subrow != -1)
-        placeRow(ff, best_subrow, false);
-    else
-        std::cout<<"There is no place for orphan"<<std::endl;
+    std::cout << "Total movement: " << totalMove << std::endl;
 }

@@ -1,0 +1,11 @@
+testcase="testcase3"
+input="cases/$testcase.txt"
+output="out/$testcase.out"
+log="log/$testcase.log"
+sanity="sanity_20240801"
+eval="preliminary-evaluator"
+time_f="time -f \"\nReal:\t%E\nUser:\t%U\nSys:\t%S\""
+
+$time_f ./bin/RUN "$input" "$output" | tee "$log"
+./"$sanity" "$input" "$output" | tee -a "$log"
+./"$eval" "$input" "$output" | tee -a "$log"

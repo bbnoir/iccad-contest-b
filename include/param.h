@@ -15,8 +15,6 @@ extern int BIN_HEIGHT;
 extern double BIN_MAX_UTIL;
 // Delay info
 extern double DISP_DELAY;
-// Renderer
-extern int WINDOW_X;
-extern int WINDOW_Y;
-extern int WINDOW_WIDTH;
-extern int WINDOW_HEIGHT;
+
+// Hyper parameters
+const int MAX_CLUSTER_SIZE = 100;
