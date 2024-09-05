@@ -394,7 +394,15 @@ void Solver::parse_input(std::string filename)
 void Solver::iterativePlacementLegal()
 {
     // HYPER
-    int searchDistance = _siteMap->getSites()[0]->getHeight()*2;
+    int searchDistance;
+    if (_siteMap->getSites().size() == 0)
+    {
+        searchDistance = 600;
+    }
+    else
+    {
+        searchDistance = std::max(_siteMap->getSites()[0]->getHeight(), _siteMap->getSites()[0]->getWidth()) * 2;
+    }
     for(size_t i = 0; i<_ffs.size();i++)
     {
         FF* ff = _ffs[i];
@@ -1015,7 +1023,7 @@ void Solver::debankAll()
                 LibCell* oneBitFF = oneBitFFs[i];
                 std::vector<int> target_X, target_Y;
                 // HYPER
-                int searchDistance = ff->getWidth();
+                int searchDistance = std::max(ff->getWidth(), ff->getHeight());
                 
                 int leftDownX = std::max(ff->getX() - searchDistance, DIE_LOW_LEFT_X);
                 int leftDownY = std::max(ff->getY() - searchDistance, DIE_LOW_LEFT_Y);
@@ -1502,6 +1510,11 @@ std::vector<std::vector<FF*>> Solver::clusteringFFs(size_t clkdomain_idx)
     std::vector<FF*> FFs = _ffs_clkdomains[clkdomain_idx];
     std::vector<std::vector<FF*>> clusters;
     std::vector<bool> visited(FFs.size(), false);
+    int REGION_QUERY_EPS = (DIE_UP_RIGHT_X - DIE_LOW_LEFT_X) / 50;
+    if (REGION_QUERY_EPS < 1)
+    {
+        REGION_QUERY_EPS = DIE_UP_RIGHT_X - DIE_LOW_LEFT_X;
+    }
 
     for(size_t i = 0; i < FFs.size(); i++)
     {
@@ -1512,7 +1525,7 @@ std::vector<std::vector<FF*>> Solver::clusteringFFs(size_t clkdomain_idx)
         std::vector<FF*> cluster;
         cluster.push_back(FFs[i]);
         // HYPER
-        std::vector<int> neighbors = regionQuery(FFs, i, (DIE_UP_RIGHT_X - DIE_LOW_LEFT_X) / 100);
+        std::vector<int> neighbors = regionQuery(FFs, i, REGION_QUERY_EPS);
         if(neighbors.size() == 0)
         {
             clusters.push_back(cluster);

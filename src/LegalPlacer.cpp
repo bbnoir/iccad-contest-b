@@ -116,6 +116,10 @@ void LegalPlacer::legalize(){
     std::vector<int> orphans;
     // HYPER
     int searchDistance = (DIE_UP_RIGHT_Y-DIE_LOW_LEFT_Y)/50;
+    if (searchDistance < 1)
+    {
+        searchDistance = DIE_UP_RIGHT_Y-DIE_LOW_LEFT_Y;
+    }
 
     for(size_t i = 0;i < _ffs.size();i++){
         double cost_min = INFINITY;
