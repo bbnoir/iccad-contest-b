@@ -54,7 +54,6 @@ class Solver
         bool check();
         void dump(std::vector<std::string>& vecStr) const;
         void dump_best(std::string filename) const;
-        void report();
         
         // friend
         friend class LegalPlacer;

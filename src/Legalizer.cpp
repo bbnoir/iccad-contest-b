@@ -159,11 +159,5 @@ void Legalizer::legalize(){
         totalMove += cost_min;
         if(best_subrow != -1)
             placeRow(_ffs[orphans[i]], best_subrow, false);
-        else
-            std::cout<<"There is no place for orphan "<<orphans[i]<<std::endl;
-        // TODO: Bank again to legalize
     }
-
-    std::cout << "Legalizing done." << std::endl;
-    std::cout << "Total movement: " << totalMove << std::endl;
 }

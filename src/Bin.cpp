@@ -95,7 +95,6 @@ std::vector<Bin*> BinMap::getBins(int leftDownX, int leftDownY, int rightUpX, in
 {
     if (leftDownX < _dieLowerLeftX || leftDownY < _dieLowerLeftY || rightUpX > _dieUpperRightX || rightUpY > _dieUpperRightY)
     {
-        std::cerr << "Error: getBins out of range" << std::endl;
         return std::vector<Bin*>();
     }
     std::vector<Bin*> bins;

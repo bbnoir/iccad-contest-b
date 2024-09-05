@@ -129,7 +129,6 @@ std::vector<Site*> SiteMap::getSitesInBlock(int leftDownX, int leftDownY, int ri
 {
     if (leftDownX < DIE_LOW_LEFT_X || leftDownY < DIE_LOW_LEFT_Y || rightUpX > DIE_UP_RIGHT_X || rightUpY > DIE_UP_RIGHT_Y)
     {
-        std::cerr << "Error: SiteMap::getSitesInBlock() - out of die boundary" << std::endl;
         return std::vector<Site*>();
     }
     std::vector<Site*> sites;
@@ -151,7 +150,6 @@ int SiteMap::getFirstLargerRow(int y)
 {
     if (y < DIE_LOW_LEFT_Y || y > DIE_UP_RIGHT_Y)
     {
-        std::cerr << "Error: SiteMap::getFirstLargerRow() - out of die boundary" << std::endl;
         return _placementRows.size()-1;
     }
     int row = _placementRows.size()-1;
@@ -178,7 +176,6 @@ int SiteMap::getFirstLargerColInRow(int row, int x)
 {
     if (x < DIE_LOW_LEFT_X || x > DIE_UP_RIGHT_X)
     {
-        std::cerr << "Error: SiteMap::getFirstLargerColInRow() - out of die boundary" << std::endl;
         return _placementRows[row].numSites-1;
     }
     int col = (x - _placementRows[row].startX) / _placementRows[row].siteWidth + 1;
@@ -191,7 +188,6 @@ Site* SiteMap::getNearestSite(int x, int y)
 {
     if (x < DIE_LOW_LEFT_X || y < DIE_LOW_LEFT_Y || x > DIE_UP_RIGHT_X || y > DIE_UP_RIGHT_Y)
     {
-        std::cerr << "Error: SiteMap::getNearestSite() - out of die boundary" << std::endl;
         return nullptr;
     }
     int distance;

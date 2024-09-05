@@ -8,7 +8,7 @@
 #include "LegalPlacer.h"
 #ifdef _OPENMP
 #include <omp.h>
-const int NUM_THREADS = 4;
+const int NUM_THREADS = 8;
 #endif
 
 // cost metrics
@@ -80,7 +80,6 @@ void Solver::parse_input(std::string filename)
     ifstream in(filename);
     if(!in.good())
     {
-        cerr << "Error opening file: " << filename << endl;
         return;
     }
     string token;
@@ -215,7 +214,6 @@ void Solver::parse_input(std::string filename)
             }else if(_outputPinsMap.find(pinName) != _outputPinsMap.end()){
                 p = _outputPinsMap[pinName];
             }else{
-                cerr << "Error: Pin not found: " << pinName << endl;
                 continue;
             }
             pins.push_back(p);
@@ -352,8 +350,6 @@ void Solver::parse_input(std::string filename)
                     }
                     else
                     {
-                        std::cerr << "Error: Unexpected fanin pin type" << endl;
-                        std::cerr << "Pin: " << curPin->getCell()->getInstName() << " " << curPin->getName() << endl;
                         pinStack.pop_back();
                         continue;
                     }
@@ -451,7 +447,6 @@ void Solver::iterativePlacementLegal()
 
 double Solver::calCost()
 {
-    std::cout<<"--- Calculating cost ---\n";
     double tns = 0.0;
     double power = 0.0;
     double area = 0.0;
@@ -462,10 +457,6 @@ double Solver::calCost()
         power += ff->getPower();
         area += ff->getArea();
     }
-    std::cout<<"TNS: "<<tns<<"\n";
-    std::cout<<"Power: "<<power<<"\n";
-    std::cout<<"Area: "<<area<<"\n";
-    std::cout<<"Num of bins violated: "<<numOfBinsViolated<<"\n";
     double cost = ALPHA * tns + BETA * power + GAMMA * area + LAMBDA * numOfBinsViolated;
     return cost;
 }
@@ -523,13 +514,11 @@ bool Solver::placeable(Cell* cell, int x,int y)
     // check the cell is on site
     if(!_siteMap->onSite(x, y))
     {
-        // std::cerr << "Cell not placed on site: " << cell->getInstName() << std::endl;
         return false;
     }
     // check the cell in the die
     if(x < DIE_LOW_LEFT_X || x+cell->getWidth() > DIE_UP_RIGHT_X || y < DIE_LOW_LEFT_Y || y+cell->getHeight() > DIE_UP_RIGHT_Y)
     {
-        // std::cerr << "Cell not in die: " << cell->getInstName() << std::endl;
         return false;
     }
     // check the cell will not overlap with other cells in the bin
@@ -558,13 +547,11 @@ bool Solver::placeable(LibCell* libCell, int x, int y)
     // check the cell is on site
     if(!_siteMap->onSite(x, y))
     {
-        // std::cerr << "Cell not placed on site: " << cell->getInstName() << std::endl;
         return false;
     }
     // check the cell in the die
     if(x < DIE_LOW_LEFT_X || x+libCell->width > DIE_UP_RIGHT_X || y < DIE_LOW_LEFT_Y || y+libCell->height > DIE_UP_RIGHT_Y)
     {
-        // std::cerr << "Cell not in die: " << cell->getInstName() << std::endl;
         return false;
     }
     // check the cell will not overlap with other cells in the bin
@@ -597,13 +584,11 @@ bool Solver::placeable(Cell* cell, int x, int y, int& move_distance)
     // check the cell is on site
     if(!_siteMap->onSite(x, y))
     {
-        // std::cerr << "Cell not placed on site: " << cell->getInstName() << std::endl;
         return false;
     }
     // check the cell in the die
     if(x < DIE_LOW_LEFT_X || x+cell->getWidth() > DIE_UP_RIGHT_X || y < DIE_LOW_LEFT_Y || y+cell->getHeight() > DIE_UP_RIGHT_Y)
     {
-        // std::cerr << "Cell not in die: " << cell->getInstName() << std::endl;
         return false;
     }
     // check the cell will not overlap with other cells in the bin
@@ -655,7 +640,6 @@ void Solver::removeCell(Cell* cell)
 {
     if (cell->getCellType() == CellType::COMB)
     {
-        std::cerr << "Error: removeCell for comb cell" << std::endl;
         return;
     }
     _siteMap->removeCell(cell);
@@ -668,7 +652,6 @@ move the cell to (x, y), the current cost will be updated
 void Solver::moveCell(Cell* cell, int x, int y)
 {
     if(cell->getCellType() == CellType::COMB) {
-        std::cerr << "Error: moveCell for comb cell" << std::endl;
         return;
     }
     removeCell(cell);
@@ -807,7 +790,6 @@ double Solver::calCostBankFF(FF* ff1, FF* ff2, LibCell* targetFF, int targetX, i
             }
             if (fanin_ff_pin_idx >= targetFF->bit)
             {
-                std::cerr << "Error: fanin_ff_pin_idx out of range\n";
                 continue;
             }
             const int old_fanin_x = faninPin->getGlobalX();
@@ -955,9 +937,6 @@ void Solver::bankFFs(FF* ff1, FF* ff2, LibCell* targetFF, int x, int y)
 {
     if (ff1->getClkDomain() != ff2->getClkDomain())
     {
-        std::cerr << "Error: Banking FFs in different clk domains" << std::endl;
-        std::cerr << "FF1: " << ff1->getInstName() << " clk domain: " << ff1->getClkDomain() << std::endl;
-        std::cerr << "FF2: " << ff2->getInstName() << " clk domain: " << ff2->getClkDomain() << std::endl;
         return;
     }
     removeCell(ff1);
@@ -1142,30 +1121,11 @@ double Solver::calDiffCost(double oldSlack, double newSlack)
 
 void Solver::solve()
 {
-    bool calTime = true;
-    auto start = std::chrono::high_resolution_clock::now();
-    auto start_solve_time = start;
-    auto end = std::chrono::high_resolution_clock::now();
-
-    std::cout<<"Alpha: "<<ALPHA<<" Beta: "<<BETA<<" Gamma: "<<GAMMA<<" Lambda: "<<LAMBDA<<"\n";
-
-    std::cout << "\nStart initial placement...\n";
     init_placement();
     _currCost = calCost();
     _initCost = _currCost;
-    std::cout << "==> Initial cost: " << _initCost << "\n";
-
-    if(calTime)
-    {
-        end = std::chrono::high_resolution_clock::now();
-        std::chrono::duration<double> elapsed = end - start;
-        _stateTimes.push_back(elapsed.count());
-        std::cout << "Initialization time: " << elapsed.count() << "s" << std::endl;
-        start = std::chrono::high_resolution_clock::now();
-    }
 
     bool legal = check();
-    std::cout << "Legal: " << legal << "\n";
     if(!legal)
     {
         _legalizer->legalize();
@@ -1174,22 +1134,10 @@ void Solver::solve()
     }
     saveState("Initial");
 
-    std::cout << "\nStart to debank...\n";
     debankAll();
     _currCost = calCost();
-    std::cout << "==> Cost after debanking: " << _currCost << "\n";
-
-    if(calTime)
-    {
-        end = std::chrono::high_resolution_clock::now();
-        std::chrono::duration<double> elapsed = end - start;
-        _stateTimes.push_back(elapsed.count());
-        std::cout << "Debanking time: " << elapsed.count() << "s" << std::endl;
-        start = std::chrono::high_resolution_clock::now();
-    }
 
     legal = check();
-    std::cout << "Legal: " << legal << "\n";
     if(!legal)
     {
         _legalizer->legalize();
@@ -1198,22 +1146,10 @@ void Solver::solve()
     }
     saveState("Debank");
 
-    std::cout<<"\nStart to force directed placement...\n";
     iterativePlacementLegal();
     _currCost = calCost();
-    std::cout << "==> Cost after force directed placement: " << _currCost << "\n";
-
-    if(calTime)
-    {
-        end = std::chrono::high_resolution_clock::now();
-        std::chrono::duration<double> elapsed = end - start;
-        _stateTimes.push_back(elapsed.count());
-        std::cout << "Force directed placement time: " << elapsed.count() << "s" << std::endl;
-        start = std::chrono::high_resolution_clock::now();
-    }
 
     legal = check();
-    std::cout << "Legal: " << legal << "\n";
     if(!legal)
     {
         _legalizer->legalize();
@@ -1222,9 +1158,7 @@ void Solver::solve()
     }
     saveState("ForceDirected");
 
-    std::cout << "\nStart clustering and banking...\n";
     size_t prev_ffs_size;
-    std::cout << "Init FFs size: " << _ffs.size() << "\n";
     do
     {
         constructFFsCLKDomain();
@@ -1242,22 +1176,10 @@ void Solver::solve()
             }
             greedyBanking(cluster);
         }
-        std::cout << "FFs size after greedy banking: " << _ffs.size() << "\n";
     } while (prev_ffs_size != _ffs.size());
     _currCost = calCost();
-    std::cout << "==> Cost after clustering and banking: " << _currCost << "\n";
-
-    if(calTime)
-    {
-        end = std::chrono::high_resolution_clock::now();
-        std::chrono::duration<double> elapsed = end - start;
-        _stateTimes.push_back(elapsed.count());
-        std::cout << "Clustering and banking time: " << elapsed.count() << "s" << std::endl;
-        start = std::chrono::high_resolution_clock::now();
-    }
 
     legal = check();
-    std::cout << "Legal: " << legal << "\n";
     if(!legal)
     {
         _legalizer->legalize();
@@ -1266,22 +1188,9 @@ void Solver::solve()
     }
     saveState("Banking");
 
-    std::cout << "\nStart to force directed placement (second)...\n";
     iterativePlacementLegal();
     _currCost = calCost();
-    std::cout << "==> Cost after force directed placement (second): " << _currCost << "\n";
-    
-    if(calTime)
-    {
-        end = std::chrono::high_resolution_clock::now();
-        std::chrono::duration<double> elapsed = end - start;
-        _stateTimes.push_back(elapsed.count());
-        std::cout << "Force directed placement (second) time: " << elapsed.count() << "s" << std::endl;
-        start = std::chrono::high_resolution_clock::now();
-    }
-
     legal = check();
-    std::cout << "Legal: " << legal << "\n";
     if(!legal)
     {
         _legalizer->legalize();
@@ -1290,8 +1199,6 @@ void Solver::solve()
     }
     saveState("ForceDirected2");
 
-    std::cout << "\nStart clustering and banking...\n";
-    std::cout << "Init FFs size: " << _ffs.size() << "\n";
     do
     {
         constructFFsCLKDomain();
@@ -1309,22 +1216,10 @@ void Solver::solve()
             }
             greedyBanking(cluster);
         }
-        std::cout << "FFs size after greedy banking: " << _ffs.size() << "\n";
     } while (prev_ffs_size != _ffs.size());
     _currCost = calCost();
-    std::cout << "==> Cost after clustering and banking: " << _currCost << "\n";
-
-    if(calTime)
-    {
-        end = std::chrono::high_resolution_clock::now();
-        std::chrono::duration<double> elapsed = end - start;
-        _stateTimes.push_back(elapsed.count());
-        std::cout << "Clustering and banking time: " << elapsed.count() << "s" << std::endl;
-        start = std::chrono::high_resolution_clock::now();
-    }
 
     legal = check();
-    std::cout << "Legal: " << legal << "\n";
     if(!legal)
     {
         _legalizer->legalize();
@@ -1333,30 +1228,10 @@ void Solver::solve()
     }
     saveState("Banking2");
 
-    std::cout << "\nStart to force directed placement (third)...\n";
     iterativePlacementLegal();
     _currCost = calCost();
-    std::cout << "==> Cost after force directed placement (third): " << _currCost << "\n";
-    
-    if(calTime)
-    {
-        end = std::chrono::high_resolution_clock::now();
-        std::chrono::duration<double> elapsed = end - start;
-        _stateTimes.push_back(elapsed.count());
-        std::cout << "Force directed placement (third) time: " << elapsed.count() << "s" << std::endl;
-        start = std::chrono::high_resolution_clock::now();
-    }
-
-    if (calTime)
-    {
-        end = std::chrono::high_resolution_clock::now();
-        std::chrono::duration<double> elapsed = end - start_solve_time;
-        _stateTimes.push_back(elapsed.count());
-        std::cout << "Total solve time: " << elapsed.count() << "s" << std::endl;
-    }
 
     legal = check();
-    std::cout << "Legal: " << legal << "\n";
     if(!legal)
     {
         _legalizer->legalize();
@@ -1364,10 +1239,6 @@ void Solver::solve()
         _currCost = calCost();
     }
     saveState("ForceDirected3");
-
-    std::cout << "\nCost after solving: " << _currCost << "\n";
-    std::cout << "Cost difference: " << _currCost - _initCost << "\n";
-    std::cout << "Cost difference percentage: " << (_currCost - _initCost) / _initCost * 100 << "%\n";
 }
 
 /*
@@ -1375,29 +1246,16 @@ Check for FFs in Die, FFs on Site, and Overlap
 */
 bool Solver::check()
 {
-    std::cout << "============= Start checking =============" << std::endl;
-    std::cout << "Check FF in Die" << std::endl;
-    bool inDie = checkFFInDie();
-    if(!inDie)
+    if(!checkFFInDie())
     {
-        std::cerr << "============== Error ==============" << std::endl;    
-        std::cerr << "FF not placed in Die" << std::endl;
         return false;
     }
-    std::cout << "Check FF on Site" << std::endl;
-    bool onSite = checkFFOnSite();
-    if(!onSite)
+    if(!checkFFOnSite())
     {
-        std::cerr << "============== Error ==============" << std::endl;    
-        std::cerr << "FF not placed on Site" << std::endl;
         return false;
     }
-    std::cout << "Check Overlap" << std::endl;
-    bool overlap = checkOverlap();
-    if(overlap)
+    if(checkOverlap())
     {
-        std::cerr << "============== Error ==============" << std::endl;    
-        std::cerr << "Overlap" << std::endl;
         return false;
     }
     return true;
@@ -1447,11 +1305,6 @@ bool Solver::checkOverlap()
                 Cell* cell2 = bin->getCells()[j];
                 if (isOverlap(cell1->getX(), cell1->getY(), cell1->getWidth(), cell1->getHeight(), cell2))
                 {
-                    std::cout << "Overlap: " << cell1->getInstName() << " and " << cell2->getInstName() << std::endl;
-                    std::cout << "Cell1: " << cell1->getX() << " " << cell1->getY() << " " << cell1->getWidth() << " " << cell1->getHeight() << std::endl;
-                    std::cout << "Cell2: " << cell2->getX() << " " << cell2->getY() << " " << cell2->getWidth() << " " << cell2->getHeight() << std::endl;
-                    std::cout << "CellType1: " << ((cell1->getCellType() == CellType::FF)? "FF" : "Combinational") << std::endl;
-                    std::cout << "CellType2: " << ((cell2->getCellType() == CellType::FF)? "FF" : "Combinational") << std::endl;
                     return true;
                 }
             }
@@ -1786,37 +1639,6 @@ void Solver::saveState(std::string stateName, bool legal)
     std::vector<std::string> vecStr;
     dump(vecStr);
     _stateDumps.push_back(vecStr);
-}
-
-void Solver::report()
-{
-    std::cout << std::endl;
-    std::cout << "------------------------------------------------------------------" << std::endl;
-    std::cout << "----------------------------- Report -----------------------------" << std::endl;
-    std::cout << "------------------------------------------------------------------" << std::endl;
-    double firstCost = _stateCosts[0];
-    for (size_t i = 0; i < _stateNames.size(); i++)
-    {
-        std::cout << std::setw(16) << std::left << _stateNames[i] << " \t\t " << std::right << std::scientific << std::setprecision(6) << _stateCosts[i];
-        std::cout << "\t" << std::fixed << std::setprecision(2) << _stateCosts[i] / firstCost * 100 << "%";
-        if(_stateTimes.size() > i)
-        {
-            std::cout << "\t" << std::fixed << std::setprecision(2) << _stateTimes[i] << "s";
-        }
-        if (_bestStateIdx == i)
-        {
-            std::cout << " *";
-        }
-        std::cout << std::endl;
-    }
-    std::cout << std::setw(16) << std::left << "Best/Total time\t\t " << std::right << std::scientific << std::setprecision(6) << _stateCosts[_bestStateIdx];
-    std::cout << "\t" << std::fixed << std::setprecision(2) << _stateCosts[_bestStateIdx] / firstCost * 100 << "%";
-    if(_stateTimes.size() > 0)
-    {
-        std::cout << "\t" << std::fixed << std::setprecision(2) << _stateTimes.back() << "s";
-    }
-    std::cout << "\n";
-    std::cout << "------------------------------------------------------------------" << std::endl;
 }
 
 void Solver::dump_best(std::string filename) const

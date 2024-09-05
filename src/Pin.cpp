@@ -147,31 +147,6 @@ void Pin::resetArrivalTime(bool check)
             _currCriticalIndex = i;
         }
     }
-    if (check)
-    {
-        for (size_t i = 0; i < tempArrivalTimes.size(); i++)
-        {
-            if (std::abs(tempArrivalTimes.at(i) - _arrivalTimes.at(i)) > 1e-6)
-            {
-                std::cout << "=== Warning: arrival time after reset is not the same as before" << std::endl;
-                std::cout << "Pin: " << this->getCell()->getInstName() << "/" << this->getName() << " (" << this->getOriginalName() << ")" << std::endl;
-                std::cout << "Path: ";
-                for (Pin* pin : _pathToPrevStagePins.at(i))
-                {
-                    if (pin->getCell() != nullptr)
-                    {
-                        std::cout << pin->getCell()->getInstName() << "/";
-                    }
-                    std::cout << pin->getName() << "(" << pin->getOriginalName() << ")(" << pin->getGlobalX() << "," << pin->getGlobalY() << ") <- ";
-                }
-                std::cout << std::endl;
-                std::cout << "Old arrival time: " << tempArrivalTimes.at(i) << std::endl;
-                std::cout << "New arrival time: " << _arrivalTimes.at(i) << std::endl;
-                std::cout << "Difference: " << tempArrivalTimes.at(i) - _arrivalTimes.at(i) << std::endl;
-                break;
-            }
-        }
-    }
 }
 
 /*
@@ -182,7 +157,6 @@ double Pin::calSlack(Pin* movedPrevStagePin, int sourceX, int sourceY, int targe
 {
     if (this->getType() != PinType::FF_D)
     {
-        std::cerr << "Error: only D pin can update slack" << std::endl;
         return _slack;
     }
     if (_arrivalTimes.size() == 0)
@@ -243,7 +217,6 @@ double Pin::calSlackQ(Pin* changeQPin, double diffQDelay, bool update)
 {
     if (this->getType() != PinType::FF_D)
     {
-        std::cerr << "Error: only D pin can update slack" << std::endl;
         return _slack;
     }
     if (_arrivalTimes.size() == 0)
@@ -305,37 +278,6 @@ void Pin::resetSlack(bool check)
         {
             this->resetArrivalTime(false);
             _slack = _initSlack + (_initCriticalArrivalTime - _currCriticalArrivalTime);
-        }
-        else
-        {
-            double old_slack = _slack;
-            this->resetArrivalTime(true);
-            _slack = _initSlack + (_initCriticalArrivalTime - _currCriticalArrivalTime);
-            if (std::abs(old_slack - _slack) > 1e-6)
-            {
-                std::cout << "=== Warning: slack after reset is not the same as before" << std::endl;
-                std::cout << "Pin: " << this->getCell()->getInstName() << "/" << this->getName() << " (" << this->getOriginalName() << ")" << std::endl;
-                std::cout << "Ini critical arrival time: " << _initCriticalArrivalTime << std::endl;
-                std::cout << "New critical arrival time: " << _currCriticalArrivalTime << std::endl;
-                std::cout << "Ini slack: " << _initSlack << std::endl;
-                std::cout << "Old slack: " << old_slack << std::endl;
-                std::cout << "New slack: " << _slack << std::endl;
-                std::cout << "Difference: " << old_slack - _slack << std::endl;
-                for (size_t i = 0; i < _arrivalTimes.size(); i++)
-                {
-                    std::cout << "Path: ";
-                    for (Pin* pin : _pathToPrevStagePins.at(i))
-                    {
-                        if (pin->getCell() != nullptr)
-                        {
-                            std::cout << pin->getCell()->getInstName() << "/";
-                        }
-                        std::cout << pin->getName() << "(" << pin->getOriginalName() << ")(" << pin->getGlobalX() << "," << pin->getGlobalY() << ") <- ";
-                    }
-                    std::cout << "Arrival time: " << _arrivalTimes.at(i) << std::endl;
-                }
-                return;
-            }
         }
     }
 }

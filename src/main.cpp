@@ -9,7 +9,6 @@ int main(int argc, char* argv[])
     // format ./$binary_name <input.txt> <output.txt>
     if (argc != 3)
     {
-        std::cerr << "Usage: " << argv[0] << " <input.txt> <output.txt>" << std::endl;
         return 1;
     }
     std::string input_file = argv[1];
@@ -18,9 +17,6 @@ int main(int argc, char* argv[])
 
     solver->parse_input(input_file);
     solver->solve();
-    // TO BE DELETED
-    solver->check();
-    solver->report();
     solver->dump_best(output_file);
 
     delete solver;
